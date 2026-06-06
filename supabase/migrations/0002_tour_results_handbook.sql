@@ -1,5 +1,7 @@
 -- Add per-tour team result and editable handbook data structures.
--- Run after the PR #3 Supabase foundation schema.
+-- Incremental migration for databases that already have the baseline schema.
+-- Fresh databases should apply 0001_initial_schema.sql first; existing manually-created
+-- Supabase databases should only need this migration if the baseline tables already exist.
 
 create table if not exists tour_team_results (
   id uuid primary key default gen_random_uuid(),
