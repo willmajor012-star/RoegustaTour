@@ -1,5 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { currentTourId as mockCurrentTourId } from '../../src/data/mockData';
 import { createServerSupabaseClient } from './_supabase';
 import { mapBet, mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapRound, mapTour, mapTourTeam } from './_mappers';
 
@@ -13,8 +12,6 @@ type QueryBuilder<T = Record<string, unknown>> = PromiseLike<SupabaseResult<T>> 
   or(filters: string): QueryBuilder<T>;
 };
 
-type PublicMatchBundle = Awaited<ReturnType<typeof getPublicMatchBundle>>;
-
 async function runQuery<T>(query: QueryBuilder<T>, label: string): Promise<T[]> {
   const { data, error } = await query;
   if (error) throw new Error(`${label}: ${error.message}`);
@@ -25,12 +22,11 @@ function table<T = Record<string, unknown>>(supabase: SupabaseClient, name: stri
   return supabase.from(name) as unknown as QueryBuilder<T>;
 }
 
-export function withMockFallback<T extends object>(read: (supabase: SupabaseClient) => Promise<T>, fallback: T, isEmpty: (data: T) => boolean): Promise<T & { source: 'supabase' | 'mock-fallback' }> {
+export function withMockFallback<T extends object>(read: (supabase: SupabaseClient) => Promise<T>, fallback: T): Promise<T & { source: 'supabase' | 'mock-fallback' }> {
   return (async () => {
     try {
       const supabase = createServerSupabaseClient();
       const data = await read(supabase);
-      if (isEmpty(data)) return { ...fallback, source: 'mock-fallback' };
       return { ...data, source: 'supabase' };
     } catch (error) {
       console.warn('Falling back to mock data because Supabase is unavailable:', error);
@@ -45,8 +41,15 @@ export async function getCurrentTour(supabase: SupabaseClient) {
 }
 
 export async function getPublicMatchBundle(supabase: SupabaseClient) {
+  const tour = await getCurrentTour(supabase);
+  if (!tour) return { rounds: [], matches: [], matchParticipants: [] };
+
   const publicMatches = (await runQuery(
-    table(supabase, 'matches').select('*').or('published.eq.true,status.eq.complete').order('match_number', { ascending: true }),
+    table(supabase, 'matches')
+      .select('*')
+      .eq('tour_id', tour.id)
+      .or('published.eq.true,status.eq.complete')
+      .order('match_number', { ascending: true }),
     'public matches',
   )).map(mapMatch);
 
@@ -67,7 +70,7 @@ export async function getPublicMatchBundle(supabase: SupabaseClient) {
 
 export async function getScoreBundle(supabase: SupabaseClient) {
   const tour = await getCurrentTour(supabase);
-  if (!tour) return { tourId: mockCurrentTourId, teams: [], rounds: [], matches: [] };
+  if (!tour) return { tourId: '', teams: [], rounds: [], matches: [] };
 
   const [teamRows, roundRows, matchRows] = await Promise.all([
     runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour teams'),
@@ -133,8 +136,4 @@ export async function getSummaryBundle(supabase: SupabaseClient) {
     recentResults: resultRows.map(mapMatch),
     openMarkets: marketRows.map(mapBetMarket),
   };
-}
-
-export function hasPublicMatches(data: PublicMatchBundle): boolean {
-  return data.matches.length > 0;
 }

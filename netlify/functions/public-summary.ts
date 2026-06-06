@@ -13,7 +13,6 @@ export const handler: Handler = async () => ({
         recentResults: matches.filter((match) => match.status === 'complete'),
         openMarkets: betMarkets.filter((market) => market.status === 'open'),
       },
-      (data) => !data.tour,
     ),
   ),
 });

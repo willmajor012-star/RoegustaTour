@@ -10,7 +10,6 @@ export const handler: Handler = async () => {
       return { scores: calculateTeamScoreByTour(bundle.tourId, bundle.teams, bundle.rounds, bundle.matches) };
     },
     { scores: calculateTeamScoreByTour(currentTourId, tourTeams, rounds, matches) },
-    (data) => data.scores.length === 0,
   );
 
   return { statusCode: 200, body: JSON.stringify(data) };
