@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from 'react';
+import { formatStakeCurrency, parseStakeAmount, stakeAmountToPence } from '../lib/betting';
 import type { Bet, BetMarket, BetOption } from '../lib/types';
 
 type Props = {
@@ -6,22 +7,27 @@ type Props = {
   options: BetOption[];
   bets: Bet[];
   bettorName: string;
-  onSubmit?: (marketId: string, optionId: string, stakeText: string, comment: string) => void;
+  onSubmit?: (marketId: string, optionId: string, stakeAmount: number, stakeAmountPence: number, comment: string) => void;
 };
 
 export function BetMarketCard({ market, options, bets, bettorName, onSubmit }: Props) {
   const [selectedOptionId, setSelectedOptionId] = useState(options[0]?.id ?? '');
-  const [stakeText, setStakeText] = useState('');
+  const [stakeInput, setStakeInput] = useState('');
   const [comment, setComment] = useState('');
+  const [stakeTouched, setStakeTouched] = useState(false);
   const activeBets = bets.filter((bet) => bet.marketId === market.id && bet.status === 'active');
   const isOpen = market.status === 'open';
+  const parsedStake = parseStakeAmount(stakeInput);
+  const hasStakeError = stakeTouched && stakeInput.trim().length > 0 && parsedStake === null;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedOptionId || !stakeText.trim()) return;
-    onSubmit?.(market.id, selectedOptionId, stakeText.trim(), comment.trim());
-    setStakeText('');
+    setStakeTouched(true);
+    if (!selectedOptionId || parsedStake === null) return;
+    onSubmit?.(market.id, selectedOptionId, parsedStake, stakeAmountToPence(parsedStake), comment.trim());
+    setStakeInput('');
     setComment('');
+    setStakeTouched(false);
   };
 
   return (
@@ -39,22 +45,24 @@ export function BetMarketCard({ market, options, bets, bettorName, onSubmit }: P
             </select>
           </label>
           <label>
-            Stake text
-            <input value={stakeText} placeholder="e.g. one post-round pint" onChange={(event) => setStakeText(event.target.value)} />
+            Stake (£)
+            <input inputMode="decimal" value={stakeInput} placeholder="e.g. 5 or 10" onBlur={() => setStakeTouched(true)} onChange={(event) => setStakeInput(event.target.value)} />
+            {hasStakeError && <small className="form-error">Enter a numeric stake amount in pounds only.</small>}
           </label>
           <label>
             Comment <span>(optional)</span>
             <input value={comment} placeholder="Add a note for the group" onChange={(event) => setComment(event.target.value)} />
           </label>
-          <button disabled={!bettorName.trim() || !stakeText.trim()} type="submit">Submit social pick</button>
+          <button disabled={!bettorName.trim() || parsedStake === null} type="submit">Submit social pick</button>
           {!bettorName.trim() && <small>Enter your name above before submitting.</small>}
+          <small>No wallet, no payment handling, no money transfer — this app only logs bets.</small>
         </form>
       ) : (
         <div className="option-list">{options.map((option) => <span className="pill" key={option.id}>{option.label}</span>)}</div>
       )}
       <div className="bet-log">
         <strong>Backed by</strong>
-        {activeBets.length === 0 ? <p>No active selections yet.</p> : activeBets.map((bet) => <p key={bet.id}>{bet.bettorName} → {options.find((option) => option.id === bet.optionId)?.label} <em>{bet.stakeText}</em>{bet.comment && ` — ${bet.comment}`}</p>)}
+        {activeBets.length === 0 ? <p>No active selections yet.</p> : activeBets.map((bet) => <p key={bet.id}>{bet.bettorName} → {options.find((option) => option.id === bet.optionId)?.label} <em>{formatStakeCurrency(bet)}</em>{bet.comment && ` — ${bet.comment}`}</p>)}
       </div>
     </article>
   );

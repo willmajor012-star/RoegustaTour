@@ -53,7 +53,7 @@ export type Round = {
   teeTime?: string;
   formatLabel?: string;
   notes?: string;
-  status: 'planned' | 'active' | 'complete';
+  status: 'draft' | 'planned' | 'active' | 'complete';
 };
 
 export type MatchFormat = 'singles' | 'better_ball' | 'scramble' | 'custom';
@@ -64,7 +64,7 @@ export type Match = {
   roundId: string;
   matchNumber: number;
   format: MatchFormat;
-  status: 'planned' | 'active' | 'complete' | 'void';
+  status: 'draft' | 'planned' | 'active' | 'complete' | 'void';
   sideATeamId: string;
   sideBTeamId: string;
   sideALabel?: string;
@@ -74,6 +74,8 @@ export type Match = {
   pointsSideB?: number;
   winningSide?: 'A' | 'B' | 'halved' | 'void';
   resultText?: string;
+  teeTime?: string;
+  published?: boolean;
   notes?: string;
 };
 
@@ -142,7 +144,10 @@ export type Bet = {
   marketId: string;
   optionId: string;
   bettorName: string;
+  /** TODO: transition persisted bets to stakeAmount/stakeAmountPence and remove stakeText compatibility. */
   stakeText?: string;
+  stakeAmount?: number;
+  stakeAmountPence?: number;
   comment?: string;
   createdAt: string;
   deviceId?: string;
