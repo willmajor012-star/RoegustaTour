@@ -5,6 +5,6 @@ import { getBettingBundle, withMockFallback } from './_publicData';
 export const handler: Handler = async () => ({
   statusCode: 200,
   body: JSON.stringify(
-    await withMockFallback(getBettingBundle, { betMarkets, betOptions, bets }, (data) => data.betMarkets.length === 0),
+    await withMockFallback(getBettingBundle, { betMarkets, betOptions, bets }),
   ),
 });

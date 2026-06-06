@@ -1,6 +1,6 @@
 type Handler = (event: { httpMethod: string; body: string | null }) => Promise<{ statusCode: number; body: string }>;
 import { matchParticipants, matches, rounds } from '../../src/data/mockData';
-import { getPublicMatchBundle, hasPublicMatches, withMockFallback } from './_publicData';
+import { getPublicMatchBundle, withMockFallback } from './_publicData';
 
 const publicMatches = matches.filter((match) => match.published || match.status === 'complete');
 const publicMatchIds = new Set(publicMatches.map((match) => match.id));
@@ -16,7 +16,6 @@ export const handler: Handler = async () => ({
         matches: publicMatches,
         matchParticipants: matchParticipants.filter((participant) => publicMatchIds.has(participant.matchId)),
       },
-      (data) => !hasPublicMatches(data),
     ),
   ),
 });

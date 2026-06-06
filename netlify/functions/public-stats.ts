@@ -10,7 +10,6 @@ export const handler: Handler = async () => {
       return { leaderboard: calculateAllTimePlayerStats(bundle.players, bundle.matches, bundle.matchParticipants, bundle.historicalPlayerStats) };
     },
     { leaderboard: calculateAllTimePlayerStats(players, matches, matchParticipants, historicalPlayerStats) },
-    (data) => data.leaderboard.length === 0,
   );
 
   return { statusCode: 200, body: JSON.stringify(data) };

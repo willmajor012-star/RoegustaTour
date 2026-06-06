@@ -4,5 +4,5 @@ import { getPlayersBundle, withMockFallback } from './_publicData';
 
 export const handler: Handler = async () => ({
   statusCode: 200,
-  body: JSON.stringify(await withMockFallback(getPlayersBundle, { players }, (data) => data.players.length === 0)),
+  body: JSON.stringify(await withMockFallback(getPlayersBundle, { players })),
 });
