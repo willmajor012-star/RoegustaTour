@@ -14,12 +14,12 @@ export function Betting() {
     localStorage.setItem('rt-bettor-name', name);
   };
 
-  const submit = (marketId: string, optionId: string, stakeText: string, comment: string) => {
+  const submit = (marketId: string, optionId: string, stakeAmount: number, stakeAmountPence: number, comment: string) => {
     const name = bettorName.trim();
     if (!name) return;
     saveName(name);
     setBets((current) => [
-      { id: `local-${Date.now()}`, marketId, optionId, bettorName: name, stakeText, comment, createdAt: new Date().toISOString(), status: 'active' },
+      { id: `local-${Date.now()}`, marketId, optionId, bettorName: name, stakeText: `£${stakeAmount}`, stakeAmount, stakeAmountPence, comment, createdAt: new Date().toISOString(), status: 'active' },
       ...current,
     ]);
   };

@@ -1,6 +1,6 @@
 import type { Bet, BetMarket, BetOption, HistoricalPlayerStats, Match, MatchParticipant, Player, Round, Tour, TourPlayer, TourTeam, TourTeamMember } from '../lib/types';
 
-const now = '2026-06-06T09:00:00.000Z';
+const now = '2026-11-06T09:00:00.000Z';
 const names = [
   'Will Major','Finn Begley','Sam Truman','Alex Tonge','Martin Horswood','Peter Garczewski','Remi Worthhalter','Connor Hamilton','Scott Stanley','Mike Hamblin','Adam Musikant','Dave Birn','Josh Conlan','Luke Gorman','Nick Wells','Robert Findlay','Leif Skogland','Tom Reed','Brian Crotty','Niels Verbeek','Ben Walmsley','Simon Butler','Sam Aycock','Oliver Hunt','Jack Bamford','Shaun Feldon','Dan Birn','Henry Dubiel','Sam Huxtable','Stuart Loggie'
 ];
@@ -15,7 +15,7 @@ export const players: Player[] = names.map((displayName, index) => ({
 }));
 
 export const tours: Tour[] = [
-  { id: 'tour-2026', name: 'Roegusta Tour 2026', year: 2026, location: 'Surrey & Berkshire', startDate: '2026-06-05', endDate: '2026-06-07', status: 'active', description: 'The current Ryder Cup-style Roegusta Tour edition.' },
+  { id: 'tour-2026', name: 'Roegusta Tour 2026', year: 2026, location: 'Amendoeira, Portugal', startDate: '2026-11-06', endDate: '2026-11-09', status: 'planned', description: 'The confirmed 2026 Roegusta Tour in Amendoeira, Portugal. Formats, tee times and captain picks stay flexible until captains confirm them during tour week.' },
   { id: 'tour-2025', name: 'Roegusta Tour 2025', year: 2025, location: 'Dorset Coast', startDate: '2025-06-06', endDate: '2025-06-08', status: 'complete', description: 'Imported legacy summary records with selected sample matches.' },
 ];
 
@@ -44,22 +44,23 @@ export const tourTeamMembers: TourTeamMember[] = players.slice(0, 24).map((playe
 }));
 
 export const rounds: Round[] = [
-  { id: 'r1', tourId: currentTourId, roundNumber: 1, name: 'Friday Fourballs', roundDate: '2026-06-05', courseName: 'Roehampton Club - Old Course', teeTime: '13:10', formatLabel: 'Better Ball', status: 'complete' },
-  { id: 'r2', tourId: currentTourId, roundNumber: 2, name: 'Saturday Scramble', roundDate: '2026-06-06', courseName: 'Roehampton Club - Old Course', teeTime: '08:40', formatLabel: 'Scramble', status: 'active' },
-  { id: 'r3', tourId: currentTourId, roundNumber: 3, name: 'Sunday Singles', roundDate: '2026-06-07', courseName: 'Roehampton Club - Inner Course', teeTime: '09:20', formatLabel: 'Singles', status: 'planned' },
+  { id: 'r1', tourId: currentTourId, roundNumber: 1, name: 'Friday Opening Matches', roundDate: '2026-11-06', courseName: 'Amendoeira, Portugal', teeTime: 'TBC', formatLabel: 'Captain picks / format TBC', status: 'planned' },
+  { id: 'r2', tourId: currentTourId, roundNumber: 2, name: 'Saturday Team Matches', roundDate: '2026-11-07', courseName: 'Amendoeira, Portugal', teeTime: 'TBC', formatLabel: 'Team format TBC', status: 'planned' },
+  { id: 'r3', tourId: currentTourId, roundNumber: 3, name: 'Sunday Singles / Team Matches', roundDate: '2026-11-08', courseName: 'Amendoeira, Portugal', teeTime: 'TBC', formatLabel: 'Singles / team mix TBC', status: 'planned' },
+  { id: 'r4', tourId: currentTourId, roundNumber: 4, name: 'Monday Final Matches', roundDate: '2026-11-09', courseName: 'Amendoeira, Portugal', teeTime: 'TBC', formatLabel: 'Final formats TBC', status: 'planned' },
   { id: 'r2025', tourId: 'tour-2025', roundNumber: 1, name: 'Legacy Singles', roundDate: '2025-06-07', courseName: 'Dorset Heath', status: 'complete' },
 ];
 
 export const matches: Match[] = [
-  { id: 'm1', tourId: currentTourId, roundId: 'r1', matchNumber: 1, format: 'better_ball', status: 'complete', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, pointsSideA: 1, pointsSideB: 0, winningSide: 'A', resultText: 'Oaks won 2&1' },
-  { id: 'm2', tourId: currentTourId, roundId: 'r1', matchNumber: 2, format: 'better_ball', status: 'complete', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, pointsSideA: 0.5, pointsSideB: 0.5, winningSide: 'halved', resultText: 'Halved' },
-  { id: 'm3', tourId: currentTourId, roundId: 'r1', matchNumber: 3, format: 'better_ball', status: 'complete', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, pointsSideA: 0, pointsSideB: 1, winningSide: 'B', resultText: 'Heath won 1 up' },
-  { id: 'm4', tourId: currentTourId, roundId: 'r2', matchNumber: 1, format: 'scramble', status: 'active', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, sideALabel: 'Oaks Scramble A', sideBLabel: 'Heath Scramble A' },
-  { id: 'm5', tourId: currentTourId, roundId: 'r2', matchNumber: 2, format: 'scramble', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1 },
-  { id: 'm6', tourId: currentTourId, roundId: 'r3', matchNumber: 1, format: 'singles', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1 },
-  { id: 'm7', tourId: currentTourId, roundId: 'r3', matchNumber: 2, format: 'singles', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1 },
-  { id: 'm8', tourId: currentTourId, roundId: 'r3', matchNumber: 3, format: 'custom', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, sideALabel: 'Captain Pick A', sideBLabel: 'Captain Pick B' },
-  { id: 'm2025-1', tourId: 'tour-2025', roundId: 'r2025', matchNumber: 1, format: 'singles', status: 'complete', sideATeamId: 'team-2025-a', sideBTeamId: 'team-2025-b', pointsAvailable: 1, pointsSideA: 1, pointsSideB: 0, winningSide: 'A', resultText: 'Green Jackets won' },
+  { id: 'm1', tourId: currentTourId, roundId: 'r1', matchNumber: 1, format: 'better_ball', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: true },
+  { id: 'm2', tourId: currentTourId, roundId: 'r1', matchNumber: 2, format: 'better_ball', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: true },
+  { id: 'm3', tourId: currentTourId, roundId: 'r1', matchNumber: 3, format: 'better_ball', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: false },
+  { id: 'm4', tourId: currentTourId, roundId: 'r2', matchNumber: 1, format: 'scramble', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: false, sideALabel: 'Oaks Scramble A', sideBLabel: 'Heath Scramble A' },
+  { id: 'm5', tourId: currentTourId, roundId: 'r2', matchNumber: 2, format: 'scramble', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: false },
+  { id: 'm6', tourId: currentTourId, roundId: 'r3', matchNumber: 1, format: 'singles', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: false },
+  { id: 'm7', tourId: currentTourId, roundId: 'r3', matchNumber: 2, format: 'singles', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: false },
+  { id: 'm8', tourId: currentTourId, roundId: 'r4', matchNumber: 1, format: 'custom', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: false, sideALabel: 'Captain Pick A', sideBLabel: 'Captain Pick B' },
+  { id: 'm2025-1', tourId: 'tour-2025', roundId: 'r2025', matchNumber: 1, format: 'singles', status: 'complete', sideATeamId: 'team-2025-a', sideBTeamId: 'team-2025-b', pointsAvailable: 1, teeTime: 'TBC', published: true, pointsSideA: 1, pointsSideB: 0, winningSide: 'A', resultText: 'Green Jackets won' },
 ];
 
 const sides: Record<string, string[][]> = {
@@ -106,10 +107,10 @@ export const historicalPlayerStats: HistoricalPlayerStats[] = players.slice(0, 1
 });
 
 export const betMarkets: BetMarket[] = [
-  { id: 'bm1', tourId: currentTourId, roundId: 'r2', matchId: 'm4', title: 'Who wins Match 1?', description: 'Saturday scramble opener.', marketType: 'match_winner', status: 'open', closesAt: '2026-06-06T08:30:00.000Z' },
-  { id: 'bm2', tourId: currentTourId, roundId: 'r2', title: 'Over/under 7.5 birdies today', marketType: 'over_under', status: 'open', closesAt: '2026-06-06T08:40:00.000Z' },
+  { id: 'bm1', tourId: currentTourId, roundId: 'r1', matchId: 'm1', title: 'Who wins the opening match?', description: 'Opening match market. Final teams can be linked once captains make picks.', marketType: 'match_winner', status: 'open', closesAt: '2026-11-06T08:30:00.000Z' },
+  { id: 'bm2', tourId: currentTourId, roundId: 'r2', title: 'Over/under 7.5 birdies on Saturday', marketType: 'over_under', status: 'open', closesAt: '2026-11-07T08:40:00.000Z' },
   { id: 'bm3', tourId: currentTourId, title: 'Most balls lost', marketType: 'special', status: 'closed' },
-  { id: 'bm4', tourId: currentTourId, roundId: 'r1', title: 'Which team wins the Friday session?', marketType: 'team_result', status: 'settled', resultOptionId: 'bo9', resultText: 'Session was tied 1.5 - 1.5.' },
+  { id: 'bm4', tourId: currentTourId, roundId: 'r1', title: 'Which team wins the Friday session?', marketType: 'team_result', status: 'closed' },
   { id: 'bm5', tourId: currentTourId, title: 'Will anyone eagle today?', marketType: 'custom', status: 'open' },
 ];
 
@@ -128,16 +129,17 @@ export const betOptions: BetOption[] = [
 ];
 
 export const bets: Bet[] = [
-  { id: 'bet1', marketId: 'bm1', optionId: 'bo1', bettorName: 'Will Major', stakeText: 'One post-round pint', comment: 'Oaks start fast.', createdAt: now, status: 'active' },
-  { id: 'bet2', marketId: 'bm1', optionId: 'bo2', bettorName: 'Finn Begley', stakeText: 'Bragging rights', createdAt: now, status: 'active' },
-  { id: 'bet3', marketId: 'bm2', optionId: 'bo4', bettorName: 'Sam Truman', stakeText: '£5 charity pot', comment: 'Greens are gettable.', createdAt: now, status: 'active' },
-  { id: 'bet4', marketId: 'bm4', optionId: 'bo9', bettorName: 'Alex Tonge', stakeText: 'Called it', createdAt: '2026-06-05T10:00:00.000Z', status: 'active' },
+  { id: 'bet1', marketId: 'bm1', optionId: 'bo1', bettorName: 'Will Major', stakeText: '£5', stakeAmount: 5, stakeAmountPence: 500, comment: 'Oaks start fast.', createdAt: now, status: 'active' },
+  { id: 'bet2', marketId: 'bm1', optionId: 'bo2', bettorName: 'Finn Begley', stakeText: '£10', stakeAmount: 10, stakeAmountPence: 1000, createdAt: now, status: 'active' },
+  { id: 'bet3', marketId: 'bm2', optionId: 'bo4', bettorName: 'Sam Truman', stakeText: '£5', stakeAmount: 5, stakeAmountPence: 500, comment: 'Greens are gettable.', createdAt: now, status: 'active' },
+  { id: 'bet4', marketId: 'bm4', optionId: 'bo9', bettorName: 'Alex Tonge', stakeText: '£2', stakeAmount: 2, stakeAmountPence: 200, createdAt: '2026-11-06T10:00:00.000Z', status: 'active' },
 ];
 
 export const itinerary = [
-  'Friday: arrival, warm-up fourballs, welcome dinner.',
-  'Saturday: morning scramble, lunch on the terrace, afternoon challenges.',
-  'Sunday: singles, trophy presentation and departure.'
+  'Friday 6 November: arrival, opening matches and welcome dinner.',
+  'Saturday 7 November: team matches with captain-picked formats confirmed the night before.',
+  'Sunday 8 November: singles / team matches depending on captain selections.',
+  'Monday 9 November: final matches, trophy presentation and departures.'
 ];
 
 // TODO: Replace these exports with repository-style data access functions backed by Supabase via Netlify Functions.

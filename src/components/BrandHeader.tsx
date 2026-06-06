@@ -9,7 +9,7 @@ export function BrandHeader() {
           <span>TR</span>
         </div>
         <div>
-          <p className="eyebrow">Private Roehampton golf tour</p>
+          <p className="eyebrow">Private golf tour</p>
           <h1>Roegusta Tour</h1>
           <span>{tour?.name} · {tour?.location}</span>
         </div>
