@@ -1,20 +1,46 @@
 import type { HistoricalPlayerStats, LeaderboardRow, Match, MatchFormat, MatchParticipant, Player, PlayerMatchResult } from './types';
 import { derivePlayerMatchResultsFromMatch } from './scoring';
 
-function blankRow(player: Player): LeaderboardRow {
+type LeaderboardAccumulator = LeaderboardRow;
+type NormalizedHistoricalStats = Pick<HistoricalPlayerStats, 'playerId' | 'matches' | 'wins' | 'draws' | 'losses' | 'points' | 'winPercent'>;
+
+function blankRow(player: Player): LeaderboardAccumulator {
   return { playerId: player.id, playerName: player.displayName, matches: 0, wins: 0, draws: 0, losses: 0, points: 0, winPercent: 0 };
 }
 
-function finalise(row: LeaderboardRow): LeaderboardRow {
-  const matches = row.wins + row.draws + row.losses;
-  const points = row.wins + row.draws * 0.5;
-  return { ...row, matches, points, winPercent: matches > 0 ? points / matches : 0 };
+function finalise(row: LeaderboardAccumulator): LeaderboardRow {
+  return { ...row, winPercent: row.matches > 0 ? row.points / row.matches : 0 };
 }
 
-function addResult(row: LeaderboardRow, result: PlayerMatchResult) {
-  if (result.result === 'win') row.wins += 1;
-  if (result.result === 'draw') row.draws += 1;
-  if (result.result === 'loss') row.losses += 1;
+function addResult(row: LeaderboardAccumulator, result: PlayerMatchResult) {
+  if (result.result === 'win') {
+    row.wins += 1;
+    row.matches += 1;
+    row.points += 1;
+  }
+  if (result.result === 'draw') {
+    row.draws += 1;
+    row.matches += 1;
+    row.points += 0.5;
+  }
+  if (result.result === 'loss') {
+    row.losses += 1;
+    row.matches += 1;
+  }
+}
+
+export function normalizeHistoricalPlayerStats(historic: HistoricalPlayerStats): NormalizedHistoricalStats {
+  const matches = historic.wins + historic.draws + historic.losses;
+  const points = historic.wins + historic.draws * 0.5;
+  return {
+    playerId: historic.playerId,
+    matches,
+    wins: historic.wins,
+    draws: historic.draws,
+    losses: historic.losses,
+    points,
+    winPercent: matches > 0 ? points / matches : 0,
+  };
 }
 
 export function sortLeaderboard(rows: LeaderboardRow[]): LeaderboardRow[] {
@@ -55,12 +81,14 @@ export function calculateAllTimePlayerStats(
       if (row) addResult(row, result);
     });
 
-  historicalStats.forEach((historic) => {
+  historicalStats.map(normalizeHistoricalPlayerStats).forEach((historic) => {
     const row = rows.get(historic.playerId);
     if (!row) return;
+    row.matches += historic.matches;
     row.wins += historic.wins;
     row.draws += historic.draws;
     row.losses += historic.losses;
+    row.points += historic.points;
   });
 
   return sortLeaderboard([...rows.values()].map(finalise).filter((row) => row.matches > 0));

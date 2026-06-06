@@ -82,20 +82,28 @@ export const matchParticipants: MatchParticipant[] = Object.entries(sides).flatM
   ];
 });
 
-export const historicalPlayerStats: HistoricalPlayerStats[] = players.slice(0, 18).map((player, index) => ({
-  id: `hist-${player.id}`,
-  tourId: index < 12 ? 'tour-2025' : undefined,
-  playerId: player.id,
-  sourceType: 'legacy_summary',
-  matches: 6 + (index % 4),
-  wins: 2 + (index % 4),
-  draws: index % 3 === 0 ? 1 : 0,
-  losses: 2,
-  points: 2 + (index % 4) + (index % 3 === 0 ? 0.5 : 0),
-  winPercent: 0,
-  notes: 'Imported from legacy tour spreadsheet summary.',
-  importedAt: now,
-}));
+export const historicalPlayerStats: HistoricalPlayerStats[] = players.slice(0, 18).map((player, index) => {
+  const wins = 2 + (index % 4);
+  const draws = index % 3 === 0 ? 1 : 0;
+  const losses = 2 + (index % 2);
+  const matches = wins + draws + losses;
+  const points = wins + draws * 0.5;
+
+  return {
+    id: `hist-${player.id}`,
+    tourId: index < 12 ? 'tour-2025' : undefined,
+    playerId: player.id,
+    sourceType: 'legacy_summary',
+    matches,
+    wins,
+    draws,
+    losses,
+    points,
+    winPercent: matches > 0 ? points / matches : 0,
+    notes: 'Imported from legacy tour spreadsheet summary.',
+    importedAt: now,
+  };
+});
 
 export const betMarkets: BetMarket[] = [
   { id: 'bm1', tourId: currentTourId, roundId: 'r2', matchId: 'm4', title: 'Who wins Match 1?', description: 'Saturday scramble opener.', marketType: 'match_winner', status: 'open', closesAt: '2026-06-06T08:30:00.000Z' },
