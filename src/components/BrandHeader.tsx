@@ -1,17 +1,12 @@
-import { currentTourId, tours } from '../data/mockData';
-
 export function BrandHeader() {
-  const tour = tours.find((item) => item.id === currentTourId);
   return (
     <header className="brand-header">
       <div className="brand-lockup">
-        <div className="brand-monogram" aria-hidden="true">
-          <span>TR</span>
-        </div>
+        <img className="brand-logo" src="/roegusta-tour-logo.png" alt="Roegusta Tour" />
         <div>
           <p className="eyebrow">Private golf tour</p>
           <h1>Roegusta Tour</h1>
-          <span>{tour?.name} · {tour?.location}</span>
+          <span>Live tour scoring, matches, stats and social picks</span>
         </div>
       </div>
     </header>

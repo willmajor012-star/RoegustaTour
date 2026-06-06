@@ -16,44 +16,15 @@ import {
 } from '../lib/advancedStats';
 import { formatDate, formatMatchFormat, formatPercent, formatPoints } from '../lib/formatting';
 import type { LeaderboardRow, Player, Tour } from '../lib/types';
-import * as mockData from '../data/mockData';
+import { fetchPublicAdvancedStats, type PublicAdvancedStatsResponse } from '../lib/publicApi';
+import { localAdvancedStatsFallback } from '../lib/localFallbackData';
 
 type StatsSource = 'supabase' | 'mock-fallback' | 'local-fallback';
 type StatsTab = 'leaderboard' | 'mvp' | 'head-to-head' | 'players';
 
-type PublicAdvancedStatsResponse = AdvancedStatsData & {
-  source: StatsSource;
-  currentTour?: Tour;
-  tourSummary?: TourSummary;
-  mvpLeaderboard?: MvpLeaderboardRow[];
-  playerSummaries?: PlayerAdvancedSummary[];
-};
+type StatsResponse = Omit<PublicAdvancedStatsResponse, 'source'> & { source: StatsSource };
 
-const localFallbackData: PublicAdvancedStatsResponse = buildLocalFallbackData();
-
-function buildLocalFallbackData(): PublicAdvancedStatsResponse {
-  const data: AdvancedStatsData = {
-    players: mockData.players,
-    tours: mockData.tours,
-    tourTeams: mockData.tourTeams,
-    tourTeamMembers: mockData.tourTeamMembers,
-    tourTeamResults: mockData.tourTeamResults,
-    rounds: mockData.rounds,
-    matches: mockData.matches,
-    matchParticipants: mockData.matchParticipants,
-    playerMatchResults: mockData.playerMatchResults,
-  };
-  const currentTour = mockData.tours.find((tour) => tour.id === mockData.currentTourId);
-  const currentTourId = currentTour?.id ?? mockData.currentTourId;
-  return {
-    ...data,
-    source: 'local-fallback',
-    currentTour,
-    tourSummary: calculateTourSummary(currentTourId, data),
-    mvpLeaderboard: calculateMvpLeaderboard(currentTourId, data),
-    playerSummaries: calculatePlayerAdvancedSummaries(data, currentTourId),
-  };
-}
+const localFallbackData: StatsResponse = localAdvancedStatsFallback;
 
 function compactRecord(row?: Pick<LeaderboardRow, 'wins' | 'draws' | 'losses'>) {
   if (!row) return '0-0-0';
@@ -65,11 +36,11 @@ function advancedRecord(row?: { wins: number; draws: number; losses: number }) {
   return `${row.wins}-${row.draws}-${row.losses}`;
 }
 
-function getCurrentTourId(stats: PublicAdvancedStatsResponse) {
+function getCurrentTourId(stats: StatsResponse) {
   return stats.currentTour?.id ?? [...stats.tours].sort((a, b) => b.year - a.year)[0]?.id;
 }
 
-function normaliseStatsResponse(response: PublicAdvancedStatsResponse): PublicAdvancedStatsResponse {
+function normaliseStatsResponse(response: StatsResponse): StatsResponse {
   const data: AdvancedStatsData = {
     players: response.players ?? [],
     tours: response.tours ?? [],
@@ -270,7 +241,7 @@ function RelationshipList({ title, rows }: { title: string; rows: RelationshipRa
 
 export function Stats() {
   const [tab, setTab] = useState<StatsTab>('leaderboard');
-  const [stats, setStats] = useState<PublicAdvancedStatsResponse | undefined>();
+  const [stats, setStats] = useState<StatsResponse | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | undefined>();
@@ -281,9 +252,7 @@ export function Stats() {
       setLoading(true);
       setError(undefined);
       try {
-        const response = await fetch('/.netlify/functions/public-advanced-stats');
-        if (!response.ok) throw new Error(`Stats request failed with ${response.status}`);
-        const payload = normaliseStatsResponse(await response.json() as PublicAdvancedStatsResponse);
+        const payload = normaliseStatsResponse(await fetchPublicAdvancedStats() as StatsResponse);
         if (!cancelled) setStats(payload);
       } catch (caught) {
         console.error('Failed to load public advanced stats:', caught);
