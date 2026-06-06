@@ -136,8 +136,8 @@ function TourSummaryPanel({ summary }: { summary: TourSummary }) {
       <div className="profile-records">
         <div><span>Team score</span><strong>{summary.teamScore.length ? summary.teamScore.map((row) => `${row.team.name} ${formatPoints(row.points)}`).join(' · ') : 'No score yet'}</strong></div>
         <div><span>Leading / winning team</span><strong>{summary.winningTeam?.name ?? summary.teamScore[0]?.team.name ?? 'TBC'}</strong></div>
-        <div><span>Best singles</span><strong>{summary.bestSinglesPlayer?.player.displayName ?? 'TBC'}</strong><small>{summary.bestSinglesPlayer ? advancedRecord(summary.bestSinglesPlayer.singlesRecord) : 'No singles completed'}</small></div>
-        <div><span>Best team-format</span><strong>{summary.bestTeamFormatPlayer?.player.displayName ?? 'TBC'}</strong><small>{summary.bestTeamFormatPlayer ? advancedRecord(summary.bestTeamFormatPlayer.teamFormatRecord) : 'No team matches completed'}</small></div>
+        <div><span>Best singles</span><strong>{summary.bestSinglesPlayer?.player.displayName ?? 'TBC'}</strong><small>{summary.bestSinglesPlayer ? advancedRecord(summary.bestSinglesPlayer.currentTourSinglesRecord) : 'No singles completed'}</small></div>
+        <div><span>Best team-format</span><strong>{summary.bestTeamFormatPlayer?.player.displayName ?? 'TBC'}</strong><small>{summary.bestTeamFormatPlayer ? advancedRecord(summary.bestTeamFormatPlayer.currentTourTeamFormatRecord) : 'No team matches completed'}</small></div>
       </div>
       <div>
         <h4>Unbeaten players</h4>

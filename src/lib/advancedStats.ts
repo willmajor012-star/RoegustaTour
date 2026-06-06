@@ -39,6 +39,9 @@ export type PlayerAdvancedSummary = {
   singlesRecord: MatchRecord;
   teamFormatRecord: MatchRecord;
   scrambleRecord: MatchRecord;
+  currentTourSinglesRecord: MatchRecord;
+  currentTourTeamFormatRecord: MatchRecord;
+  currentTourScrambleRecord: MatchRecord;
   totalPointsWon: number;
   winPercent: number;
   tourWins: Tour[];
@@ -211,6 +214,9 @@ export function calculatePlayerAdvancedSummaries(data: AdvancedStatsData, curren
     const singlesRecord = getRecordForPlayer(player.id, results, (result) => result.format === 'singles');
     const teamFormatRecord = getRecordForPlayer(player.id, results, (result) => TEAM_FORMATS.includes(result.format));
     const scrambleRecord = getRecordForPlayer(player.id, results, (result) => result.format === 'scramble');
+    const currentTourSinglesRecord = getRecordForPlayer(player.id, results, (result) => result.tourId === currentTour && result.format === 'singles');
+    const currentTourTeamFormatRecord = getRecordForPlayer(player.id, results, (result) => result.tourId === currentTour && TEAM_FORMATS.includes(result.format));
+    const currentTourScrambleRecord = getRecordForPlayer(player.id, results, (result) => result.tourId === currentTour && result.format === 'scramble');
     const matchHistory = getPlayerMatchHistory(player.id, data);
     const relationships = getPartnerOpponentRankings(player.id, data);
 
@@ -221,6 +227,9 @@ export function calculatePlayerAdvancedSummaries(data: AdvancedStatsData, curren
       singlesRecord,
       teamFormatRecord,
       scrambleRecord,
+      currentTourSinglesRecord,
+      currentTourTeamFormatRecord,
+      currentTourScrambleRecord,
       totalPointsWon: allTimeRecord.pointsWon,
       winPercent: allTimeRecord.winPercent,
       tourWins: getPlayerTourWins(player.id, data),
@@ -391,8 +400,8 @@ export function calculateTourSummary(tourId: string | undefined, data: AdvancedS
   const playerSummaries = calculatePlayerAdvancedSummaries(data, tourId).filter((summary) => summary.currentTourRecord.matches > 0);
   const mvpLeaderboard = calculateMvpLeaderboard(tourId, data);
   const topPointsScorer = [...playerSummaries].sort((a, b) => b.currentTourRecord.pointsWon - a.currentTourRecord.pointsWon)[0];
-  const bestSinglesPlayer = [...playerSummaries].filter((summary) => summary.singlesRecord.matches > 0).sort((a, b) => b.singlesRecord.winPercent - a.singlesRecord.winPercent || b.singlesRecord.pointsWon - a.singlesRecord.pointsWon)[0];
-  const bestTeamFormatPlayer = [...playerSummaries].filter((summary) => summary.teamFormatRecord.matches > 0).sort((a, b) => b.teamFormatRecord.winPercent - a.teamFormatRecord.winPercent || b.teamFormatRecord.pointsWon - a.teamFormatRecord.pointsWon)[0];
+  const bestSinglesPlayer = [...playerSummaries].filter((summary) => summary.currentTourSinglesRecord.matches > 0).sort((a, b) => b.currentTourSinglesRecord.winPercent - a.currentTourSinglesRecord.winPercent || b.currentTourSinglesRecord.pointsWon - a.currentTourSinglesRecord.pointsWon)[0];
+  const bestTeamFormatPlayer = [...playerSummaries].filter((summary) => summary.currentTourTeamFormatRecord.matches > 0).sort((a, b) => b.currentTourTeamFormatRecord.winPercent - a.currentTourTeamFormatRecord.winPercent || b.currentTourTeamFormatRecord.pointsWon - a.currentTourTeamFormatRecord.pointsWon)[0];
   const unbeatenPlayers = playerSummaries.filter((summary) => summary.currentTourRecord.matches > 0 && summary.currentTourRecord.losses === 0);
   const completedRoundIds = new Set(completedMatches.map((match) => match.roundId));
   const leader = winningTeamId ? data.tourTeams.find((team) => team.id === winningTeamId) : teamScore[0]?.team;
