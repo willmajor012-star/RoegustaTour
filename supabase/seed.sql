@@ -1,0 +1,2 @@
+-- Placeholder seed file. Initial app data lives in src/data/mockData.ts until Supabase is introduced.
+-- Future phase: translate mock players, tours, teams, rounds, matches and bet markets into SQL inserts.
