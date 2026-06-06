@@ -69,7 +69,7 @@ create table rounds (
   tee_time time,
   format_label text,
   notes text,
-  status text not null check (status in ('planned','active','complete')),
+  status text not null check (status in ('draft','planned','active','complete')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (tour_id, round_number)
@@ -82,7 +82,7 @@ create table matches (
   round_id uuid not null references rounds(id) on delete cascade,
   match_number integer not null,
   format text not null check (format in ('singles','better_ball','scramble','custom')),
-  status text not null check (status in ('planned','active','complete','void')),
+  status text not null check (status in ('draft','planned','active','complete','void')),
   side_a_team_id uuid not null references tour_teams(id),
   side_b_team_id uuid not null references tour_teams(id),
   side_a_label text,
@@ -92,6 +92,8 @@ create table matches (
   points_side_b numeric(4,1),
   winning_side text check (winning_side in ('A','B','halved','void')),
   result_text text,
+  tee_time text,
+  published boolean not null default false,
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -99,6 +101,7 @@ create table matches (
 );
 create index matches_tour_round_idx on matches(tour_id, round_id);
 create index matches_status_idx on matches(status);
+create index matches_public_idx on matches(tour_id, published, status);
 
 create table match_participants (
   id uuid primary key default gen_random_uuid(),

@@ -52,8 +52,8 @@ export const rounds: Round[] = [
 ];
 
 export const matches: Match[] = [
-  { id: 'm1', tourId: currentTourId, roundId: 'r1', matchNumber: 1, format: 'better_ball', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: false },
-  { id: 'm2', tourId: currentTourId, roundId: 'r1', matchNumber: 2, format: 'better_ball', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: false },
+  { id: 'm1', tourId: currentTourId, roundId: 'r1', matchNumber: 1, format: 'better_ball', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: true },
+  { id: 'm2', tourId: currentTourId, roundId: 'r1', matchNumber: 2, format: 'better_ball', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: true },
   { id: 'm3', tourId: currentTourId, roundId: 'r1', matchNumber: 3, format: 'better_ball', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: false },
   { id: 'm4', tourId: currentTourId, roundId: 'r2', matchNumber: 1, format: 'scramble', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: false, sideALabel: 'Oaks Scramble A', sideBLabel: 'Heath Scramble A' },
   { id: 'm5', tourId: currentTourId, roundId: 'r2', matchNumber: 2, format: 'scramble', status: 'planned', sideATeamId: 'team-oaks', sideBTeamId: 'team-heath', pointsAvailable: 1, teeTime: 'TBC', published: false },
