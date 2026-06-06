@@ -22,6 +22,7 @@ function table<T = Record<string, unknown>>(supabase: SupabaseClient, name: stri
   return supabase.from(name) as unknown as QueryBuilder<T>;
 }
 
+// Empty Supabase result sets are valid production responses; only fall back when the client cannot be created or a query throws.
 export function withMockFallback<T extends object>(read: (supabase: SupabaseClient) => Promise<T>, fallback: T): Promise<T & { source: 'supabase' | 'mock-fallback' }> {
   return (async () => {
     try {
@@ -107,10 +108,15 @@ export async function getStatsBundle(supabase: SupabaseClient) {
 }
 
 export async function getBettingBundle(supabase: SupabaseClient) {
-  const [marketRows, optionRows, betRows] = await Promise.all([
-    runQuery(table(supabase, 'bet_markets').select('*').order('created_at', { ascending: true }), 'bet markets'),
-    runQuery(table(supabase, 'bet_options').select('*').order('sort_order', { ascending: true }), 'bet options'),
-    runQuery(table(supabase, 'bets').select('*').order('created_at', { ascending: true }), 'bets'),
+  const tour = await getCurrentTour(supabase);
+  if (!tour) return { betMarkets: [], betOptions: [], bets: [] };
+
+  const marketRows = await runQuery(table(supabase, 'bet_markets').select('*').eq('tour_id', tour.id).order('created_at', { ascending: true }), 'bet markets');
+  const marketIds = marketRows.map((market) => String(market.id));
+
+  const [optionRows, betRows] = await Promise.all([
+    marketIds.length > 0 ? runQuery(table(supabase, 'bet_options').select('*').in('market_id', marketIds).order('sort_order', { ascending: true }), 'bet options') : Promise.resolve([]),
+    marketIds.length > 0 ? runQuery(table(supabase, 'bets').select('*').in('market_id', marketIds).order('created_at', { ascending: true }), 'bets') : Promise.resolve([]),
   ]);
 
   return {
