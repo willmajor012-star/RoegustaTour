@@ -1,4 +1,4 @@
-import type { Bet, BetMarket, BetOption, HistoricalPlayerStats, Match, MatchParticipant, Player, Round, Tour, TourTeam } from '../../src/lib/types';
+import type { Bet, BetMarket, BetOption, HistoricalPlayerStats, Match, MatchParticipant, Player, PlayerMatchResult, Round, Tour, TourTeam, TourTeamMember, TourTeamResult } from '../../src/lib/types';
 
 type Row = Record<string, unknown>;
 
@@ -66,6 +66,28 @@ export function mapTourTeam(row: Row): TourTeam {
   };
 }
 
+
+export function mapTourTeamMember(row: Row): TourTeamMember {
+  return {
+    id: requiredString(row, 'id'),
+    tourId: requiredString(row, 'tour_id'),
+    teamId: requiredString(row, 'team_id'),
+    playerId: requiredString(row, 'player_id'),
+  };
+}
+
+export function mapTourTeamResult(row: Row): TourTeamResult {
+  return {
+    id: requiredString(row, 'id'),
+    tourId: requiredString(row, 'tour_id'),
+    teamId: requiredString(row, 'team_id'),
+    finalPoints: asNumber(row.final_points),
+    position: asNumber(row.position),
+    resultStatus: requiredString(row, 'result_status') as TourTeamResult['resultStatus'],
+    notes: asString(row.notes),
+  };
+}
+
 export function mapRound(row: Row): Round {
   return {
     id: requiredString(row, 'id'),
@@ -111,6 +133,22 @@ export function mapMatchParticipant(row: Row): MatchParticipant {
     playerId: requiredString(row, 'player_id'),
     side: requiredString(row, 'side') as MatchParticipant['side'],
     teamId: requiredString(row, 'team_id'),
+  };
+}
+
+
+export function mapPlayerMatchResult(row: Row): PlayerMatchResult {
+  return {
+    id: requiredString(row, 'id'),
+    tourId: requiredString(row, 'tour_id'),
+    roundId: requiredString(row, 'round_id'),
+    matchId: requiredString(row, 'match_id'),
+    playerId: requiredString(row, 'player_id'),
+    teamId: requiredString(row, 'team_id'),
+    format: requiredString(row, 'format') as PlayerMatchResult['format'],
+    result: requiredString(row, 'result') as PlayerMatchResult['result'],
+    pointsFor: requiredNumber(row, 'points_for'),
+    pointsAgainst: requiredNumber(row, 'points_against'),
   };
 }
 

@@ -43,6 +43,16 @@ export type TourTeamMember = {
   playerId: string;
 };
 
+export type TourTeamResult = {
+  id: string;
+  tourId: string;
+  teamId: string;
+  finalPoints?: number;
+  position?: number;
+  resultStatus: 'winner' | 'runner_up' | 'draw' | 'tbd';
+  notes?: string;
+};
+
 export type Round = {
   id: string;
   tourId: string;
