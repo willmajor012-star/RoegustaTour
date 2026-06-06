@@ -1,10 +1,11 @@
 import { derivePlayerMatchResultsFromMatch } from './scoring';
-import type { Match, MatchFormat, MatchParticipant, Player, PlayerMatchResult, Round, Tour, TourTeam, TourTeamMember, TourTeamResult } from './types';
+import type { Match, MatchFormat, MatchParticipant, Player, PlayerMatchResult, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from './types';
 
 export type AdvancedStatsData = {
   players: Player[];
   tours: Tour[];
   tourTeams: TourTeam[];
+  tourPlayers?: TourPlayer[];
   tourTeamMembers: TourTeamMember[];
   tourTeamResults: TourTeamResult[];
   rounds: Round[];
@@ -45,6 +46,7 @@ export type PlayerAdvancedSummary = {
   totalPointsWon: number;
   winPercent: number;
   tourWins: Tour[];
+  toursAttended: number;
   bestPartners: RelationshipRanking[];
   mostCommonPartners: RelationshipRanking[];
   toughestOpponents: RelationshipRanking[];
@@ -198,6 +200,25 @@ function matchListItem(match: Match, data: AdvancedStatsData): MatchListItem {
   };
 }
 
+
+function getPlayerToursAttended(playerId: string, data: AdvancedStatsData): number {
+  const tourIds = new Set<string>();
+
+  (data.tourPlayers ?? [])
+    .filter((tourPlayer) => tourPlayer.playerId === playerId && tourPlayer.attending)
+    .forEach((tourPlayer) => tourIds.add(tourPlayer.tourId));
+
+  data.tourTeamMembers
+    .filter((member) => member.playerId === playerId)
+    .forEach((member) => tourIds.add(member.tourId));
+
+  (data.playerMatchResults ?? [])
+    .filter((result) => result.playerId === playerId)
+    .forEach((result) => tourIds.add(result.tourId));
+
+  return tourIds.size;
+}
+
 function getPlayerTourWins(playerId: string, data: AdvancedStatsData): Tour[] {
   const winningTeamIds = new Set(data.tourTeamResults.filter((result) => result.resultStatus === 'winner').map((result) => result.teamId));
   const winningTourIds = new Set(data.tourTeamMembers.filter((member) => member.playerId === playerId && winningTeamIds.has(member.teamId)).map((member) => member.tourId));
@@ -233,10 +254,11 @@ export function calculatePlayerAdvancedSummaries(data: AdvancedStatsData, curren
       totalPointsWon: allTimeRecord.pointsWon,
       winPercent: allTimeRecord.winPercent,
       tourWins: getPlayerTourWins(player.id, data),
+      toursAttended: getPlayerToursAttended(player.id, data),
       ...relationships,
       matchHistory,
     };
-  }).filter((summary) => summary.allTimeRecord.matches > 0 || summary.currentTourRecord.matches > 0 || summary.tourWins.length > 0)
+  }).filter((summary) => summary.allTimeRecord.matches > 0 || summary.currentTourRecord.matches > 0 || summary.tourWins.length > 0 || summary.toursAttended > 0)
     .sort((a, b) => b.allTimeRecord.pointsWon - a.allTimeRecord.pointsWon || a.player.displayName.localeCompare(b.player.displayName));
 }
 

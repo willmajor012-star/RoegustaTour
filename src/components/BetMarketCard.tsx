@@ -62,7 +62,7 @@ export function BetMarketCard({ market, options, bets, bettorName, onSubmit }: P
       )}
       <div className="bet-log">
         <strong>Backed by</strong>
-        {activeBets.length === 0 ? <p>No active selections yet.</p> : activeBets.map((bet) => <p key={bet.id}>{bet.bettorName} → {options.find((option) => option.id === bet.optionId)?.label} <em>{formatStakeCurrency(bet)}</em>{bet.comment && ` — ${bet.comment}`}</p>)}
+        {activeBets.length === 0 ? <p>No picks logged yet.</p> : activeBets.map((bet) => <p key={bet.id}>{bet.bettorName} → {options.find((option) => option.id === bet.optionId)?.label} <em>{formatStakeCurrency(bet)}</em>{bet.comment && ` — ${bet.comment}`}</p>)}
       </div>
     </article>
   );

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from './_supabase';
-import { mapBet, mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapTour, mapTourTeam, mapTourTeamMember, mapTourTeamResult } from './_mappers';
+import { mapBet, mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapTour, mapTourHandbookSection, mapTourItineraryItem, mapTourPlayer, mapTourTeam, mapTourTeamDayKit, mapTourTeamMember, mapTourTeamResult } from './_mappers';
 
 type SupabaseResult<T> = { data: T[] | null; error: { message: string } | null };
 type QueryBuilder<T = Record<string, unknown>> = PromiseLike<SupabaseResult<T>> & {
@@ -22,18 +22,15 @@ function table<T = Record<string, unknown>>(supabase: SupabaseClient, name: stri
   return supabase.from(name) as unknown as QueryBuilder<T>;
 }
 
-// Empty Supabase result sets are valid production responses; only fall back when the client cannot be created or a query throws.
-export function withMockFallback<T extends object>(read: (supabase: SupabaseClient) => Promise<T>, fallback: T): Promise<T & { source: 'supabase' | 'mock-fallback' }> {
-  return (async () => {
-    try {
-      const supabase = createServerSupabaseClient();
-      const data = await read(supabase);
-      return { ...data, source: 'supabase' };
-    } catch (error) {
-      console.warn('Falling back to mock data because Supabase is unavailable:', error);
-      return { ...fallback, source: 'mock-fallback' };
-    }
-  })();
+export async function withLiveData<T extends object>(read: (supabase: SupabaseClient) => Promise<T>): Promise<{ statusCode: number; body: string }> {
+  try {
+    const supabase = createServerSupabaseClient();
+    const data = await read(supabase);
+    return { statusCode: 200, body: JSON.stringify({ ...data, source: 'supabase' }) };
+  } catch (error) {
+    console.error('Public live data request failed:', error);
+    return { statusCode: 500, body: JSON.stringify({ ok: false, error: 'Live data unavailable' }) };
+  }
 }
 
 export async function getCurrentTour(supabase: SupabaseClient) {
@@ -43,7 +40,7 @@ export async function getCurrentTour(supabase: SupabaseClient) {
 
 export async function getPublicMatchBundle(supabase: SupabaseClient) {
   const tour = await getCurrentTour(supabase);
-  if (!tour) return { rounds: [], matches: [], matchParticipants: [] };
+  if (!tour) return { tour: undefined, rounds: [], matches: [], matchParticipants: [], players: [], tourTeams: [] };
 
   const publicMatches = (await runQuery(
     table(supabase, 'matches')
@@ -57,29 +54,42 @@ export async function getPublicMatchBundle(supabase: SupabaseClient) {
   const publicMatchIds = publicMatches.map((match) => match.id);
   const publicRoundIds = [...new Set(publicMatches.map((match) => match.roundId))];
 
-  const [roundRows, participantRows] = await Promise.all([
+  const [roundRows, participantRows, playerRows, teamRows] = await Promise.all([
     publicRoundIds.length > 0 ? runQuery(table(supabase, 'rounds').select('*').in('id', publicRoundIds).order('round_number', { ascending: true }), 'public rounds') : Promise.resolve([]),
     publicMatchIds.length > 0 ? runQuery(table(supabase, 'match_participants').select('*').in('match_id', publicMatchIds), 'public match participants') : Promise.resolve([]),
+    runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'public players'),
+    runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'public tour teams'),
   ]);
 
   return {
+    tour,
     rounds: roundRows.map(mapRound),
     matches: publicMatches,
     matchParticipants: participantRows.map(mapMatchParticipant),
+    players: playerRows.map(mapPlayer),
+    tourTeams: teamRows.map(mapTourTeam),
   };
 }
 
 export async function getScoreBundle(supabase: SupabaseClient) {
   const tour = await getCurrentTour(supabase);
-  if (!tour) return { tourId: '', teams: [], rounds: [], matches: [] };
+  if (!tour) return { tour: undefined, tourId: '', teams: [], rounds: [], matches: [] };
 
   const [teamRows, roundRows, matchRows] = await Promise.all([
     runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour teams'),
     runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'rounds'),
-    runQuery(table(supabase, 'matches').select('*').eq('tour_id', tour.id).eq('status', 'complete').order('match_number', { ascending: true }), 'complete matches'),
+    runQuery(
+      table(supabase, 'matches')
+        .select('*')
+        .eq('tour_id', tour.id)
+        .or('published.eq.true,status.eq.complete')
+        .order('match_number', { ascending: true }),
+      'public score matches',
+    ),
   ]);
 
   return {
+    tour,
     tourId: tour.id,
     teams: teamRows.map(mapTourTeam),
     rounds: roundRows.map(mapRound),
@@ -110,10 +120,11 @@ export async function getStatsBundle(supabase: SupabaseClient) {
 
 export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
   const currentTour = await getCurrentTour(supabase);
-  const [playerRows, tourRows, teamRows, memberRows, resultRows, roundRows, completedMatchRows, currentPublicMatchRows] = await Promise.all([
+  const [playerRows, tourRows, teamRows, tourPlayerRows, memberRows, resultRows, roundRows, completedMatchRows, currentPublicMatchRows] = await Promise.all([
     runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'players'),
     runQuery(table(supabase, 'tours').select('*').order('year', { ascending: false }), 'tours'),
     runQuery(table(supabase, 'tour_teams').select('*').order('sort_order', { ascending: true }), 'tour teams'),
+    runQuery(table(supabase, 'tour_players').select('*'), 'tour players'),
     runQuery(table(supabase, 'tour_team_members').select('*'), 'tour team members'),
     runQuery(table(supabase, 'tour_team_results').select('*'), 'tour team results'),
     runQuery(table(supabase, 'rounds').select('*').order('round_number', { ascending: true }), 'rounds'),
@@ -137,6 +148,7 @@ export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
     players: playerRows.map(mapPlayer),
     tours: tourRows.map(mapTour),
     tourTeams: teamRows.map(mapTourTeam),
+    tourPlayers: tourPlayerRows.map(mapTourPlayer),
     tourTeamMembers: memberRows.map(mapTourTeamMember),
     tourTeamResults: resultRows.map(mapTourTeamResult),
     rounds: roundRows.map(mapRound),
@@ -162,6 +174,28 @@ export async function getBettingBundle(supabase: SupabaseClient) {
     betMarkets: marketRows.map(mapBetMarket),
     betOptions: optionRows.map(mapBetOption),
     bets: betRows.map(mapBet),
+  };
+}
+
+export async function getTourInfoBundle(supabase: SupabaseClient) {
+  const tour = await getCurrentTour(supabase);
+  if (!tour) return { tour: undefined, rounds: [], handbookSections: [], itineraryItems: [], teamDayKit: [], tourTeams: [] };
+
+  const [roundRows, sectionRows, itineraryRows, kitRows, teamRows] = await Promise.all([
+    runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'tour info rounds'),
+    runQuery(table(supabase, 'tour_handbook_sections').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour handbook sections'),
+    runQuery(table(supabase, 'tour_itinerary_items').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour itinerary items'),
+    runQuery(table(supabase, 'tour_team_day_kit').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour team day kit'),
+    runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour info teams'),
+  ]);
+
+  return {
+    tour,
+    rounds: roundRows.map(mapRound),
+    handbookSections: sectionRows.map(mapTourHandbookSection),
+    itineraryItems: itineraryRows.map(mapTourItineraryItem),
+    teamDayKit: kitRows.map(mapTourTeamDayKit),
+    tourTeams: teamRows.map(mapTourTeam),
   };
 }
 
