@@ -38,7 +38,7 @@ export const localScoreFallback: Omit<PublicScoreResponse, 'source'> & { source:
   tour: currentTour,
   teams: tourTeams.filter((team) => team.tourId === currentTourId),
   rounds: currentTourRounds,
-  matches: publicMatches.filter((match) => match.status === 'complete'),
+  matches: publicMatches,
   scores: calculateTeamScoreByTour(currentTourId, tourTeams, rounds, publicMatches),
 };
 
@@ -73,6 +73,7 @@ const advancedData: AdvancedStatsData = {
   players,
   tours,
   tourTeams,
+  tourPlayers,
   tourTeamMembers,
   tourTeamResults,
   rounds,

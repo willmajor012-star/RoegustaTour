@@ -14,7 +14,7 @@ export const handler: Handler = async () => {
       tourId: currentTourId,
       teams: tourTeams.filter((team) => team.tourId === currentTourId),
       rounds: rounds.filter((round) => round.tourId === currentTourId),
-      matches: matches.filter((match) => match.tourId === currentTourId && match.status === 'complete'),
+      matches: matches.filter((match) => match.tourId === currentTourId && (match.published || match.status === 'complete')),
       scores: calculateTeamScoreByTour(currentTourId, tourTeams, rounds, matches),
     },
   );

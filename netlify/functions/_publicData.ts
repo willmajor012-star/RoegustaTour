@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from './_supabase';
-import { mapBet, mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapTour, mapTourHandbookSection, mapTourItineraryItem, mapTourTeam, mapTourTeamDayKit, mapTourTeamMember, mapTourTeamResult } from './_mappers';
+import { mapBet, mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapTour, mapTourHandbookSection, mapTourItineraryItem, mapTourPlayer, mapTourTeam, mapTourTeamDayKit, mapTourTeamMember, mapTourTeamResult } from './_mappers';
 
 type SupabaseResult<T> = { data: T[] | null; error: { message: string } | null };
 type QueryBuilder<T = Record<string, unknown>> = PromiseLike<SupabaseResult<T>> & {
@@ -81,7 +81,14 @@ export async function getScoreBundle(supabase: SupabaseClient) {
   const [teamRows, roundRows, matchRows] = await Promise.all([
     runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour teams'),
     runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'rounds'),
-    runQuery(table(supabase, 'matches').select('*').eq('tour_id', tour.id).eq('status', 'complete').order('match_number', { ascending: true }), 'complete matches'),
+    runQuery(
+      table(supabase, 'matches')
+        .select('*')
+        .eq('tour_id', tour.id)
+        .or('published.eq.true,status.eq.complete')
+        .order('match_number', { ascending: true }),
+      'public score matches',
+    ),
   ]);
 
   return {
@@ -116,10 +123,11 @@ export async function getStatsBundle(supabase: SupabaseClient) {
 
 export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
   const currentTour = await getCurrentTour(supabase);
-  const [playerRows, tourRows, teamRows, memberRows, resultRows, roundRows, completedMatchRows, currentPublicMatchRows] = await Promise.all([
+  const [playerRows, tourRows, teamRows, tourPlayerRows, memberRows, resultRows, roundRows, completedMatchRows, currentPublicMatchRows] = await Promise.all([
     runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'players'),
     runQuery(table(supabase, 'tours').select('*').order('year', { ascending: false }), 'tours'),
     runQuery(table(supabase, 'tour_teams').select('*').order('sort_order', { ascending: true }), 'tour teams'),
+    runQuery(table(supabase, 'tour_players').select('*'), 'tour players'),
     runQuery(table(supabase, 'tour_team_members').select('*'), 'tour team members'),
     runQuery(table(supabase, 'tour_team_results').select('*'), 'tour team results'),
     runQuery(table(supabase, 'rounds').select('*').order('round_number', { ascending: true }), 'rounds'),
@@ -143,6 +151,7 @@ export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
     players: playerRows.map(mapPlayer),
     tours: tourRows.map(mapTour),
     tourTeams: teamRows.map(mapTourTeam),
+    tourPlayers: tourPlayerRows.map(mapTourPlayer),
     tourTeamMembers: memberRows.map(mapTourTeamMember),
     tourTeamResults: resultRows.map(mapTourTeamResult),
     rounds: roundRows.map(mapRound),

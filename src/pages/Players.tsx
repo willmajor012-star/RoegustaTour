@@ -33,7 +33,7 @@ export function Players() {
     {error && <p className="card form-error">{error}</p>}
     {activeData.players.length === 0 ? <p className="card">Players will appear once the player library has been seeded.</p> : <div className="player-grid">{activeData.players.map((player) => {
       const summary = summaries.find((row) => row.player.id === player.id);
-      return <PlayerCard key={player.id} player={player} stats={toPlayerStats(summary)} toursAttended={summary?.tourWins.length ?? 0} />;
+      return <PlayerCard key={player.id} player={player} stats={toPlayerStats(summary)} toursAttended={summary?.toursAttended ?? 0} />;
     })}</div>}
   </div>;
 }

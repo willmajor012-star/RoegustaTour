@@ -1,4 +1,4 @@
-import type { Bet, BetMarket, BetOption, HistoricalPlayerStats, Match, MatchParticipant, Player, PlayerMatchResult, Round, Tour, TourTeam, TourTeamMember, TourTeamResult } from '../../src/lib/types';
+import type { Bet, BetMarket, BetOption, HistoricalPlayerStats, Match, MatchParticipant, Player, PlayerMatchResult, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from '../../src/lib/types';
 import type { TourHandbookSection, TourItineraryItem, TourTeamDayKit } from '../../src/lib/publicApi';
 
 type Row = Record<string, unknown>;
@@ -53,6 +53,18 @@ export function mapTour(row: Row): Tour {
     endDate: asString(row.end_date),
     status: requiredString(row, 'status') as Tour['status'],
     description: asString(row.description),
+  };
+}
+
+
+export function mapTourPlayer(row: Row): TourPlayer {
+  return {
+    id: requiredString(row, 'id'),
+    tourId: requiredString(row, 'tour_id'),
+    playerId: requiredString(row, 'player_id'),
+    attending: asBoolean(row.attending, true),
+    tourHandicap: asNumber(row.tour_handicap),
+    notes: asString(row.notes),
   };
 }
 
