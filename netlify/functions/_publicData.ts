@@ -22,18 +22,15 @@ function table<T = Record<string, unknown>>(supabase: SupabaseClient, name: stri
   return supabase.from(name) as unknown as QueryBuilder<T>;
 }
 
-// Empty Supabase result sets are valid production responses; only fall back when the client cannot be created or a query throws.
-export function withMockFallback<T extends object>(read: (supabase: SupabaseClient) => Promise<T>, fallback: T): Promise<T & { source: 'supabase' | 'mock-fallback' }> {
-  return (async () => {
-    try {
-      const supabase = createServerSupabaseClient();
-      const data = await read(supabase);
-      return { ...data, source: 'supabase' };
-    } catch (error) {
-      console.warn('Falling back to mock data because Supabase is unavailable:', error);
-      return { ...fallback, source: 'mock-fallback' };
-    }
-  })();
+export async function withLiveData<T extends object>(read: (supabase: SupabaseClient) => Promise<T>): Promise<{ statusCode: number; body: string }> {
+  try {
+    const supabase = createServerSupabaseClient();
+    const data = await read(supabase);
+    return { statusCode: 200, body: JSON.stringify({ ...data, source: 'supabase' }) };
+  } catch (error) {
+    console.error('Public live data request failed:', error);
+    return { statusCode: 500, body: JSON.stringify({ ok: false, error: 'Live data unavailable' }) };
+  }
 }
 
 export async function getCurrentTour(supabase: SupabaseClient) {

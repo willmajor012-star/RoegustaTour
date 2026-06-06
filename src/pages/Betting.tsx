@@ -1,17 +1,15 @@
 import { useEffect, useState } from 'react';
 import { BetMarketCard } from '../components/BetMarketCard';
-import { fetchPublicBetMarkets } from '../lib/publicApi';
+import { fetchPublicBetMarkets, type PublicBetMarketsResponse } from '../lib/publicApi';
 import { usePublicData } from '../lib/usePublicData';
-import { localBettingFallback } from '../lib/localFallbackData';
 import type { Bet } from '../lib/types';
+
+const emptyBettingData: Omit<PublicBetMarketsResponse, 'source'> = { betMarkets: [], betOptions: [], bets: [] };
 
 export function Betting() {
   const [bettorName, setBettorName] = useState('');
-  const { data, loading, error, source } = usePublicData(fetchPublicBetMarkets, {
-    localFallback: localBettingFallback,
-    onErrorMessage: 'Live betting markets are unavailable, so local demo data is shown instead.',
-  });
-  const activeData = data ?? localBettingFallback;
+  const { data, loading, error } = usePublicData(fetchPublicBetMarkets);
+  const activeData = data ?? emptyBettingData;
   const [localBets, setLocalBets] = useState<Bet[]>([]);
   const bets = [...localBets, ...activeData.bets];
 
@@ -40,14 +38,12 @@ export function Betting() {
         <p>No wallet, no payment handling and no money transfer. This is only a social tour betting/voting log.</p>
       </section>
       {loading && <p className="card">Loading betting markets…</p>}
-      {source === 'mock-fallback' && <p className="settled">Showing fallback demo data because live tour data is unavailable.</p>}
-      {source === 'local-fallback' && <p className="settled">Showing fallback demo data because live tour data is unavailable.</p>}
       {error && <p className="card form-error">{error}</p>}
       <label className="name-picker">
         Your name
         <input value={bettorName} placeholder="Select or type your name" onChange={(event) => saveName(event.target.value)} />
       </label>
-      {activeData.betMarkets.length === 0 && <p className="card">Betting markets will appear once they are added.</p>}
+      {!loading && !error && activeData.betMarkets.length === 0 && <p className="card">Betting markets will appear once they are added.</p>}
       {(['open', 'closed', 'settled'] as const).map((status) => {
         const markets = activeData.betMarkets.filter((market) => market.status === status);
         if (markets.length === 0) return null;

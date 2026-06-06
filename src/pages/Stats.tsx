@@ -17,14 +17,13 @@ import {
 import { formatDate, formatMatchFormat, formatPercent, formatPoints } from '../lib/formatting';
 import type { LeaderboardRow, Player, Tour } from '../lib/types';
 import { fetchPublicAdvancedStats, type PublicAdvancedStatsResponse } from '../lib/publicApi';
-import { localAdvancedStatsFallback } from '../lib/localFallbackData';
 
-type StatsSource = 'supabase' | 'mock-fallback' | 'local-fallback';
+type StatsSource = 'supabase';
 type StatsTab = 'leaderboard' | 'mvp' | 'head-to-head' | 'players';
 
 type StatsResponse = Omit<PublicAdvancedStatsResponse, 'source'> & { source: StatsSource };
 
-const localFallbackData: StatsResponse = localAdvancedStatsFallback;
+const emptyStatsData: StatsResponse = { source: 'supabase', players: [], tours: [], tourTeams: [], tourPlayers: [], tourTeamMembers: [], tourTeamResults: [], rounds: [], matches: [], matchParticipants: [] };
 
 function compactRecord(row?: Pick<LeaderboardRow, 'wins' | 'draws' | 'losses'>) {
   if (!row) return '0-0-0';
@@ -258,8 +257,8 @@ export function Stats() {
       } catch (caught) {
         console.error('Failed to load public advanced stats:', caught);
         if (!cancelled) {
-          setError('Live stats are unavailable, so local demo data is shown instead.');
-          setStats(localFallbackData);
+          setError('Live tour data could not be loaded. Please refresh or try again later.');
+          setStats(undefined);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -269,7 +268,7 @@ export function Stats() {
     return () => { cancelled = true; };
   }, []);
 
-  const activeStats = stats ?? localFallbackData;
+  const activeStats = stats ?? emptyStatsData;
   const currentTourId = getCurrentTourId(activeStats);
   const data = useMemo<AdvancedStatsData>(() => ({
     players: activeStats.players,
@@ -302,8 +301,6 @@ export function Stats() {
         <p>Matchplay-derived leaderboards, MVP standings, head-to-head comparison and player profiles. Scorecard, birdie, bogey, stableford and Golf GameBook data are intentionally not included yet.</p>
       </section>
       {loading && <p className="card">Loading live stats…</p>}
-      {activeStats.source === 'mock-fallback' && <p className="settled">Showing fallback demo data because live stats are unavailable.</p>}
-      {activeStats.source === 'local-fallback' && <p className="settled">{loading ? 'Showing local demo data while live stats load.' : 'Showing local demo data because live stats could not be loaded.'}</p>}
       {error && <p className="card form-error">{error}</p>}
       <div className="segmented">
         <button className={tab === 'leaderboard' ? 'active' : ''} onClick={() => setTab('leaderboard')}>Leaderboard</button>

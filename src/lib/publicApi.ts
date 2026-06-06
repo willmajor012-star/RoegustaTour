@@ -1,7 +1,7 @@
 import type { AdvancedStatsData, MvpLeaderboardRow, PlayerAdvancedSummary, TourSummary } from './advancedStats';
 import type { Bet, BetMarket, BetOption, Match, MatchParticipant, Player, Round, TeamScoreRow, Tour, TourTeam } from './types';
 
-export type PublicDataSource = 'supabase' | 'mock-fallback';
+export type PublicDataSource = 'supabase';
 export type PublicResponse<T> = T & { source: PublicDataSource };
 
 export type PublicSummaryResponse = PublicResponse<{

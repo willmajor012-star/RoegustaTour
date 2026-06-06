@@ -1,15 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { PublicDataSource } from './publicApi';
 
-export type PublicSource = PublicDataSource | 'local-fallback';
-
-type Options<T> = {
-  localFallback?: T;
+type Options = {
   onErrorMessage?: string;
 };
 
-export function usePublicData<T extends { source: PublicDataSource }, F extends Omit<T, 'source'> & { source: 'local-fallback' }>(loader: () => Promise<T>, options: Options<F> = {}) {
-  const [data, setData] = useState<T | F | undefined>(options.localFallback);
+export function usePublicData<T extends { source: PublicDataSource }>(loader: () => Promise<T>, options: Options = {}) {
+  const [data, setData] = useState<T | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
 
@@ -24,8 +21,8 @@ export function usePublicData<T extends { source: PublicDataSource }, F extends 
       } catch (caught) {
         console.error('Failed to load public data:', caught);
         if (!cancelled) {
-          setError(options.onErrorMessage ?? 'Live data is unavailable.');
-          if (options.localFallback) setData(options.localFallback);
+          setData(undefined);
+          setError(options.onErrorMessage ?? 'Live tour data could not be loaded. Please refresh or try again later.');
         }
       } finally {
         if (!cancelled) setLoading(false);
