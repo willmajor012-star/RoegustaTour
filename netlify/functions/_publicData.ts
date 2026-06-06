@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from './_supabase';
-import { mapBet, mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapRound, mapTour, mapTourTeam } from './_mappers';
+import { mapBet, mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapTour, mapTourTeam, mapTourTeamMember, mapTourTeamResult } from './_mappers';
 
 type SupabaseResult<T> = { data: T[] | null; error: { message: string } | null };
 type QueryBuilder<T = Record<string, unknown>> = PromiseLike<SupabaseResult<T>> & {
@@ -104,6 +104,45 @@ export async function getStatsBundle(supabase: SupabaseClient) {
     matches: matchRows.map(mapMatch),
     matchParticipants: participantRows.map(mapMatchParticipant),
     historicalPlayerStats: historicalRows.map(mapHistoricalPlayerStats),
+  };
+}
+
+
+export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
+  const currentTour = await getCurrentTour(supabase);
+  const [playerRows, tourRows, teamRows, memberRows, resultRows, roundRows, completedMatchRows, currentPublicMatchRows] = await Promise.all([
+    runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'players'),
+    runQuery(table(supabase, 'tours').select('*').order('year', { ascending: false }), 'tours'),
+    runQuery(table(supabase, 'tour_teams').select('*').order('sort_order', { ascending: true }), 'tour teams'),
+    runQuery(table(supabase, 'tour_team_members').select('*'), 'tour team members'),
+    runQuery(table(supabase, 'tour_team_results').select('*'), 'tour team results'),
+    runQuery(table(supabase, 'rounds').select('*').order('round_number', { ascending: true }), 'rounds'),
+    runQuery(table(supabase, 'matches').select('*').eq('status', 'complete').order('match_number', { ascending: true }), 'completed matches'),
+    currentTour
+      ? runQuery(table(supabase, 'matches').select('*').eq('tour_id', currentTour.id).eq('published', true).order('match_number', { ascending: true }), 'current public matches')
+      : Promise.resolve([]),
+  ]);
+
+  const matchById = new Map([...completedMatchRows, ...currentPublicMatchRows].map((row) => [String(row.id), row]));
+  const matchIds = [...matchById.keys()];
+  const [participantRows, playerResultRows] = matchIds.length > 0
+    ? await Promise.all([
+      runQuery(table(supabase, 'match_participants').select('*').in('match_id', matchIds), 'match participants'),
+      runQuery(table(supabase, 'player_match_results').select('*').in('match_id', matchIds), 'player match results'),
+    ])
+    : [[], []];
+
+  return {
+    currentTour,
+    players: playerRows.map(mapPlayer),
+    tours: tourRows.map(mapTour),
+    tourTeams: teamRows.map(mapTourTeam),
+    tourTeamMembers: memberRows.map(mapTourTeamMember),
+    tourTeamResults: resultRows.map(mapTourTeamResult),
+    rounds: roundRows.map(mapRound),
+    matches: [...matchById.values()].map(mapMatch),
+    matchParticipants: participantRows.map(mapMatchParticipant),
+    playerMatchResults: playerResultRows.map(mapPlayerMatchResult),
   };
 }
 

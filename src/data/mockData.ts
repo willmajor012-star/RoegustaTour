@@ -1,4 +1,4 @@
-import type { Bet, BetMarket, BetOption, HistoricalPlayerStats, Match, MatchParticipant, Player, Round, Tour, TourPlayer, TourTeam, TourTeamMember } from '../lib/types';
+import type { Bet, BetMarket, BetOption, HistoricalPlayerStats, Match, MatchParticipant, Player, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult, PlayerMatchResult } from '../lib/types';
 
 const now = '2026-11-06T09:00:00.000Z';
 const names = [
@@ -36,12 +36,21 @@ export const tourTeams: TourTeam[] = [
   { id: 'team-2025-b', tourId: 'tour-2025', name: 'Claret Crew', colour: '#6E2635', sortOrder: 2 },
 ];
 
-export const tourTeamMembers: TourTeamMember[] = players.slice(0, 24).map((player, index) => ({
-  id: `ttm-${player.id}`,
-  tourId: currentTourId,
-  teamId: index % 2 === 0 ? 'team-oaks' : 'team-heath',
-  playerId: player.id,
-}));
+export const tourTeamMembers: TourTeamMember[] = [
+  ...players.slice(0, 24).map((player, index) => ({
+    id: `ttm-${player.id}`,
+    tourId: currentTourId,
+    teamId: index % 2 === 0 ? 'team-oaks' : 'team-heath',
+    playerId: player.id,
+  })),
+  { id: 'ttm-2025-p25', tourId: 'tour-2025', teamId: 'team-2025-a', playerId: 'p25' },
+  { id: 'ttm-2025-p26', tourId: 'tour-2025', teamId: 'team-2025-b', playerId: 'p26' },
+];
+
+export const tourTeamResults: TourTeamResult[] = [
+  { id: 'ttr-2025-a', tourId: 'tour-2025', teamId: 'team-2025-a', finalPoints: 1, position: 1, resultStatus: 'winner', notes: 'Imported legacy result.' },
+  { id: 'ttr-2025-b', tourId: 'tour-2025', teamId: 'team-2025-b', finalPoints: 0, position: 2, resultStatus: 'runner_up', notes: 'Imported legacy result.' },
+];
 
 export const rounds: Round[] = [
   { id: 'r1', tourId: currentTourId, roundNumber: 1, name: 'Friday Opening Matches', roundDate: '2026-11-06', courseName: 'Amendoeira, Portugal', teeTime: 'TBC', formatLabel: 'Captain picks / format TBC', status: 'planned' },
@@ -82,6 +91,12 @@ export const matchParticipants: MatchParticipant[] = Object.entries(sides).flatM
     ...b.map((playerId) => ({ id: `mp-${matchId}-${playerId}`, matchId, playerId, side: 'B' as const, teamId: match.sideBTeamId })),
   ];
 });
+
+
+export const playerMatchResults: PlayerMatchResult[] = [
+  { id: 'pmr-2025-p25', tourId: 'tour-2025', roundId: 'r2025', matchId: 'm2025-1', playerId: 'p25', teamId: 'team-2025-a', format: 'singles', result: 'win', pointsFor: 1, pointsAgainst: 0 },
+  { id: 'pmr-2025-p26', tourId: 'tour-2025', roundId: 'r2025', matchId: 'm2025-1', playerId: 'p26', teamId: 'team-2025-b', format: 'singles', result: 'loss', pointsFor: 0, pointsAgainst: 1 },
+];
 
 export const historicalPlayerStats: HistoricalPlayerStats[] = players.slice(0, 18).map((player, index) => {
   const wins = 2 + (index % 4);
