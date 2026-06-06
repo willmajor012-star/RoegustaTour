@@ -110,7 +110,7 @@ export async function getStatsBundle(supabase: SupabaseClient) {
 
 export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
   const currentTour = await getCurrentTour(supabase);
-  const [playerRows, tourRows, teamRows, memberRows, resultRows, roundRows, completedMatchRows, currentPublicMatchRows, participantRows, playerResultRows] = await Promise.all([
+  const [playerRows, tourRows, teamRows, memberRows, resultRows, roundRows, completedMatchRows, currentPublicMatchRows] = await Promise.all([
     runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'players'),
     runQuery(table(supabase, 'tours').select('*').order('year', { ascending: false }), 'tours'),
     runQuery(table(supabase, 'tour_teams').select('*').order('sort_order', { ascending: true }), 'tour teams'),
@@ -121,11 +121,16 @@ export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
     currentTour
       ? runQuery(table(supabase, 'matches').select('*').eq('tour_id', currentTour.id).eq('published', true).order('match_number', { ascending: true }), 'current public matches')
       : Promise.resolve([]),
-    runQuery(table(supabase, 'match_participants').select('*'), 'match participants'),
-    runQuery(table(supabase, 'player_match_results').select('*'), 'player match results'),
   ]);
 
   const matchById = new Map([...completedMatchRows, ...currentPublicMatchRows].map((row) => [String(row.id), row]));
+  const matchIds = [...matchById.keys()];
+  const [participantRows, playerResultRows] = matchIds.length > 0
+    ? await Promise.all([
+      runQuery(table(supabase, 'match_participants').select('*').in('match_id', matchIds), 'match participants'),
+      runQuery(table(supabase, 'player_match_results').select('*').in('match_id', matchIds), 'player match results'),
+    ])
+    : [[], []];
 
   return {
     currentTour,

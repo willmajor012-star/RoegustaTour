@@ -1,34 +1,59 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LeaderboardTable } from '../components/LeaderboardTable';
-import {
-  currentTourId,
-  matchParticipants,
-  matches,
-  playerMatchResults,
-  players,
-  rounds,
-  tours,
-  tourTeamMembers,
-  tourTeamResults,
-  tourTeams,
-} from '../data/mockData';
 import {
   calculateMvpLeaderboard,
   calculatePlayerAdvancedSummaries,
   calculateTourSummary,
   getHeadToHead,
+  type AdvancedStatsData,
   type HeadToHeadRecord,
   type MatchListItem,
   type MvpLeaderboardRow,
   type PartnerRecord,
   type PlayerAdvancedSummary,
   type RelationshipRanking,
+  type TourSummary,
 } from '../lib/advancedStats';
 import { formatDate, formatMatchFormat, formatPercent, formatPoints } from '../lib/formatting';
-import type { LeaderboardRow } from '../lib/types';
+import type { LeaderboardRow, Player, Tour } from '../lib/types';
+import * as mockData from '../data/mockData';
 
-const advancedData = { players, tours, tourTeams, tourTeamMembers, tourTeamResults, rounds, matches, matchParticipants, playerMatchResults };
+type StatsSource = 'supabase' | 'mock-fallback' | 'local-fallback';
 type StatsTab = 'leaderboard' | 'mvp' | 'head-to-head' | 'players';
+
+type PublicAdvancedStatsResponse = AdvancedStatsData & {
+  source: StatsSource;
+  currentTour?: Tour;
+  tourSummary?: TourSummary;
+  mvpLeaderboard?: MvpLeaderboardRow[];
+  playerSummaries?: PlayerAdvancedSummary[];
+};
+
+const localFallbackData: PublicAdvancedStatsResponse = buildLocalFallbackData();
+
+function buildLocalFallbackData(): PublicAdvancedStatsResponse {
+  const data: AdvancedStatsData = {
+    players: mockData.players,
+    tours: mockData.tours,
+    tourTeams: mockData.tourTeams,
+    tourTeamMembers: mockData.tourTeamMembers,
+    tourTeamResults: mockData.tourTeamResults,
+    rounds: mockData.rounds,
+    matches: mockData.matches,
+    matchParticipants: mockData.matchParticipants,
+    playerMatchResults: mockData.playerMatchResults,
+  };
+  const currentTour = mockData.tours.find((tour) => tour.id === mockData.currentTourId);
+  const currentTourId = currentTour?.id ?? mockData.currentTourId;
+  return {
+    ...data,
+    source: 'local-fallback',
+    currentTour,
+    tourSummary: calculateTourSummary(currentTourId, data),
+    mvpLeaderboard: calculateMvpLeaderboard(currentTourId, data),
+    playerSummaries: calculatePlayerAdvancedSummaries(data, currentTourId),
+  };
+}
 
 function compactRecord(row?: Pick<LeaderboardRow, 'wins' | 'draws' | 'losses'>) {
   if (!row) return '0-0-0';
@@ -38,6 +63,47 @@ function compactRecord(row?: Pick<LeaderboardRow, 'wins' | 'draws' | 'losses'>) 
 function advancedRecord(row?: { wins: number; draws: number; losses: number }) {
   if (!row) return '0-0-0';
   return `${row.wins}-${row.draws}-${row.losses}`;
+}
+
+function getCurrentTourId(stats: PublicAdvancedStatsResponse) {
+  return stats.currentTour?.id ?? [...stats.tours].sort((a, b) => b.year - a.year)[0]?.id;
+}
+
+function normaliseStatsResponse(response: PublicAdvancedStatsResponse): PublicAdvancedStatsResponse {
+  const data: AdvancedStatsData = {
+    players: response.players ?? [],
+    tours: response.tours ?? [],
+    tourTeams: response.tourTeams ?? [],
+    tourTeamMembers: response.tourTeamMembers ?? [],
+    tourTeamResults: response.tourTeamResults ?? [],
+    rounds: response.rounds ?? [],
+    matches: response.matches ?? [],
+    matchParticipants: response.matchParticipants ?? [],
+    playerMatchResults: response.playerMatchResults ?? [],
+  };
+  const currentTour = response.currentTour ?? data.tours.find((tour) => tour.status === 'active') ?? [...data.tours].sort((a, b) => b.year - a.year)[0];
+  const currentTourId = currentTour?.id;
+  return {
+    ...data,
+    source: response.source,
+    currentTour,
+    tourSummary: response.tourSummary ?? calculateTourSummary(currentTourId, data),
+    mvpLeaderboard: response.mvpLeaderboard ?? calculateMvpLeaderboard(currentTourId, data),
+    playerSummaries: response.playerSummaries ?? calculatePlayerAdvancedSummaries(data, currentTourId),
+  };
+}
+
+function toLeaderboardRows(summaries: PlayerAdvancedSummary[], key: 'allTimeRecord' | 'currentTourRecord'): LeaderboardRow[] {
+  return summaries.map((summary) => ({
+    playerId: summary.player.id,
+    playerName: summary.player.displayName,
+    matches: summary[key].matches,
+    wins: summary[key].wins,
+    draws: summary[key].draws,
+    losses: summary[key].losses,
+    points: summary[key].pointsWon,
+    winPercent: summary[key].winPercent,
+  })).filter((row) => row.matches > 0);
 }
 
 function LeaderboardCards({ rows, selectedPlayerId, onSelect }: { rows: LeaderboardRow[]; selectedPlayerId?: string; onSelect: (playerId: string) => void }) {
@@ -55,8 +121,7 @@ function LeaderboardCards({ rows, selectedPlayerId, onSelect }: { rows: Leaderbo
   );
 }
 
-function TourSummaryPanel() {
-  const summary = calculateTourSummary(currentTourId, advancedData);
+function TourSummaryPanel({ summary }: { summary: TourSummary }) {
   const tour = summary.tour;
 
   return (
@@ -82,8 +147,7 @@ function TourSummaryPanel() {
   );
 }
 
-function MvpSection() {
-  const rows = calculateMvpLeaderboard(currentTourId, advancedData);
+function MvpSection({ rows }: { rows: MvpLeaderboardRow[] }) {
   return (
     <section className="stats-panel">
       <div className="stats-section-title"><h3>MVP leaderboard</h3><span>Matchplay-only v1 formula</span></div>
@@ -109,11 +173,11 @@ function MvpCard({ row, rank }: { row: MvpLeaderboardRow; rank: number }) {
   );
 }
 
-function HeadToHeadSection() {
+function HeadToHeadSection({ players, data }: { players: Player[]; data: AdvancedStatsData }) {
   const [playerAId, setPlayerAId] = useState('');
   const [playerBId, setPlayerBId] = useState('');
   const samePlayer = playerAId && playerAId === playerBId;
-  const result = playerAId && playerBId && !samePlayer ? getHeadToHead(playerAId, playerBId, advancedData) : undefined;
+  const result = playerAId && playerBId && !samePlayer ? getHeadToHead(playerAId, playerBId, data) : undefined;
 
   return (
     <section className="stats-panel">
@@ -163,7 +227,7 @@ function PlayersSection({ selectedPlayerId, setSelectedPlayerId, summaries }: { 
       <div>
         <div className="stats-section-title"><h3>Player profiles</h3><span>Advanced matchplay drilldown</span></div>
         <div className="leaderboard-cards always-show">
-          {summaries.map((summary) => <button className={`leaderboard-card card ${selected?.player.id === summary.player.id ? 'selected' : ''}`} key={summary.player.id} onClick={() => setSelectedPlayerId(summary.player.id)}><span className="leaderboard-name">{summary.player.displayName}</span><strong>{formatPercent(summary.winPercent)}</strong><span>{formatPoints(summary.totalPointsWon)} pts · {advancedRecord(summary.allTimeRecord)}</span></button>)}
+          {summaries.length === 0 ? <p className="card">Player profiles will appear once matchplay results are available.</p> : summaries.map((summary) => <button className={`leaderboard-card card ${selected?.player.id === summary.player.id ? 'selected' : ''}`} key={summary.player.id} onClick={() => setSelectedPlayerId(summary.player.id)}><span className="leaderboard-name">{summary.player.displayName}</span><strong>{formatPercent(summary.winPercent)}</strong><span>{formatPoints(summary.totalPointsWon)} pts · {advancedRecord(summary.allTimeRecord)}</span></button>)}
         </div>
       </div>
       {selected && <PlayerProfile summary={selected} />}
@@ -206,28 +270,58 @@ function RelationshipList({ title, rows }: { title: string; rows: RelationshipRa
 
 export function Stats() {
   const [tab, setTab] = useState<StatsTab>('leaderboard');
-  const summaries = useMemo(() => calculatePlayerAdvancedSummaries(advancedData, currentTourId), []);
-  const allTimeRows = useMemo<LeaderboardRow[]>(() => summaries.map((summary) => ({
-    playerId: summary.player.id,
-    playerName: summary.player.displayName,
-    matches: summary.allTimeRecord.matches,
-    wins: summary.allTimeRecord.wins,
-    draws: summary.allTimeRecord.draws,
-    losses: summary.allTimeRecord.losses,
-    points: summary.allTimeRecord.pointsWon,
-    winPercent: summary.allTimeRecord.winPercent,
-  })).filter((row) => row.matches > 0), [summaries]);
-  const currentRows = useMemo<LeaderboardRow[]>(() => summaries.map((summary) => ({
-    playerId: summary.player.id,
-    playerName: summary.player.displayName,
-    matches: summary.currentTourRecord.matches,
-    wins: summary.currentTourRecord.wins,
-    draws: summary.currentTourRecord.draws,
-    losses: summary.currentTourRecord.losses,
-    points: summary.currentTourRecord.pointsWon,
-    winPercent: summary.currentTourRecord.winPercent,
-  })).filter((row) => row.matches > 0), [summaries]);
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string | undefined>(summaries[0]?.player.id ?? allTimeRows[0]?.playerId);
+  const [stats, setStats] = useState<PublicAdvancedStatsResponse | undefined>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | undefined>();
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | undefined>();
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadStats() {
+      setLoading(true);
+      setError(undefined);
+      try {
+        const response = await fetch('/.netlify/functions/public-advanced-stats');
+        if (!response.ok) throw new Error(`Stats request failed with ${response.status}`);
+        const payload = normaliseStatsResponse(await response.json() as PublicAdvancedStatsResponse);
+        if (!cancelled) setStats(payload);
+      } catch (caught) {
+        console.error('Failed to load public advanced stats:', caught);
+        if (!cancelled) {
+          setError('Live stats are unavailable, so local demo data is shown instead.');
+          setStats(localFallbackData);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    loadStats();
+    return () => { cancelled = true; };
+  }, []);
+
+  const activeStats = stats ?? localFallbackData;
+  const currentTourId = getCurrentTourId(activeStats);
+  const data = useMemo<AdvancedStatsData>(() => ({
+    players: activeStats.players,
+    tours: activeStats.tours,
+    tourTeams: activeStats.tourTeams,
+    tourTeamMembers: activeStats.tourTeamMembers,
+    tourTeamResults: activeStats.tourTeamResults,
+    rounds: activeStats.rounds,
+    matches: activeStats.matches,
+    matchParticipants: activeStats.matchParticipants,
+    playerMatchResults: activeStats.playerMatchResults,
+  }), [activeStats]);
+  const summaries = useMemo(() => activeStats.playerSummaries ?? calculatePlayerAdvancedSummaries(data, currentTourId), [activeStats.playerSummaries, currentTourId, data]);
+  const mvpRows = useMemo(() => activeStats.mvpLeaderboard ?? calculateMvpLeaderboard(currentTourId, data), [activeStats.mvpLeaderboard, currentTourId, data]);
+  const tourSummary = useMemo(() => activeStats.tourSummary ?? calculateTourSummary(currentTourId, data), [activeStats.tourSummary, currentTourId, data]);
+  const allTimeRows = useMemo(() => toLeaderboardRows(summaries, 'allTimeRecord'), [summaries]);
+  const currentRows = useMemo(() => toLeaderboardRows(summaries, 'currentTourRecord'), [summaries]);
+
+  useEffect(() => {
+    if (!selectedPlayerId && summaries[0]) setSelectedPlayerId(summaries[0].player.id);
+    if (selectedPlayerId && summaries.length > 0 && !summaries.some((summary) => summary.player.id === selectedPlayerId)) setSelectedPlayerId(summaries[0].player.id);
+  }, [selectedPlayerId, summaries]);
 
   return (
     <div className="page-stack">
@@ -236,15 +330,19 @@ export function Stats() {
         <h2>Stats</h2>
         <p>Matchplay-derived leaderboards, MVP standings, head-to-head comparison and player profiles. Scorecard, birdie, bogey, stableford and Golf GameBook data are intentionally not included yet.</p>
       </section>
+      {loading && <p className="card">Loading live stats…</p>}
+      {activeStats.source === 'mock-fallback' && <p className="settled">Showing fallback demo data because live stats are unavailable.</p>}
+      {activeStats.source === 'local-fallback' && <p className="settled">{loading ? 'Showing local demo data while live stats load.' : 'Showing local demo data because live stats could not be loaded.'}</p>}
+      {error && <p className="card form-error">{error}</p>}
       <div className="segmented">
         <button className={tab === 'leaderboard' ? 'active' : ''} onClick={() => setTab('leaderboard')}>Leaderboard</button>
         <button className={tab === 'mvp' ? 'active' : ''} onClick={() => setTab('mvp')}>MVP</button>
         <button className={tab === 'head-to-head' ? 'active' : ''} onClick={() => setTab('head-to-head')}>Head-to-head</button>
         <button className={tab === 'players' ? 'active' : ''} onClick={() => setTab('players')}>Players</button>
       </div>
-      {tab === 'leaderboard' && <section className="stats-panel"><TourSummaryPanel /><div className="stats-section-title"><h3>All-time leaderboard</h3><span>Match-level all-time rows</span></div><LeaderboardCards rows={allTimeRows} selectedPlayerId={selectedPlayerId} onSelect={setSelectedPlayerId} /><LeaderboardTable rows={allTimeRows} selectedPlayerId={selectedPlayerId} onSelectPlayer={setSelectedPlayerId} />{currentRows.length > 0 && <><div className="stats-section-title"><h3>Current tour leaderboard</h3><span>Completed matches only</span></div><LeaderboardCards rows={currentRows} selectedPlayerId={selectedPlayerId} onSelect={setSelectedPlayerId} /><LeaderboardTable rows={currentRows} selectedPlayerId={selectedPlayerId} onSelectPlayer={setSelectedPlayerId} /></>}</section>}
-      {tab === 'mvp' && <MvpSection />}
-      {tab === 'head-to-head' && <HeadToHeadSection />}
+      {tab === 'leaderboard' && <section className="stats-panel"><TourSummaryPanel summary={tourSummary} /><div className="stats-section-title"><h3>All-time leaderboard</h3><span>Match-level all-time rows</span></div><LeaderboardCards rows={allTimeRows} selectedPlayerId={selectedPlayerId} onSelect={setSelectedPlayerId} /><LeaderboardTable rows={allTimeRows} selectedPlayerId={selectedPlayerId} onSelectPlayer={setSelectedPlayerId} />{currentRows.length > 0 && <><div className="stats-section-title"><h3>Current tour leaderboard</h3><span>Completed matches only</span></div><LeaderboardCards rows={currentRows} selectedPlayerId={selectedPlayerId} onSelect={setSelectedPlayerId} /><LeaderboardTable rows={currentRows} selectedPlayerId={selectedPlayerId} onSelectPlayer={setSelectedPlayerId} /></>}</section>}
+      {tab === 'mvp' && <MvpSection rows={mvpRows} />}
+      {tab === 'head-to-head' && <HeadToHeadSection players={activeStats.players} data={data} />}
       {tab === 'players' && <PlayersSection selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={summaries} />}
     </div>
   );
