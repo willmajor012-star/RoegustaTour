@@ -1,4 +1,17 @@
 type Handler = (event: { httpMethod: string; body: string | null }) => Promise<{ statusCode: number; body: string }>;
 import { historicalPlayerStats, matchParticipants, matches, players } from '../../src/data/mockData';
 import { calculateAllTimePlayerStats } from '../../src/lib/stats';
-export const handler: Handler = async () => ({ statusCode: 200, body: JSON.stringify({ leaderboard: calculateAllTimePlayerStats(players, matches, matchParticipants, historicalPlayerStats), todo: 'TODO: derive stats from Supabase match rows plus historic imports.' }) });
+import { getStatsBundle, withMockFallback } from './_publicData';
+
+export const handler: Handler = async () => {
+  const data = await withMockFallback(
+    async (supabase) => {
+      const bundle = await getStatsBundle(supabase);
+      return { leaderboard: calculateAllTimePlayerStats(bundle.players, bundle.matches, bundle.matchParticipants, bundle.historicalPlayerStats) };
+    },
+    { leaderboard: calculateAllTimePlayerStats(players, matches, matchParticipants, historicalPlayerStats) },
+    (data) => data.leaderboard.length === 0,
+  );
+
+  return { statusCode: 200, body: JSON.stringify(data) };
+};

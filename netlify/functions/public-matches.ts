@@ -1,15 +1,22 @@
 type Handler = (event: { httpMethod: string; body: string | null }) => Promise<{ statusCode: number; body: string }>;
 import { matchParticipants, matches, rounds } from '../../src/data/mockData';
+import { getPublicMatchBundle, hasPublicMatches, withMockFallback } from './_publicData';
 
 const publicMatches = matches.filter((match) => match.published || match.status === 'complete');
 const publicMatchIds = new Set(publicMatches.map((match) => match.id));
+const publicRoundIds = new Set(publicMatches.map((match) => match.roundId));
 
 export const handler: Handler = async () => ({
   statusCode: 200,
-  body: JSON.stringify({
-    rounds,
-    matches: publicMatches,
-    matchParticipants: matchParticipants.filter((participant) => publicMatchIds.has(participant.matchId)),
-    todo: 'TODO: fetch published tour matches from Supabase.',
-  }),
+  body: JSON.stringify(
+    await withMockFallback(
+      getPublicMatchBundle,
+      {
+        rounds: rounds.filter((round) => publicRoundIds.has(round.id)),
+        matches: publicMatches,
+        matchParticipants: matchParticipants.filter((participant) => publicMatchIds.has(participant.matchId)),
+      },
+      (data) => !hasPublicMatches(data),
+    ),
+  ),
 });
