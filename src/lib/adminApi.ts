@@ -91,6 +91,6 @@ function postAdminJson<T>(path: string, payload: unknown): Promise<T> {
 export const fetchAdminData = () => fetchAdminJson<AdminDataResponse>('/.netlify/functions/admin-data', { method: 'GET' });
 export const savePlayer = (payload: SavePlayerPayload) => postAdminJson<{ ok: true; player: Player }>('/.netlify/functions/admin-save-player', payload);
 export const saveTour = (payload: SaveTourPayload) => postAdminJson<{ ok: true; tour: Tour }>('/.netlify/functions/admin-save-tour', payload);
-export const saveTourPlayer = (payload: SaveTourPlayerPayload) => postAdminJson<{ ok: true; tourPlayer: TourPlayer }>('/.netlify/functions/admin-save-tour-player', payload);
+export const saveTourPlayer = (payload: SaveTourPlayerPayload) => postAdminJson<{ ok: true; tourPlayer: TourPlayer; tourTeamMembers?: TourTeamMember[] }>('/.netlify/functions/admin-save-tour-player', payload);
 export const saveTourTeam = (payload: SaveTourTeamPayload) => postAdminJson<{ ok: true; tourTeam: TourTeam }>('/.netlify/functions/admin-save-team', payload);
 export const saveTourTeamMembers = (payload: SaveTourTeamMembersPayload) => postAdminJson<{ ok: true; tourTeamMembers: TourTeamMember[] }>('/.netlify/functions/admin-save-team-members', payload);
