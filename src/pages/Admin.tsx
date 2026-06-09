@@ -1,11 +1,38 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { betMarkets, currentTourId, matches, players, rounds, tourTeams, tours } from '../data/mockData';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { fetchAdminData, savePlayer, saveTour, saveTourPlayer, saveTourTeam, saveTourTeamMembers, type AdminDataResponse } from '../lib/adminApi';
 import { checkStoredAdminSession, clearStoredAdminSession, getStoredAdminSession, loginWithAdminPin, storeAdminSession, type StoredAdminSession } from '../lib/adminSession';
-import { formatDate, formatMatchFormat } from '../lib/formatting';
+import { formatDate } from '../lib/formatting';
+import type { Player, Tour, TourTeam } from '../lib/types';
 
-const sections = ['Player Library', 'Tour Setup', 'Teams', 'Rounds', 'Matches', 'Results', 'Betting Markets', 'Historic Import'];
-const activeTour = tours.find((tour) => tour.id === currentTourId)!;
-const attendingPlayers = players.slice(0, 24);
+const tabs = ['Overview', 'Tour setup', 'Player library', 'Attendance', 'Teams', 'Coming next'] as const;
+type AdminTab = typeof tabs[number];
+type SaveState = { saving: boolean; error?: string; success?: string };
+
+type PlayerForm = { id?: string; displayName: string; nickname: string; initials: string; active: boolean };
+type TourForm = { id: string; name: string; year: string; location: string; startDate: string; endDate: string; status: Tour['status']; description: string };
+type AttendanceDraft = { attending: boolean; tourHandicap: string; notes: string };
+type TeamForm = { id?: string; name: string; colour: string; captainPlayerId: string; sortOrder: string };
+
+const emptyPlayerForm: PlayerForm = { displayName: '', nickname: '', initials: '', active: true };
+const emptyTeamForm: TeamForm = { name: '', colour: '', captainPlayerId: '', sortOrder: '1' };
+
+function emptyTourForm(tour?: Tour): TourForm {
+  return {
+    id: tour?.id ?? '',
+    name: tour?.name ?? '',
+    year: tour?.year ? String(tour.year) : '',
+    location: tour?.location ?? '',
+    startDate: tour?.startDate ?? '',
+    endDate: tour?.endDate ?? '',
+    status: tour?.status ?? 'planned',
+    description: tour?.description ?? '',
+  };
+}
+
+function playerLabel(player?: Player): string {
+  if (!player) return 'Unknown player';
+  return player.nickname ? `${player.displayName} (${player.nickname})` : player.displayName;
+}
 
 export function Admin() {
   const [storedSession, setStoredSession] = useState<StoredAdminSession | null>(null);
@@ -13,29 +40,81 @@ export function Admin() {
   const [pin, setPin] = useState('');
   const [loginState, setLoginState] = useState<'idle' | 'submitting'>('idle');
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<AdminTab>('Overview');
+
+  const [adminData, setAdminData] = useState<AdminDataResponse | null>(null);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
+
+  const [playerForm, setPlayerForm] = useState<PlayerForm>(emptyPlayerForm);
+  const [tourForm, setTourForm] = useState<TourForm>(emptyTourForm());
+  const [attendanceDrafts, setAttendanceDrafts] = useState<Record<string, AttendanceDraft>>({});
+  const [teamForm, setTeamForm] = useState<TeamForm>(emptyTeamForm);
+  const [teamMemberDrafts, setTeamMemberDrafts] = useState<Record<string, string[]>>({});
+  const [states, setStates] = useState<Record<string, SaveState>>({});
+
+  const loadAdminData = async () => {
+    setDataLoading(true);
+    setDataError(null);
+    try {
+      const nextData = await fetchAdminData();
+      setAdminData(nextData);
+      setTourForm(emptyTourForm(nextData.currentTour));
+      setAttendanceDrafts(Object.fromEntries(nextData.players.map((player) => {
+        const tourPlayer = nextData.tourPlayers.find((row) => row.playerId === player.id);
+        return [player.id, { attending: tourPlayer?.attending ?? false, tourHandicap: tourPlayer?.tourHandicap === undefined ? '' : String(tourPlayer.tourHandicap), notes: tourPlayer?.notes ?? '' }];
+      })));
+      setTeamMemberDrafts(Object.fromEntries(nextData.tourTeams.map((team) => [team.id, nextData.tourTeamMembers.filter((member) => member.teamId === team.id).map((member) => member.playerId)])));
+    } catch (error) {
+      setDataError('Admin data could not be loaded. Please refresh or sign in again.');
+      if (error instanceof Error && error.message === 'Please sign in again.') setStoredSession(null);
+    } finally {
+      setDataLoading(false);
+    }
+  };
 
   useEffect(() => {
     let isCurrent = true;
-
     checkStoredAdminSession().then((checkedSession) => {
       if (!isCurrent) return;
-
       setStoredSession(checkedSession);
-      if (checkedSession) {
-        setActorLabel(checkedSession.session.actorLabel);
-      }
+      if (checkedSession) setActorLabel(checkedSession.session.actorLabel);
     });
-
-    return () => {
-      isCurrent = false;
-    };
+    return () => { isCurrent = false; };
   }, []);
+
+  useEffect(() => {
+    if (storedSession) void loadAdminData();
+  }, [storedSession]);
+
+  const playersById = useMemo(() => new Map((adminData?.players ?? []).map((player) => [player.id, player])), [adminData]);
+  const activePlayers = (adminData?.players ?? []).filter((player) => player.active);
+  const currentTour = adminData?.currentTour;
+  const tourPlayers = adminData?.tourPlayers ?? [];
+  const attendingPlayerIds = new Set(tourPlayers.filter((row) => row.attending).map((row) => row.playerId));
+  const assignedPlayerIds = new Set((adminData?.tourTeamMembers ?? []).map((member) => member.playerId));
+  const attendingUnassigned = activePlayers.filter((player) => attendingPlayerIds.has(player.id) && !assignedPlayerIds.has(player.id));
+  const notAttending = activePlayers.filter((player) => !attendingPlayerIds.has(player.id));
+
+  const setSaveState = (key: string, state: SaveState) => setStates((current) => ({ ...current, [key]: state }));
+
+  const runSave = async (key: string, success: string, action: () => Promise<void>) => {
+    setSaveState(key, { saving: true });
+    try {
+      await action();
+      setSaveState(key, { saving: false, success });
+      await loadAdminData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Save failed.';
+      if (message === 'Please sign in again.') setStoredSession(null);
+      setSaveState(key, { saving: false, error: message });
+    }
+  };
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoginState('submitting');
     setLoginError(null);
-
     try {
       const nextSession = await loginWithAdminPin(pin, actorLabel);
       storeAdminSession(nextSession);
@@ -52,161 +131,92 @@ export function Admin() {
   const handleLogout = () => {
     clearStoredAdminSession();
     setStoredSession(null);
+    setAdminData(null);
+  };
+
+  const submitPlayer = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void runSave('player', 'Player saved.', async () => {
+      await savePlayer(playerForm);
+      setPlayerForm(emptyPlayerForm);
+    });
+  };
+
+  const submitTour = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void runSave('tour', 'Tour setup saved.', async () => {
+      await saveTour({ ...tourForm, year: Number(tourForm.year) });
+    });
+  };
+
+  const submitAttendance = (playerId: string) => {
+    if (!currentTour) return;
+    const draft = attendanceDrafts[playerId];
+    void runSave(`attendance-${playerId}`, 'Attendance saved.', async () => {
+      await saveTourPlayer({ tourId: currentTour.id, playerId, attending: draft.attending, tourHandicap: draft.tourHandicap === '' ? null : Number(draft.tourHandicap), notes: draft.notes });
+    });
+  };
+
+  const submitTeam = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!currentTour) return;
+    void runSave('team', 'Team saved.', async () => {
+      await saveTourTeam({ ...teamForm, tourId: currentTour.id, captainPlayerId: teamForm.captainPlayerId || null, sortOrder: Number(teamForm.sortOrder) });
+      setTeamForm(emptyTeamForm);
+    });
+  };
+
+  const saveMembers = (team: TourTeam) => {
+    void runSave(`members-${team.id}`, 'Team members saved.', async () => {
+      await saveTourTeamMembers({ tourId: team.tourId, teamId: team.id, playerIds: teamMemberDrafts[team.id] ?? [] });
+    });
+  };
+
+  const toggleTeamMember = (teamId: string, playerId: string) => {
+    setTeamMemberDrafts((current) => {
+      const isSelected = (current[teamId] ?? []).includes(playerId);
+      const next = Object.fromEntries(Object.entries(current).map(([id, playerIds]) => [id, id === teamId ? playerIds : playerIds.filter((existing) => existing !== playerId)]));
+      next[teamId] = isSelected ? (next[teamId] ?? []).filter((existing) => existing !== playerId) : [...(next[teamId] ?? []), playerId];
+      return next;
+    });
   };
 
   const expiresAtLabel = storedSession ? new Date(storedSession.session.expiresAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : null;
 
-  return (
-    <div className="page-stack admin-page">
-      <section className="page-title">
-        <p className="eyebrow">During-tour admin shell</p>
-        <h2>Admin</h2>
-        <p>This mock/local admin UI is structured for the live workflow: captains can make picks the night before, then an admin can enter rounds, tee times, matches, betting markets and results in the app without touching code. Supabase-backed persistence can be added next.</p>
-      </section>
+  return <div className="page-stack admin-page">
+    <section className="page-title"><p className="eyebrow">Live setup management</p><h2>Admin</h2><p>PIN-protected tools for live player library, current tour setup, attendance and teams. Rounds, matches, results and Bet Punto writes stay locked for a later PR.</p></section>
 
-      <section className="card admin-login-panel">
-        <div>
-          <p className="eyebrow">Admin PIN session</p>
-          <h3>{storedSession ? `Signed in as ${storedSession.session.actorLabel}` : 'Sign in to unlock admin writes'}</h3>
-          <p>{storedSession ? `This browser has a short-lived admin session until ${expiresAtLabel}. Server write functions still verify the bearer token before accepting changes.` : 'Enter the shared admin PIN to create a short-lived browser session. The PIN is only posted to the Netlify login function and is not stored in local storage.'}</p>
-        </div>
-        {storedSession ? (
-          <button className="admin-secondary-button" type="button" onClick={handleLogout}>Log out</button>
-        ) : (
-          <form className="admin-login-form" onSubmit={handleLogin}>
-            <label>Admin label<input value={actorLabel} onChange={(event) => setActorLabel(event.target.value)} placeholder="Captain / admin name" /></label>
-            <label>Shared PIN<input value={pin} onChange={(event) => setPin(event.target.value)} inputMode="numeric" type="password" autoComplete="current-password" /></label>
-            {loginError ? <p className="form-error">{loginError}</p> : null}
-            <button type="submit" disabled={loginState === 'submitting'}>{loginState === 'submitting' ? 'Signing in…' : 'Create admin session'}</button>
-          </form>
-        )}
-      </section>
+    <section className="card admin-login-panel"><div><p className="eyebrow">Admin PIN session</p><h3>{storedSession ? 'Admin session active' : 'Sign in to unlock admin writes'}</h3><p>{storedSession ? `This browser has a short-lived admin session until ${expiresAtLabel}.` : 'Enter the shared admin PIN to create a short-lived browser session. The optional label is only for admin context, not a user account.'}</p></div>{storedSession ? <button className="admin-secondary-button" type="button" onClick={handleLogout}>Log out</button> : <form className="admin-login-form" onSubmit={handleLogin}><label>Admin label<input value={actorLabel} onChange={(event) => setActorLabel(event.target.value)} placeholder="Optional admin label" /></label><label>Shared PIN<input value={pin} onChange={(event) => setPin(event.target.value)} inputMode="numeric" type="password" autoComplete="current-password" /></label>{loginError ? <p className="form-error">{loginError}</p> : null}<button type="submit" disabled={loginState === 'submitting'}>{loginState === 'submitting' ? 'Signing in…' : 'Create admin session'}</button></form>}</section>
 
-      {storedSession ? (
-        <>
-      <nav className="admin-section-nav" aria-label="Admin sections">
-        {sections.map((section) => <a className="pill" href={`#${section.toLowerCase().replace(/ /g, '-')}`} key={section}>{section}</a>)}
-      </nav>
+    {storedSession ? <>
+      <nav className="admin-section-nav" aria-label="Admin sections">{tabs.map((tab) => <button className={`pill ${activeTab === tab ? 'selected' : ''}`} type="button" onClick={() => setActiveTab(tab)} key={tab}>{tab}</button>)}</nav>
+      {dataLoading ? <p className="card">Loading live admin data…</p> : null}
+      {dataError ? <p className="card form-error">{dataError}</p> : null}
+      {!dataLoading && !dataError && adminData ? <>
+        {activeTab === 'Overview' ? <section className="card admin-panel"><p className="eyebrow">Overview</p><h3>{currentTour?.name ?? 'No current tour'}</h3>{!currentTour ? <p>No live tour has been added yet.</p> : <p>{currentTour.location ?? 'Location TBC'} · {formatDate(currentTour.startDate)} — {formatDate(currentTour.endDate)} · {currentTour.status}</p>}<div className="stat-grid"><Stat label="Active players" value={activePlayers.length} /><Stat label="Attending" value={attendingPlayerIds.size} /><Stat label="Teams" value={adminData.tourTeams.length} /><Stat label="Assigned" value={assignedPlayerIds.size} /><Stat label="Attending unassigned" value={attendingUnassigned.length} /></div></section> : null}
 
-      <section className="card admin-workflow">
-        <h3>Eventual workflow aim</h3>
-        <div className="workflow-list">
-          <span>Add/edit permanent players</span>
-          <span>Assign attending players to {activeTour.name}</span>
-          <span>Create teams and assign players</span>
-          <span>Create rounds and enter tee times</span>
-          <span>Create matches from player dropdowns/chips</span>
-          <span>Publish matches for public viewing</span>
-          <span>Enter results</span>
-          <span>Create, open, close and settle betting markets</span>
-        </div>
-      </section>
+        {activeTab === 'Tour setup' ? <section className="card admin-panel"><p className="eyebrow">Current tour setup</p><h3>Edit tour details</h3>{currentTour ? <form className="admin-form-grid" onSubmit={submitTour}><label>Name<input value={tourForm.name} onChange={(event) => setTourForm({ ...tourForm, name: event.target.value })} /></label><label>Year<input value={tourForm.year} onChange={(event) => setTourForm({ ...tourForm, year: event.target.value })} inputMode="numeric" /></label><label>Location<input value={tourForm.location} onChange={(event) => setTourForm({ ...tourForm, location: event.target.value })} /></label><label>Start date<input value={tourForm.startDate} onChange={(event) => setTourForm({ ...tourForm, startDate: event.target.value })} type="date" /></label><label>End date<input value={tourForm.endDate} onChange={(event) => setTourForm({ ...tourForm, endDate: event.target.value })} type="date" /></label><label>Status<select value={tourForm.status} onChange={(event) => setTourForm({ ...tourForm, status: event.target.value as Tour['status'] })}><option value="planned">Planned</option><option value="active">Active</option><option value="complete">Complete</option><option value="archived">Archived</option></select></label><label className="admin-full-span">Description<textarea value={tourForm.description} onChange={(event) => setTourForm({ ...tourForm, description: event.target.value })} /></label><SaveButton state={states.tour} label="Save tour setup" /></form> : <p>No current tour is available to edit.</p>}</section> : null}
 
-      <section id="player-library" className="admin-panel card">
-        <p className="eyebrow">Player Library</p>
-        <h3>Permanent players</h3>
-        <p>Players remain a library/admin concept. Public users reach player profiles through the Stats leaderboard rather than a raw player database page.</p>
-        <div className="admin-form-grid">
-          <label>Display name<input defaultValue="New player" /></label>
-          <label>Nickname<input placeholder="Optional" /></label>
-          <label>Active<select defaultValue="yes"><option value="yes">Yes</option><option value="no">No</option></select></label>
-        </div>
-        <div className="chip-list">{attendingPlayers.slice(0, 10).map((player) => <span className="pill" key={player.id}>{player.displayName}</span>)}</div>
-      </section>
+        {activeTab === 'Player library' ? <section className="card admin-panel"><p className="eyebrow">Player library</p><h3>Permanent players</h3><form className="admin-form-grid" onSubmit={submitPlayer}><label>Display name<input value={playerForm.displayName} onChange={(event) => setPlayerForm({ ...playerForm, displayName: event.target.value })} /></label><label>Nickname<input value={playerForm.nickname} onChange={(event) => setPlayerForm({ ...playerForm, nickname: event.target.value })} /></label><label>Initials<input value={playerForm.initials} onChange={(event) => setPlayerForm({ ...playerForm, initials: event.target.value })} /></label><label>Active<select value={playerForm.active ? 'yes' : 'no'} onChange={(event) => setPlayerForm({ ...playerForm, active: event.target.value === 'yes' })}><option value="yes">Yes</option><option value="no">No</option></select></label><SaveButton state={states.player} label={playerForm.id ? 'Save player' : 'Create player'} /></form><div className="admin-card-list">{adminData.players.length === 0 ? <p>No players have been added yet.</p> : adminData.players.map((player) => <article className="admin-mini-card" key={player.id}><div><strong>{player.displayName}</strong><span>{player.active ? 'Active' : 'Inactive'}{player.initials ? ` · ${player.initials}` : ''}{player.nickname ? ` · ${player.nickname}` : ''}</span></div><button type="button" onClick={() => setPlayerForm({ id: player.id, displayName: player.displayName, nickname: player.nickname ?? '', initials: player.initials ?? '', active: player.active })}>Edit</button></article>)}</div></section> : null}
 
-      <section id="tour-setup" className="admin-panel card">
-        <p className="eyebrow">Tour Setup</p>
-        <h3>{activeTour.name}</h3>
-        <div className="admin-form-grid">
-          <label>Location<input defaultValue="Amendoeira, Portugal" /></label>
-          <label>Start date<input type="date" defaultValue="2026-11-06" /></label>
-          <label>End date<input type="date" defaultValue="2026-11-09" /></label>
-          <label>Status<select defaultValue="planned"><option>planned</option><option>active</option><option>complete</option></select></label>
-        </div>
-      </section>
+        {activeTab === 'Attendance' ? <section className="card admin-panel"><p className="eyebrow">Current tour attendance</p><h3>{currentTour?.name ?? 'No current tour'}</h3>{!currentTour ? <p>No current tour is available.</p> : <div className="admin-card-list">{activePlayers.length === 0 ? <p>No active players are available.</p> : activePlayers.map((player) => { const draft = attendanceDrafts[player.id] ?? { attending: false, tourHandicap: '', notes: '' }; return <article className="admin-mini-card attendance-card" key={player.id}><div><strong>{playerLabel(player)}</strong><label className="publish-toggle"><input type="checkbox" checked={draft.attending} onChange={(event) => setAttendanceDrafts({ ...attendanceDrafts, [player.id]: { ...draft, attending: event.target.checked } })} /> Attending</label></div><label>Handicap<input value={draft.tourHandicap} onChange={(event) => setAttendanceDrafts({ ...attendanceDrafts, [player.id]: { ...draft, tourHandicap: event.target.value } })} inputMode="decimal" /></label><label>Notes<input value={draft.notes} onChange={(event) => setAttendanceDrafts({ ...attendanceDrafts, [player.id]: { ...draft, notes: event.target.value } })} /></label><SaveButton state={states[`attendance-${player.id}`]} label="Save" onClick={() => submitAttendance(player.id)} /></article>; })}</div>}</section> : null}
 
-      <section id="teams" className="admin-panel card">
-        <p className="eyebrow">Teams</p>
-        <h3>Create teams and assign players</h3>
-        <div className="admin-form-grid">
-          <label>Team name<input defaultValue={tourTeams[0]?.name} /></label>
-          <label>Captain<select defaultValue="p1">{attendingPlayers.map((player) => <option key={player.id} value={player.id}>{player.displayName}</option>)}</select></label>
-          <label>Team colour<input type="color" defaultValue={tourTeams[0]?.colour ?? '#0F2F24'} /></label>
-        </div>
-        <div className="chip-list">{attendingPlayers.slice(0, 8).map((player, index) => <button className="pill" key={player.id}>{index % 2 === 0 ? '✓ ' : '+ '}{player.displayName}</button>)}</div>
-      </section>
+        {activeTab === 'Teams' ? <section className="card admin-panel"><p className="eyebrow">Current tour teams</p><h3>Teams and members</h3>{!currentTour ? <p>No current tour is available.</p> : <><form className="admin-form-grid" onSubmit={submitTeam}><label>Team name<input value={teamForm.name} onChange={(event) => setTeamForm({ ...teamForm, name: event.target.value })} /></label><label>Colour<input value={teamForm.colour} onChange={(event) => setTeamForm({ ...teamForm, colour: event.target.value })} /></label><label>Captain<select value={teamForm.captainPlayerId} onChange={(event) => setTeamForm({ ...teamForm, captainPlayerId: event.target.value })}><option value="">No captain</option>{activePlayers.map((player) => <option value={player.id} key={player.id}>{playerLabel(player)}</option>)}</select></label><label>Sort order<input value={teamForm.sortOrder} onChange={(event) => setTeamForm({ ...teamForm, sortOrder: event.target.value })} inputMode="numeric" /></label><SaveButton state={states.team} label={teamForm.id ? 'Save team' : 'Create team'} /></form><div className="admin-status-groups"><StatusGroup title="Attending but unassigned" players={attendingUnassigned} /><StatusGroup title="Not attending" players={notAttending} /></div><div className="admin-card-list">{adminData.tourTeams.length === 0 ? <p>No teams have been created for this tour yet.</p> : adminData.tourTeams.map((team) => <article className="admin-mini-card team-card" key={team.id}><div><strong>{team.name}</strong><span>{team.colour ?? 'Colour TBC'} · Sort {team.sortOrder}{team.captainPlayerId ? ` · Captain ${playerLabel(playersById.get(team.captainPlayerId))}` : ''}</span></div><button type="button" onClick={() => setTeamForm({ id: team.id, name: team.name, colour: team.colour ?? '', captainPlayerId: team.captainPlayerId ?? '', sortOrder: String(team.sortOrder) })}>Edit team</button><div className="admin-full-span"><p className="eyebrow">Members</p><div className="chip-list">{activePlayers.filter((player) => attendingPlayerIds.has(player.id)).map((player) => <button className={`pill ${teamMemberDrafts[team.id]?.includes(player.id) ? 'selected' : ''}`} type="button" onClick={() => toggleTeamMember(team.id, player.id)} key={player.id}>{playerLabel(player)}</button>)}</div><SaveButton state={states[`members-${team.id}`]} label="Save members" onClick={() => saveMembers(team)} /></div></article>)}</div></>}</section> : null}
 
-      <section id="rounds" className="admin-panel card">
-        <p className="eyebrow">Rounds</p>
-        <h3>Create/edit round</h3>
-        <div className="admin-form-grid">
-          <label>Round name<input defaultValue="Friday Opening Matches" /></label>
-          <label>Date<input type="date" defaultValue="2026-11-06" /></label>
-          <label>Course<input defaultValue="Amendoeira, Portugal" /></label>
-          <label>Format label<input defaultValue="Captain picks / format TBC" /></label>
-          <label>First tee time<input type="time" /></label>
-          <label>Status<select defaultValue="planned"><option>draft</option><option>planned</option><option>active</option><option>complete</option></select></label>
-        </div>
-        <div className="admin-list">{rounds.filter((round) => round.tourId === currentTourId).map((round) => <p key={round.id}>{formatDate(round.roundDate)} · {round.name} · {round.formatLabel} · {round.status}</p>)}</div>
-      </section>
+        {activeTab === 'Coming next' ? <section className="card admin-panel"><p className="eyebrow">Coming next</p><h3>Locked for later PRs</h3><div className="workflow-list"><span>Rounds & tee times</span><span>Matches & pairings</span><span>Match results</span><span>Bet Punto markets</span><span>Scorecard summaries</span></div></section> : null}
+      </> : null}
+    </> : <section className="card admin-locked-panel"><p className="eyebrow">Locked</p><h3>Admin tools are hidden until a valid PIN session is active.</h3><p>Public users can open this route, but setup management stays behind the shared admin PIN.</p></section>}
+  </div>;
+}
 
-      <section id="matches" className="admin-panel card">
-        <p className="eyebrow">Matches</p>
-        <h3>Create/edit match</h3>
-        <div className="admin-form-grid">
-          <label>Round<select defaultValue="r1">{rounds.filter((round) => round.tourId === currentTourId).map((round) => <option key={round.id} value={round.id}>{round.name}</option>)}</select></label>
-          <label>Format<select defaultValue="better_ball"><option value="singles">singles</option><option value="better_ball">better_ball</option><option value="scramble">scramble</option><option value="custom">custom</option></select></label>
-          <label>Side A team<select defaultValue="team-oaks">{tourTeams.filter((team) => team.tourId === currentTourId).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
-          <label>Side B team<select defaultValue="team-heath">{tourTeams.filter((team) => team.tourId === currentTourId).map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select></label>
-          <label>Tee time<input type="time" /></label>
-          <label>Status<select defaultValue="draft"><option>draft</option><option>planned</option><option>active</option><option>complete</option></select></label>
-        </div>
-        <div className="admin-two-column">
-          <div><h4>Side A players multi-select</h4><div className="chip-list">{attendingPlayers.slice(0, 8).map((player) => <button className="pill" key={player.id}>+ {player.displayName}</button>)}</div></div>
-          <div><h4>Side B players multi-select</h4><div className="chip-list">{attendingPlayers.slice(8, 16).map((player) => <button className="pill" key={player.id}>+ {player.displayName}</button>)}</div></div>
-        </div>
-        <label className="publish-toggle"><input type="checkbox" /> Published for public viewing</label>
-      </section>
+function Stat({ label, value }: { label: string; value: number }) {
+  return <div className="stat-card"><span>{label}</span><strong>{value}</strong></div>;
+}
 
-      <section id="results" className="admin-panel card">
-        <p className="eyebrow">Results</p>
-        <h3>Enter result</h3>
-        <div className="admin-form-grid">
-          <label>Select match<select defaultValue="m1">{matches.filter((match) => match.tourId === currentTourId).map((match) => <option key={match.id} value={match.id}>Match {match.matchNumber} · {formatMatchFormat(match.format)}</option>)}</select></label>
-          <label>Outcome<select defaultValue="A"><option value="A">Side A win</option><option value="B">Side B win</option><option value="halved">Halved</option><option value="void">Void</option></select></label>
-          <label>Points side A<input type="number" step="0.5" defaultValue="1" /></label>
-          <label>Points side B<input type="number" step="0.5" defaultValue="0" /></label>
-          <label>Result text<input defaultValue="2&1" /></label>
-        </div>
-      </section>
+function SaveButton({ state, label, onClick }: { state?: SaveState; label: string; onClick?: () => void }) {
+  return <div className="admin-save-row"><button type={onClick ? 'button' : 'submit'} onClick={onClick} disabled={state?.saving}>{state?.saving ? 'Saving…' : label}</button>{state?.error ? <p className="form-error">{state.error}</p> : null}{state?.success ? <p className="form-success">{state.success}</p> : null}</div>;
+}
 
-      <section id="betting-markets" className="admin-panel card">
-        <p className="eyebrow">Betting Markets</p>
-        <h3>Create betting market</h3>
-        <div className="admin-form-grid">
-          <label>Market type<select defaultValue="match_winner"><option>match_winner</option><option>player_performance</option><option>team_result</option><option>over_under</option><option>special</option><option>custom</option></select></label>
-          <label>Title<input defaultValue="Who wins the opening match?" /></label>
-          <label>Linked round optional<select><option value="">None</option>{rounds.filter((round) => round.tourId === currentTourId).map((round) => <option key={round.id}>{round.name}</option>)}</select></label>
-          <label>Linked match optional<select><option value="">None</option>{matches.filter((match) => match.tourId === currentTourId).map((match) => <option key={match.id}>Match {match.matchNumber}</option>)}</select></label>
-          <label>Options<textarea defaultValue={'Side A\nSide B\nHalved'} /></label>
-          <label>Status<select defaultValue="open"><option>open</option><option>closed</option><option>settled</option><option>void</option></select></label>
-        </div>
-        <div className="admin-list">{betMarkets.map((market) => <p key={market.id}>{market.title} · {market.status}</p>)}</div>
-      </section>
-
-      <section id="historic-import" className="admin-panel card">
-        <p className="eyebrow">Historic Import</p>
-        <h3>Legacy stats staging</h3>
-        <p>Placeholder for importing previous tour summaries into permanent player records before they are merged into all-time stats.</p>
-        <textarea defaultValue="Player,Matches,Wins,Draws,Losses,Points" />
-      </section>
-        </>
-      ) : (
-        <section className="card admin-locked-panel">
-          <h3>Admin tools locked</h3>
-          <p>The player, tour setup, match, result and betting-management drafts appear after an admin session is created. Public pages remain available without an admin session.</p>
-        </section>
-      )}
-    </div>
-  );
+function StatusGroup({ title, players }: { title: string; players: Player[] }) {
+  return <div><p className="eyebrow">{title}</p><div className="chip-list">{players.length === 0 ? <span className="pill">None</span> : players.map((player) => <span className="pill" key={player.id}>{playerLabel(player)}</span>)}</div></div>;
 }
