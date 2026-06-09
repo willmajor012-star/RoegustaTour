@@ -6,6 +6,7 @@ export type FunctionEvent = {
   httpMethod: string;
   body: string | null;
   headers?: HeadersMap;
+  queryStringParameters?: Record<string, string | undefined> | null;
 };
 
 export type FunctionResponse = {

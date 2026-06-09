@@ -21,10 +21,11 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
 
   if (playerIds.length > 0) {
     const [players, attendingPlayers] = await Promise.all([
-      runRows(supabase.from('players').select('id').in('id', playerIds), 'find member players'),
+      runRows(supabase.from('players').select('id, active').in('id', playerIds), 'find member players'),
       runRows(supabase.from('tour_players').select('player_id').eq('tour_id', tourId).eq('attending', true).in('player_id', playerIds), 'find attending players'),
     ]);
     if (players.length !== playerIds.length) return badRequest('All selected players must exist.');
+    if (players.some((player) => player.active === false)) return badRequest('Inactive players cannot be assigned to a team.');
     if (attendingPlayers.length !== playerIds.length) return badRequest('Only attending players can be assigned to a team.');
   }
 
