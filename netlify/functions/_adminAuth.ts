@@ -24,10 +24,17 @@ const SESSION_TTL_MS = 1000 * 60 * 60 * 8;
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
+export class AdminConfigurationError extends Error {
+  constructor(message = 'Admin login is not configured.') {
+    super(message);
+    this.name = 'AdminConfigurationError';
+  }
+}
+
 function getEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
-    throw new Error(`Missing required admin environment variable: ${name}`);
+    throw new AdminConfigurationError(`Missing required admin environment variable: ${name}`);
   }
 
   return value;
@@ -128,11 +135,18 @@ async function hmacSignature(value: string): Promise<string> {
 }
 
 function normalizePinHash(value: string): string {
-  return value.startsWith('sha256:') ? value.slice('sha256:'.length) : value;
+  let normalized = value.trim();
+  if (normalized.toLowerCase().startsWith('sha256:')) {
+    normalized = normalized.slice('sha256:'.length);
+  }
+
+  const [digest = ''] = normalized.trim().split(/\s+/u);
+
+  return digest.toLowerCase();
 }
 
 export async function verifyAdminPin(pin: string): Promise<boolean> {
-  const expectedHash = normalizePinHash(getEnv('ADMIN_PIN_HASH')).toLowerCase();
+  const expectedHash = normalizePinHash(getEnv('ADMIN_PIN_HASH'));
   const receivedHash = await sha256Hex(pin);
 
   return constantTimeEqual(receivedHash, expectedHash);

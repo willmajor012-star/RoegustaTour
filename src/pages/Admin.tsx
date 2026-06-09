@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { betMarkets, currentTourId, matches, players, rounds, tourTeams, tours } from '../data/mockData';
-import { clearStoredAdminSession, getStoredAdminSession, loginWithAdminPin, storeAdminSession, type StoredAdminSession } from '../lib/adminSession';
+import { checkStoredAdminSession, clearStoredAdminSession, getStoredAdminSession, loginWithAdminPin, storeAdminSession, type StoredAdminSession } from '../lib/adminSession';
 import { formatDate, formatMatchFormat } from '../lib/formatting';
 
 const sections = ['Player Library', 'Tour Setup', 'Teams', 'Rounds', 'Matches', 'Results', 'Betting Markets', 'Historic Import'];
@@ -8,11 +8,28 @@ const activeTour = tours.find((tour) => tour.id === currentTourId)!;
 const attendingPlayers = players.slice(0, 24);
 
 export function Admin() {
-  const [storedSession, setStoredSession] = useState<StoredAdminSession | null>(() => getStoredAdminSession());
-  const [actorLabel, setActorLabel] = useState(storedSession?.session.actorLabel ?? '');
+  const [storedSession, setStoredSession] = useState<StoredAdminSession | null>(null);
+  const [actorLabel, setActorLabel] = useState(() => getStoredAdminSession()?.session.actorLabel ?? '');
   const [pin, setPin] = useState('');
   const [loginState, setLoginState] = useState<'idle' | 'submitting'>('idle');
   const [loginError, setLoginError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    checkStoredAdminSession().then((checkedSession) => {
+      if (!isCurrent) return;
+
+      setStoredSession(checkedSession);
+      if (checkedSession) {
+        setActorLabel(checkedSession.session.actorLabel);
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

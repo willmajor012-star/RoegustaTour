@@ -1,4 +1,4 @@
-import { createAdminSession, jsonResponse, optionsResponse, parseJsonBody, verifyAdminPin, type FunctionEvent, type FunctionResponse } from './_adminAuth';
+import { AdminConfigurationError, createAdminSession, jsonResponse, optionsResponse, parseJsonBody, verifyAdminPin, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -30,9 +30,18 @@ export const handler: Handler = async (event) => {
       session,
     });
   } catch (error) {
+    console.error('Admin login failed', error);
+
+    if (error instanceof AdminConfigurationError) {
+      return jsonResponse(503, {
+        error: 'admin_not_configured',
+        message: 'Admin login is not configured.',
+      });
+    }
+
     return jsonResponse(500, {
       error: 'admin_login_failed',
-      message: error instanceof Error ? error.message : 'Unable to create an admin session.',
+      message: 'Unable to create an admin session.',
     });
   }
 };

@@ -45,6 +45,40 @@ export function getAdminAuthorizationHeaders(): Record<string, string> {
   return storedSession ? { authorization: `Bearer ${storedSession.token}` } : {};
 }
 
+export async function checkStoredAdminSession(): Promise<StoredAdminSession | null> {
+  const storedSession = getStoredAdminSession();
+  if (!storedSession) return null;
+
+  try {
+    const response = await fetch('/.netlify/functions/admin-session', {
+      method: 'GET',
+      headers: { authorization: `Bearer ${storedSession.token}` },
+    });
+
+    if (!response.ok) {
+      clearStoredAdminSession();
+      return null;
+    }
+
+    const payload = await response.json() as { session?: AdminSession };
+    if (!payload.session?.expiresAt) {
+      clearStoredAdminSession();
+      return null;
+    }
+
+    const checkedSession = {
+      token: storedSession.token,
+      session: payload.session,
+    };
+    storeAdminSession(checkedSession);
+
+    return checkedSession;
+  } catch {
+    clearStoredAdminSession();
+    return null;
+  }
+}
+
 export async function loginWithAdminPin(pin: string, actorLabel: string): Promise<StoredAdminSession> {
   const response = await fetch('/.netlify/functions/admin-login', {
     method: 'POST',

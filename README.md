@@ -73,7 +73,7 @@ See `.env.example`:
 
 - `SUPABASE_URL`
 - `SUPABASE_SECRET_KEY`
-- `ADMIN_PIN_HASH` — SHA-256 hash of the shared admin PIN, optionally prefixed with `sha256:`. Generate one with `printf %s "1234" | shasum -a 256`.
+- `ADMIN_PIN_HASH` — SHA-256 hash of the shared admin PIN, optionally prefixed with `sha256:`. Generate one with `printf %s "1234" | shasum -a 256 | awk '{print $1}'`.
 - `ADMIN_SESSION_SECRET` — long random value used to sign short-lived admin bearer tokens.
 
 ## Next development phases
