@@ -1,4 +1,6 @@
+import { useEffect, useState, type FormEvent } from 'react';
 import { betMarkets, currentTourId, matches, players, rounds, tourTeams, tours } from '../data/mockData';
+import { checkStoredAdminSession, clearStoredAdminSession, getStoredAdminSession, loginWithAdminPin, storeAdminSession, type StoredAdminSession } from '../lib/adminSession';
 import { formatDate, formatMatchFormat } from '../lib/formatting';
 
 const sections = ['Player Library', 'Tour Setup', 'Teams', 'Rounds', 'Matches', 'Results', 'Betting Markets', 'Historic Import'];
@@ -6,6 +8,54 @@ const activeTour = tours.find((tour) => tour.id === currentTourId)!;
 const attendingPlayers = players.slice(0, 24);
 
 export function Admin() {
+  const [storedSession, setStoredSession] = useState<StoredAdminSession | null>(null);
+  const [actorLabel, setActorLabel] = useState(() => getStoredAdminSession()?.session.actorLabel ?? '');
+  const [pin, setPin] = useState('');
+  const [loginState, setLoginState] = useState<'idle' | 'submitting'>('idle');
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    checkStoredAdminSession().then((checkedSession) => {
+      if (!isCurrent) return;
+
+      setStoredSession(checkedSession);
+      if (checkedSession) {
+        setActorLabel(checkedSession.session.actorLabel);
+      }
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoginState('submitting');
+    setLoginError(null);
+
+    try {
+      const nextSession = await loginWithAdminPin(pin, actorLabel);
+      storeAdminSession(nextSession);
+      setStoredSession(nextSession);
+      setActorLabel(nextSession.session.actorLabel);
+      setPin('');
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'Unable to create an admin session.');
+    } finally {
+      setLoginState('idle');
+    }
+  };
+
+  const handleLogout = () => {
+    clearStoredAdminSession();
+    setStoredSession(null);
+  };
+
+  const expiresAtLabel = storedSession ? new Date(storedSession.session.expiresAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : null;
+
   return (
     <div className="page-stack admin-page">
       <section className="page-title">
@@ -14,6 +64,26 @@ export function Admin() {
         <p>This mock/local admin UI is structured for the live workflow: captains can make picks the night before, then an admin can enter rounds, tee times, matches, betting markets and results in the app without touching code. Supabase-backed persistence can be added next.</p>
       </section>
 
+      <section className="card admin-login-panel">
+        <div>
+          <p className="eyebrow">Admin PIN session</p>
+          <h3>{storedSession ? `Signed in as ${storedSession.session.actorLabel}` : 'Sign in to unlock admin writes'}</h3>
+          <p>{storedSession ? `This browser has a short-lived admin session until ${expiresAtLabel}. Server write functions still verify the bearer token before accepting changes.` : 'Enter the shared admin PIN to create a short-lived browser session. The PIN is only posted to the Netlify login function and is not stored in local storage.'}</p>
+        </div>
+        {storedSession ? (
+          <button className="admin-secondary-button" type="button" onClick={handleLogout}>Log out</button>
+        ) : (
+          <form className="admin-login-form" onSubmit={handleLogin}>
+            <label>Admin label<input value={actorLabel} onChange={(event) => setActorLabel(event.target.value)} placeholder="Captain / admin name" /></label>
+            <label>Shared PIN<input value={pin} onChange={(event) => setPin(event.target.value)} inputMode="numeric" type="password" autoComplete="current-password" /></label>
+            {loginError ? <p className="form-error">{loginError}</p> : null}
+            <button type="submit" disabled={loginState === 'submitting'}>{loginState === 'submitting' ? 'Signing in…' : 'Create admin session'}</button>
+          </form>
+        )}
+      </section>
+
+      {storedSession ? (
+        <>
       <nav className="admin-section-nav" aria-label="Admin sections">
         {sections.map((section) => <a className="pill" href={`#${section.toLowerCase().replace(/ /g, '-')}`} key={section}>{section}</a>)}
       </nav>
@@ -130,6 +200,13 @@ export function Admin() {
         <p>Placeholder for importing previous tour summaries into permanent player records before they are merged into all-time stats.</p>
         <textarea defaultValue="Player,Matches,Wins,Draws,Losses,Points" />
       </section>
+        </>
+      ) : (
+        <section className="card admin-locked-panel">
+          <h3>Admin tools locked</h3>
+          <p>The player, tour setup, match, result and betting-management drafts appear after an admin session is created. Public pages remain available without an admin session.</p>
+        </section>
+      )}
     </div>
   );
 }

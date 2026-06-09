@@ -65,22 +65,21 @@ Betting is a social tour log, not a bookmaker. There are no accounts, wallets, t
 
 ## Future Supabase integration
 
-Do not expose `SUPABASE_SERVICE_ROLE_KEY` in browser code. Future write operations should happen server-side through Netlify Functions. Admin functions should verify a shared PIN/session token, perform service-role writes and record changes in `audit_log`.
+Do not expose `SUPABASE_SECRET_KEY` in browser code. Future write operations should happen server-side through Netlify Functions. Admin functions verify a shared PIN/session token before any write placeholder is accepted. Future write handlers should continue to perform service-role writes server-side and record changes in `audit_log`.
 
 ## Environment variables
 
 See `.env.example`:
 
 - `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `ADMIN_PIN_HASH`
-- `ADMIN_SESSION_SECRET`
+- `SUPABASE_SECRET_KEY`
+- `ADMIN_PIN_HASH` — SHA-256 hash of the shared admin PIN, optionally prefixed with `sha256:`. Generate one with `printf %s "1234" | shasum -a 256 | awk '{print $1}'`.
+- `ADMIN_SESSION_SECRET` — long random value used to sign short-lived admin bearer tokens.
 
 ## Next development phases
 
 1. Replace mock imports in Netlify Functions with Supabase reads.
-2. Add admin PIN verification and short-lived admin sessions.
+2. Replace admin write placeholders with Supabase mutations behind the existing admin session guard.
 3. Build admin forms for players, tours, teams, rounds, matches and results.
 4. Persist public bet submissions.
 5. Add row-level security policies and audit logging.

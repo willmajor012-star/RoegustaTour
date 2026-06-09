@@ -1,11 +1,47 @@
-type Handler = (event: { httpMethod: string; body: string | null }) => Promise<{ statusCode: number; body: string }>;
+import { AdminConfigurationError, createAdminSession, jsonResponse, optionsResponse, parseJsonBody, verifyAdminPin, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 
-export const handler: Handler = async (event) => ({
-  statusCode: 202,
-  body: JSON.stringify({
-    functionName: 'admin-login',
-    method: event.httpMethod,
-    placeholder: true,
-    todo: 'TODO: verify shared admin PIN/session, perform Supabase write with service role key server-side only, and insert audit_log row.'
-  }),
-});
+type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
+
+export const handler: Handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') return optionsResponse();
+
+  if (event.httpMethod !== 'POST') {
+    return jsonResponse(405, { error: 'method_not_allowed', message: 'Use POST to create an admin session.' }, { allow: 'POST, OPTIONS' });
+  }
+
+  try {
+    const body = parseJsonBody(event);
+    const pin = typeof body.pin === 'string' ? body.pin : '';
+    const actorLabel = typeof body.actorLabel === 'string' ? body.actorLabel : 'Roegusta admin';
+
+    if (!pin) {
+      return jsonResponse(400, { error: 'pin_required', message: 'Enter the shared admin PIN.' });
+    }
+
+    const pinIsValid = await verifyAdminPin(pin);
+    if (!pinIsValid) {
+      return jsonResponse(401, { error: 'invalid_pin', message: 'The admin PIN was not recognised.' });
+    }
+
+    const { token, session } = await createAdminSession(actorLabel);
+
+    return jsonResponse(200, {
+      token,
+      session,
+    });
+  } catch (error) {
+    console.error('Admin login failed', error);
+
+    if (error instanceof AdminConfigurationError) {
+      return jsonResponse(503, {
+        error: 'admin_not_configured',
+        message: 'Admin login is not configured.',
+      });
+    }
+
+    return jsonResponse(500, {
+      error: 'admin_login_failed',
+      message: 'Unable to create an admin session.',
+    });
+  }
+};
