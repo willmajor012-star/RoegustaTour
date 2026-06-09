@@ -53,9 +53,9 @@ export function BetMarketCard({ market, options, bets, bettorName, onSubmit }: P
             Comment <span>(optional)</span>
             <input value={comment} placeholder="Add a note for the group" onChange={(event) => setComment(event.target.value)} />
           </label>
-          <button disabled={!bettorName.trim() || parsedStake === null} type="submit">Submit social pick</button>
+          <button disabled={!bettorName.trim() || parsedStake === null} type="submit">Submit Bet Punto pick</button>
           {!bettorName.trim() && <small>Enter your name above before submitting.</small>}
-          <small>No wallet, no payment handling, no money transfer — this app only logs bets.</small>
+          <small>No wallet, no payment handling, no money transfer — this app only logs Bet Punto picks.</small>
         </form>
       ) : (
         <div className="option-list">{options.map((option) => <span className="pill" key={option.id}>{option.label}</span>)}</div>

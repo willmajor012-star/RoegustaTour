@@ -34,16 +34,16 @@ export function Betting() {
     <div className="page-stack">
       <section className="page-title">
         <p className="eyebrow">Visible voting and stake log</p>
-        <h2>Betting</h2>
-        <p>No wallet, no payment handling and no money transfer. This is only a social tour betting/voting log.</p>
+        <h2>Bet Punto</h2>
+        <p>No wallet, no payment handling and no money transfer. This is only a Bet Punto voting and stake log.</p>
       </section>
-      {loading && <p className="card">Loading betting markets…</p>}
+      {loading && <p className="card">Loading Bet Punto markets…</p>}
       {error && <p className="card form-error">{error}</p>}
       <label className="name-picker">
         Your name
         <input value={bettorName} placeholder="Select or type your name" onChange={(event) => saveName(event.target.value)} />
       </label>
-      {!loading && !error && activeData.betMarkets.length === 0 && <p className="card">Betting markets will appear once they are added.</p>}
+      {!loading && !error && activeData.betMarkets.length === 0 && <p className="card">Bet Punto markets will appear once they are added.</p>}
       {(['open', 'closed', 'settled'] as const).map((status) => {
         const markets = activeData.betMarkets.filter((market) => market.status === status);
         if (markets.length === 0) return null;
