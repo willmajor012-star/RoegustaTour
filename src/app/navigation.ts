@@ -3,6 +3,6 @@ export const navigationItems = [
   { path: '/score', label: 'Score', icon: '♕' },
   { path: '/matches', label: 'Matches', icon: '◷' },
   { path: '/stats', label: 'Stats', icon: '↗' },
-  { path: '/betting', label: 'Betting', icon: '◇' },
+  { path: '/betting', label: 'Bet Punto', icon: '◇' },
   { path: '/info', label: 'Info', icon: 'i' },
 ];

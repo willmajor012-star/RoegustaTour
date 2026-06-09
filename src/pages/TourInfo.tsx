@@ -17,7 +17,7 @@ export function TourInfo() {
     <section className="card"><h3>Handbook</h3>{activeData.handbookSections.length === 0 ? <p>Tour handbook details will appear once added.</p> : activeData.handbookSections.map((section) => <article key={section.id}><h4>{section.title}</h4>{section.body && <p>{section.body}</p>}</article>)}</section>
     <section className="card"><h3>Itinerary</h3>{activeData.itineraryItems.length === 0 ? <p>Tour handbook details will appear once added.</p> : <ul>{activeData.itineraryItems.map((item) => <li key={item.id}><strong>{item.dayLabel ?? formatDate(item.itemDate)} {item.timeLabel ? `· ${item.timeLabel}` : ''}</strong>: {item.activity}{item.location ? ` · ${item.location}` : ''}{item.notes ? ` — ${item.notes}` : ''}{item.isPlaceholder ? ' (TBC)' : ''}</li>)}</ul>}</section>
     {activeData.teamDayKit.length > 0 && <section className="card"><h3>Team kit</h3>{activeData.teamDayKit.map((kit) => <p key={kit.id}>{formatDate(kit.kitDate)} · {activeData.tourTeams.find((team) => team.id === kit.teamId)?.name ?? 'Team TBC'} · {kit.colourLabel}</p>)}</section>}
-    <section className="card"><h3>Rules</h3><p>One match result is entered by admin. Team score and individual records are derived automatically from completed matches.</p><p>Betting markets are a lightweight visible log only: no payments, wallets or bookmaker functionality.</p></section>
+    <section className="card"><h3>Rules</h3><p>One match result is entered by admin. Team score and individual records are derived automatically from completed matches.</p><p>Bet Punto markets are a lightweight visible log only: no payments, wallets or bookmaker functionality.</p></section>
     <footer className="subtle-admin-link"><a href="/admin">Admin</a></footer>
   </div>;
 }
