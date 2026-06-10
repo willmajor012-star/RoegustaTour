@@ -4,7 +4,7 @@ import { Scoreboard } from '../components/Scoreboard';
 import { formatPoints, formatShortDate } from '../lib/formatting';
 import { fetchPublicBetMarkets, fetchPublicMatches, fetchPublicScore, fetchPublicSummary, type PublicBetMarketsResponse, type PublicMatchesResponse, type PublicScoreResponse, type PublicSummaryResponse } from '../lib/publicApi';
 import type { Match, TeamScoreRow, TourTeam } from '../lib/types';
-import { formatRoundDisplayName, formatTourDisplayName, getScheduledDate, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
+import { formatRoundDisplayName, formatTourDisplayName, getDateOnlyScheduledDate, getScheduledDate, getScheduleSortTime, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
 import { usePublicData } from '../lib/usePublicData';
 
 type DashboardData = {
@@ -31,8 +31,8 @@ async function fetchDashboardData(): Promise<DashboardData> {
 function countdownParts(startDate?: string, endDate?: string, status?: string) {
   if (!startDate) return { state: 'Tour date TBC' };
   const now = new Date();
-  const start = getScheduledDate(startDate);
-  const end = getScheduledDate(endDate, '23:59');
+  const start = getDateOnlyScheduledDate(startDate);
+  const end = getDateOnlyScheduledDate(endDate, '23:59:59');
   if (!start) return { state: 'Tour date TBC' };
   if (end && now > end && (status === 'complete' || status === 'archived')) return { state: 'Tour complete' };
   if (now >= start && (!end || now <= end)) return { state: 'Tour underway' };
@@ -68,7 +68,7 @@ export function Dashboard() {
   const scheduled = visibleMatches
     .filter((match) => match.status !== 'complete')
     .map((match) => ({ match, round: roundById.get(match.roundId) }))
-    .sort((a, b) => (getScheduledDate(a.round?.roundDate, a.match.teeTime ?? a.round?.teeTime)?.getTime() ?? Number.MAX_SAFE_INTEGER) - (getScheduledDate(b.round?.roundDate, b.match.teeTime ?? b.round?.teeTime)?.getTime() ?? Number.MAX_SAFE_INTEGER) || a.match.matchNumber - b.match.matchNumber);
+    .sort((a, b) => getScheduleSortTime(a.round?.roundDate, a.match.teeTime ?? a.round?.teeTime) - getScheduleSortTime(b.round?.roundDate, b.match.teeTime ?? b.round?.teeTime) || a.match.matchNumber - b.match.matchNumber);
   const nextTee = scheduled[0];
   const latestResult = [...visibleMatches].filter((match) => match.status === 'complete').sort((a, b) => (getScheduledDate(roundById.get(b.roundId)?.roundDate, b.teeTime)?.getTime() ?? 0) - (getScheduledDate(roundById.get(a.roundId)?.roundDate, a.teeTime)?.getTime() ?? 0) || b.matchNumber - a.matchNumber)[0] ?? activeData.summary.recentResults[0];
   const countdown = countdownParts(tour?.startDate, tour?.endDate, tour?.status);
@@ -110,7 +110,7 @@ export function Dashboard() {
         <p className="eyebrow">Next tee</p>
         <h3>{nextTee?.round ? formatRoundDisplayName(nextTee.round) : 'Next tee TBC'}</h3>
         {nextTee?.round ? <p>{nextTee.round.courseName ?? 'Course TBC'} · {formatShortDate(nextTee.round.roundDate)}</p> : <p>Next tee TBC</p>}
-        <div className="tee-time-lockup"><strong>{normalizeTeeTime(nextTee?.match.teeTime) ?? normalizeTeeTime(nextTee?.round?.teeTime) ?? nextTee?.match.teeTime ?? nextTee?.round?.teeTime ?? 'TBC'}</strong><span className="card-chevron" aria-hidden="true">›</span></div>
+        <div className="tee-time-lockup"><strong>{normalizeTeeTime(nextTee?.match.teeTime) ?? normalizeTeeTime(nextTee?.round?.teeTime) ?? 'TBC'}</strong><span className="card-chevron" aria-hidden="true">›</span></div>
       </a>
     </section>
 

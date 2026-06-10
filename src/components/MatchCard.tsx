@@ -16,7 +16,7 @@ export function MatchCard({ match, participants, players, teams }: Props) {
   const teamName = (teamId: string, fallback: string) => teamFor(teamId)?.name ?? fallback;
   const sideAPlayers = participants.filter((participant) => participant.side === 'A').map((participant) => playerFor(participant.playerId)).filter((player): player is Player => Boolean(player));
   const sideBPlayers = participants.filter((participant) => participant.side === 'B').map((participant) => playerFor(participant.playerId)).filter((player): player is Player => Boolean(player));
-  const tee = normalizeTeeTime(match.teeTime) ?? match.teeTime;
+  const tee = normalizeTeeTime(match.teeTime);
 
   return (
     <article className={`match-card result-${match.winningSide ?? match.status}`}>

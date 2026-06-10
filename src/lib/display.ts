@@ -32,7 +32,7 @@ export function formatTourDates(tour?: Pick<Tour, 'startDate' | 'endDate'>) {
 }
 
 export function formatRoundMeta(round?: Round, format?: MatchFormat) {
-  const parts = [format ? formatMatchFormat(format) : cleanText(round?.formatLabel), cleanText(round?.courseName), formatShortDate(round?.roundDate), cleanText(round?.teeTime)].filter(Boolean);
+  const parts = [format ? formatMatchFormat(format) : cleanText(round?.formatLabel), cleanText(round?.courseName), formatShortDate(round?.roundDate), normalizeTeeTime(round?.teeTime)].filter(Boolean);
   return parts.join(' · ') || 'Details TBC';
 }
 
@@ -43,16 +43,33 @@ export function formatMatchDisplayLabel(match: Match, round?: Round) {
 }
 
 export function normalizeTeeTime(value?: string | null) {
-  const match = value?.trim().match(/^(\d{1,2}):([0-5]\d)$/);
+  const text = value?.trim();
+  if (!text) return undefined;
+  const match = text.match(/^(\d{1,2}):([0-5]\d)(?::([0-5]\d))?$/);
   if (!match) return undefined;
   const hour = Number(match[1]);
-  if (!Number.isInteger(hour) || hour < 0 || hour > 23) return undefined;
-  return `${String(hour).padStart(2, '0')}:${match[2]}`;
+  const minute = Number(match[2]);
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23 || !Number.isInteger(minute) || minute < 0 || minute > 59) return undefined;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+export function getDateOnlyScheduledDate(date?: string, time = '00:00') {
+  if (!date) return undefined;
+  const value = new Date(`${date}T${time}`);
+  return Number.isNaN(value.getTime()) ? undefined : value;
 }
 
 export function getScheduledDate(date?: string, teeTime?: string | null) {
   if (!date) return undefined;
-  const normalized = normalizeTeeTime(teeTime) ?? '00:00';
+  const normalized = normalizeTeeTime(teeTime);
+  if (!normalized) return undefined;
   const value = new Date(`${date}T${normalized}`);
   return Number.isNaN(value.getTime()) ? undefined : value;
+}
+
+export function getScheduleSortTime(date?: string, teeTime?: string | null) {
+  const scheduled = getScheduledDate(date, teeTime);
+  if (scheduled) return scheduled.getTime();
+  const endOfDay = getDateOnlyScheduledDate(date, '23:59:59');
+  return endOfDay?.getTime() ?? Number.MAX_SAFE_INTEGER;
 }

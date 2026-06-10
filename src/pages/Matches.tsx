@@ -39,7 +39,7 @@ export function Matches() {
       const roundFormats = [...new Set(roundMatches.map((match) => formatMatchFormat(match.format)))].join(' / ');
       return <section className="round-results card" key={round.id}>
         <div className="round-results-header">
-          <div><p className="eyebrow">Round {round.roundNumber || index + 1}</p><h3>{formatRoundDisplayName(round, index)}</h3><p>{round.courseName ?? 'Course TBC'} · {formatShortDate(round.roundDate)}</p><span className="round-format-label">{round.formatLabel ?? roundFormats}{(normalizeTeeTime(round.teeTime) ?? round.teeTime) ? ` · ${normalizeTeeTime(round.teeTime) ?? round.teeTime}` : ''}</span></div>
+          <div><p className="eyebrow">Round {round.roundNumber || index + 1}</p><h3>{formatRoundDisplayName(round, index)}</h3><p>{round.courseName ?? 'Course TBC'} · {formatShortDate(round.roundDate)}</p><span className="round-format-label">{round.formatLabel ?? roundFormats}{normalizeTeeTime(round.teeTime) ? ` · ${normalizeTeeTime(round.teeTime)}` : ''}</span></div>
           {complete.length > 0 && <div className="round-score"><span>Round score</span><strong>{formatPoints(sideAPoints)}–{formatPoints(sideBPoints)}</strong></div>}
         </div>
         <div className="round-match-list">{roundMatches.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.players} teams={activeData.tourTeams} />)}</div>
