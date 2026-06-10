@@ -148,3 +148,51 @@ main { padding: 14px; }
   .player-token b { display: none; }
   .result-chip { min-width: 56px; max-width: 68px; font-size: .7rem; padding: 7px 5px; }
 }
+
+/* Final public IA correction */
+.brand-header { padding: 14px 16px 16px; min-height: 0; }
+.brand-lockup { gap: 12px; }
+.brand-logo-roundel { width: 62px; height: 62px; flex: 0 0 62px; padding: 8px; border-radius: 50%; overflow: hidden; background: var(--rt-cream); border: 2px solid var(--rt-gold); }
+.brand-logo-roundel .brand-logo, .brand-logo { width: 100%; height: 100%; object-fit: contain; display: block; filter: none; }
+.brand-copy h1 { font-size: clamp(1.45rem, 5vw, 2.2rem); line-height: 1; margin: .05rem 0; }
+.brand-copy .eyebrow, .brand-location, .brand-dates { margin: .1rem 0; }
+.brand-location, .brand-dates { font-size: .9rem; }
+.page-title, .premium-title { padding: 12px 14px; }
+.page-title p:not(.eyebrow), .premium-title p:not(.eyebrow) { display: none; }
+.card, .stat-card { color: var(--rt-charcoal); }
+.countdown-card { display: grid; gap: 4px; padding: 14px 16px; }
+.countdown-card strong { font-family: 'Libre Baskerville', Georgia, serif; font-size: clamp(1.65rem, 8vw, 3rem); color: var(--rt-green-900); line-height: 1; }
+.countdown-card span { color: var(--rt-ink-muted, #6f6a5d); font-weight: 700; }
+.score-feature.card { background: linear-gradient(180deg, rgba(255,250,240,.98), rgba(245,241,232,.95)); border: 1px solid rgba(184,154,93,.38); box-shadow: 0 18px 48px rgba(15,47,36,.14); border-radius: 22px; padding: 12px; }
+.score-feature>.section-heading { padding: 0; }
+.score-feature .scoreboard { border-radius: 18px; padding: 14px; }
+.victory-card, .next-tee-card, .latest-result-card { position: relative; }
+.victory-card h3, .next-tee-card h3 { margin: .2rem 0; color: var(--rt-green-900); font-size: 1.5rem; }
+.quick-link-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.quick-link-grid .card { min-height: 0; padding: 13px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.quick-link-grid .card strong { color: var(--rt-green-900); }
+.quick-link-grid .card small { color: var(--rt-ink-muted, #6f6a5d); font-weight: 800; }
+.quick-link-grid.compact { margin-top: 12px; }
+.latest-result-card .match-card { margin-top: 8px; }
+.round-results.card { padding: 12px; border-radius: 18px; }
+.round-match-list { display: grid; gap: 8px; }
+.match-card .card-meta { gap: 6px; }
+.match-card .card-meta span:nth-child(2) { display: none; }
+.team-member-row { display: grid; grid-template-columns: auto minmax(0,1fr) auto; }
+.team-member-flags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; color: var(--rt-ink-muted, #6f6a5d); font-size: .78rem; font-weight: 800; }
+.unassigned-players-card { border-top: 4px solid var(--rt-gold); }
+.stats-page .page-title { background: transparent; border: 0; box-shadow: none; padding-bottom: 0; }
+.stats-page .page-title h2, .stats-section-title h3 { color: var(--rt-green-900); }
+.stats-section-title { margin-bottom: 8px; }
+.stats-section-title span { color: var(--rt-ink-muted, #6f6a5d); font-weight: 800; }
+.stats-panel { display: grid; gap: 10px; }
+.players-layout { display: block; }
+.player-profiles-title { align-items: end; }
+.player-sort-control { display: grid; gap: 6px; min-width: min(100%, 260px); color: var(--rt-green-900); font-weight: 900; }
+.player-sort-control span { font-size: .78rem; }
+.player-card-row.expanded .leaderboard-card { border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; margin-bottom: 0; }
+.player-card-row .player-profile { border-top-left-radius: 6px; border-top-right-radius: 6px; border-top: 0; margin-top: -12px; box-shadow: 0 12px 28px rgba(15,47,36,.1); }
+.h2h-grid { display: grid; gap: 10px; }
+.legacy-players-card p { margin-top: 0; color: var(--rt-charcoal); }
+@media (min-width: 760px) { .quick-link-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } .h2h-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .h2h-match-list { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .brand-header { padding: 12px 14px; } .brand-logo-roundel { width: 56px; height: 56px; flex-basis: 56px; padding: 7px; } .brand-copy h1 { font-size: 1.45rem; } .brand-location, .brand-dates { font-size: .82rem; } .quick-link-grid { grid-template-columns: 1fr 1fr; } .player-profiles-title { display: grid; align-items: stretch; } }
