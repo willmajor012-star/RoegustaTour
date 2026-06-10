@@ -31,15 +31,15 @@ export function Betting() {
   };
 
   return (
-    <div className="page-stack">
-      <section className="page-title">
+    <div className="page-stack betting-page">
+      <section className="page-title premium-title bet-punto-hero card">
         <p className="eyebrow">Visible voting and stake log</p>
         <h2>Bet Punto</h2>
         <p>No wallet, no payment handling and no money transfer. This is only a Bet Punto voting and stake log.</p>
       </section>
       {loading && <p className="card">Loading Bet Punto markets…</p>}
       {error && <p className="card form-error">{error}</p>}
-      <label className="name-picker">
+      <label className="name-picker card">
         Your name
         <input value={bettorName} placeholder="Select or type your name" onChange={(event) => saveName(event.target.value)} />
       </label>
@@ -47,8 +47,8 @@ export function Betting() {
       {(['open', 'closed', 'settled'] as const).map((status) => {
         const markets = activeData.betMarkets.filter((market) => market.status === status);
         if (markets.length === 0) return null;
-        return <section key={status}>
-          <h2>{status[0].toUpperCase() + status.slice(1)} markets</h2>
+        return <section className="market-section" key={status}>
+          <div className="section-heading"><div><p className="eyebrow">Bet Punto</p><h2>{status[0].toUpperCase() + status.slice(1)} markets</h2></div></div>
           {markets.map((market) => (
             <BetMarketCard key={market.id} market={market} options={activeData.betOptions.filter((option) => option.marketId === market.id)} bets={bets} bettorName={bettorName} onSubmit={submit} />
           ))}

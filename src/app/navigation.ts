@@ -1,8 +1,8 @@
 export const navigationItems = [
-  { path: '/', label: 'Home', icon: '⌂' },
-  { path: '/score', label: 'Score', icon: '♕' },
-  { path: '/matches', label: 'Matches', icon: '◷' },
-  { path: '/stats', label: 'Stats', icon: '↗' },
+  { path: '/', label: 'Overview', icon: '⌂' },
+  { path: '/matches', label: 'Results', icon: '◷' },
+  { path: '/teams', label: 'Teams', icon: '◆' },
+  { path: '/players', label: 'Players', icon: '◎' },
+  { path: '/info', label: 'Handbook', icon: 'i' },
   { path: '/betting', label: 'Bet Punto', icon: '◇' },
-  { path: '/info', label: 'Info', icon: 'i' },
 ];

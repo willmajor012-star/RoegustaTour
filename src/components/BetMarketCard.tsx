@@ -33,7 +33,7 @@ export function BetMarketCard({ market, options, bets, bettorName, onSubmit }: P
   return (
     <article className="bet-card card">
       <div className="card-meta"><span>{market.marketType.replace('_', ' ')}</span><span>{market.status}</span></div>
-      <h3>{market.title}</h3>
+      <div className="bet-card-title"><h3>{market.title}</h3><span>Bet Punto</span></div>
       {market.description && <p>{market.description}</p>}
       {market.resultText && <p className="settled">Result: {market.resultText}</p>}
       {isOpen ? (
@@ -60,7 +60,7 @@ export function BetMarketCard({ market, options, bets, bettorName, onSubmit }: P
       ) : (
         <div className="option-list">{options.map((option) => <span className="pill" key={option.id}>{option.label}</span>)}</div>
       )}
-      <div className="bet-log">
+      <div className="bet-log premium-inset">
         <strong>Backed by</strong>
         {activeBets.length === 0 ? <p>No picks logged yet.</p> : activeBets.map((bet) => <p key={bet.id}>{bet.bettorName} → {options.find((option) => option.id === bet.optionId)?.label} <em>{formatStakeCurrency(bet)}</em>{bet.comment && ` — ${bet.comment}`}</p>)}
       </div>
