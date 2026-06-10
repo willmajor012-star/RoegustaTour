@@ -3,6 +3,7 @@ import { MatchCard } from '../components/MatchCard';
 import { fetchPublicMatches, type PublicMatchesResponse } from '../lib/publicApi';
 import { usePublicData } from '../lib/usePublicData';
 import { formatMatchFormat, formatPoints, formatShortDate } from '../lib/formatting';
+import { formatRoundDisplayName, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
 import type { MatchFormat } from '../lib/types';
 
 const formatOptions: Array<{ value: 'all' | MatchFormat; label: string }> = [
@@ -20,15 +21,16 @@ export function Matches() {
   const [format, setFormat] = useState<'all' | MatchFormat>('all');
   const { data, loading, error } = usePublicData(fetchPublicMatches);
   const activeData = data ?? emptyMatchesData;
-  const filtered = activeData.matches.filter((match) => (roundId === 'all' || match.roundId === roundId) && (format === 'all' || match.format === format));
+  const publicMatches = activeData.matches.filter(isPublicVisibleMatch);
+  const filtered = publicMatches.filter((match) => (roundId === 'all' || match.roundId === roundId) && (format === 'all' || match.format === format));
   const rounds = activeData.rounds.filter((round) => roundId === 'all' || round.id === roundId);
 
   return <div className="page-stack results-page"><section className="page-title premium-title"><h2>Results</h2></section>
     {loading && <p className="card">Loading results…</p>}
-    {error && <p className="card form-error">{error}</p>}
-    <div className="filters card"><label><span>Round</span><select value={roundId} onChange={(event) => setRoundId(event.target.value)}><option value="all">All rounds</option>{activeData.rounds.map((round) => <option key={round.id} value={round.id}>{round.name}</option>)}</select></label><label><span>Format</span><select value={format} onChange={(event) => setFormat(event.target.value as 'all' | MatchFormat)}>{formatOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label></div>
+    {error && <p className="card form-error">Results could not be loaded. Please refresh.</p>}
+    <div className="filters card"><label><span>Round</span><select value={roundId} onChange={(event) => setRoundId(event.target.value)}><option value="all">All rounds</option>{activeData.rounds.map((round, index) => <option key={round.id} value={round.id}>{formatRoundDisplayName(round, index)}</option>)}</select></label><label><span>Format</span><select value={format} onChange={(event) => setFormat(event.target.value as 'all' | MatchFormat)}>{formatOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label></div>
     {!loading && !error && filtered.length === 0 && <p className="card">Matches will appear once pairings are published.</p>}
-    {rounds.map((round) => {
+    {rounds.map((round, index) => {
       const roundMatches = filtered.filter((match) => match.roundId === round.id);
       if (roundMatches.length === 0) return null;
       const complete = roundMatches.filter((match) => match.status === 'complete');
@@ -37,8 +39,8 @@ export function Matches() {
       const roundFormats = [...new Set(roundMatches.map((match) => formatMatchFormat(match.format)))].join(' / ');
       return <section className="round-results card" key={round.id}>
         <div className="round-results-header">
-          <div><p className="eyebrow">Round {round.roundNumber}</p><h3>{round.name}</h3><p>{round.courseName ?? 'Course TBC'} · {formatShortDate(round.roundDate)}</p><span className="round-format-label">{round.formatLabel ?? roundFormats}{round.teeTime ? ` · ${round.teeTime}` : ''}</span></div>
-          <div className="round-score"><span>Round score</span><strong>{formatPoints(sideAPoints)}–{formatPoints(sideBPoints)}</strong></div>
+          <div><p className="eyebrow">Round {round.roundNumber || index + 1}</p><h3>{formatRoundDisplayName(round, index)}</h3><p>{round.courseName ?? 'Course TBC'} · {formatShortDate(round.roundDate)}</p><span className="round-format-label">{round.formatLabel ?? roundFormats}{(normalizeTeeTime(round.teeTime) ?? round.teeTime) ? ` · ${normalizeTeeTime(round.teeTime) ?? round.teeTime}` : ''}</span></div>
+          {complete.length > 0 && <div className="round-score"><span>Round score</span><strong>{formatPoints(sideAPoints)}–{formatPoints(sideBPoints)}</strong></div>}
         </div>
         <div className="round-match-list">{roundMatches.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.players} teams={activeData.tourTeams} />)}</div>
       </section>;

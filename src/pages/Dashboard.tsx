@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MatchCard } from '../components/MatchCard';
 import { Scoreboard } from '../components/Scoreboard';
-import { formatDate, formatPoints, formatShortDate } from '../lib/formatting';
+import { formatPoints, formatShortDate } from '../lib/formatting';
 import { fetchPublicBetMarkets, fetchPublicMatches, fetchPublicScore, fetchPublicSummary, type PublicBetMarketsResponse, type PublicMatchesResponse, type PublicScoreResponse, type PublicSummaryResponse } from '../lib/publicApi';
-import type { Match, Round, TeamScoreRow, TourTeam } from '../lib/types';
+import type { Match, TeamScoreRow, TourTeam } from '../lib/types';
+import { formatRoundDisplayName, formatTourDisplayName, getScheduledDate, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
 import { usePublicData } from '../lib/usePublicData';
 
 type DashboardData = {
@@ -13,8 +14,6 @@ type DashboardData = {
   betting: Omit<PublicBetMarketsResponse, 'source'>;
   source: 'supabase';
 };
-
-type CountdownState = { label: string; value: string; complete?: boolean };
 
 const emptyDashboardData: DashboardData = {
   source: 'supabase',
@@ -29,113 +28,89 @@ async function fetchDashboardData(): Promise<DashboardData> {
   return { summary, score, matches, betting, source: 'supabase' };
 }
 
-function normaliseTimeForDate(value?: string | null) {
-  const match = value?.trim().match(/^(\d{1,2}):([0-5]\d)$/);
-  if (!match) return undefined;
-  const [, hour, minute] = match;
-  const hourNumber = Number(hour);
-  if (!Number.isInteger(hourNumber) || hourNumber < 0 || hourNumber > 23) return undefined;
-  return `${hour.padStart(2, '0')}:${minute}`;
-}
-
-function getDateTime(date?: string, time?: string) {
-  if (!date) return undefined;
-  const timePart = time === undefined ? '00:00' : normaliseTimeForDate(time);
-  if (!timePart) return undefined;
-  const value = new Date(`${date}T${timePart}`);
-  return Number.isNaN(value.getTime()) ? undefined : value;
-}
-
-function getCountdown(startDate?: string, endDate?: string, status?: string): CountdownState {
-  if (!startDate) return { label: 'Tour countdown', value: 'Tour date TBC' };
+function countdownParts(startDate?: string, endDate?: string, status?: string) {
+  if (!startDate) return { state: 'Tour date TBC' };
   const now = new Date();
-  const start = getDateTime(startDate);
-  const end = getDateTime(endDate, '23:59');
-  if (!start) return { label: 'Tour countdown', value: 'Tour date TBC' };
-  if (end && now > end && (status === 'complete' || status === 'archived')) return { label: 'Tour countdown', value: 'Tour complete', complete: true };
-  if (now >= start && (!end || now <= end)) return { label: 'Tour countdown', value: 'Tour underway' };
+  const start = getScheduledDate(startDate);
+  const end = getScheduledDate(endDate, '23:59');
+  if (!start) return { state: 'Tour date TBC' };
+  if (end && now > end && (status === 'complete' || status === 'archived')) return { state: 'Tour complete' };
+  if (now >= start && (!end || now <= end)) return { state: 'Tour underway' };
   const totalSeconds = Math.max(0, Math.floor((start.getTime() - now.getTime()) / 1000));
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  return { label: 'Tour countdown', value: `${days}d ${hours}h ${minutes}m ${seconds}s` };
-}
-
-function sortBySchedule(a: { round?: Round; match?: Match }, b: { round?: Round; match?: Match }) {
-  const aDate = getDateTime(a.round?.roundDate, a.match?.teeTime ?? a.round?.teeTime)?.getTime() ?? Number.MAX_SAFE_INTEGER;
-  const bDate = getDateTime(b.round?.roundDate, b.match?.teeTime ?? b.round?.teeTime)?.getTime() ?? Number.MAX_SAFE_INTEGER;
-  return aDate - bDate || (a.match?.matchNumber ?? 0) - (b.match?.matchNumber ?? 0);
+  return {
+    days: Math.floor(totalSeconds / 86400),
+    hours: Math.floor((totalSeconds % 86400) / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+  };
 }
 
 function teamScoreRows(scores: TeamScoreRow[], teams: TourTeam[]): TeamScoreRow[] {
   const rows = scores.length > 0 ? scores : teams.slice(0, 2).map((team) => ({ teamId: team.id, teamName: team.name, colour: team.colour, points: 0, pointsByRound: {} }));
-  const fallback: TeamScoreRow[] = [
-    { teamId: 'team-1-tbc', teamName: 'Team 1 TBC', colour: '#062B22', points: 0, pointsByRound: {} },
-    { teamId: 'team-2-tbc', teamName: 'Team 2 TBC', colour: '#7A1E1E', points: 0, pointsByRound: {} },
+  return [
+    rows[0] ?? { teamId: 'team-1-tbc', teamName: 'Team 1 TBC', colour: '#062B22', points: 0, pointsByRound: {} },
+    rows[1] ?? { teamId: 'team-2-tbc', teamName: 'Team 2 TBC', colour: '#7A1E1E', points: 0, pointsByRound: {} },
   ];
-  return [rows[0] ?? fallback[0], rows[1] ?? fallback[1]];
 }
 
 export function Dashboard() {
   const { data, loading, error } = usePublicData(fetchDashboardData);
-  const [nowTick, setNowTick] = useState(0);
+  const [, setTick] = useState(0);
   const activeData = data ?? emptyDashboardData;
   const tour = activeData.summary.tour ?? activeData.score.tour ?? activeData.matches.tour;
   const rounds = activeData.summary.rounds.length > 0 ? activeData.summary.rounds : activeData.score.rounds.length > 0 ? activeData.score.rounds : activeData.matches.rounds;
   const roundById = useMemo(() => new Map(rounds.map((round) => [round.id, round])), [rounds]);
-  const visibleMatches = activeData.matches.matches.filter((match) => match.status !== 'draft' && match.status !== 'void');
+  const visibleMatches = activeData.matches.matches.filter(isPublicVisibleMatch);
   const teamRows = teamScoreRows(activeData.score.scores, activeData.score.teams.length > 0 ? activeData.score.teams : activeData.matches.tourTeams);
   const totalPointsAvailable = visibleMatches.reduce((sum, match) => sum + match.pointsAvailable, 0);
   const remainingPoints = visibleMatches.filter((match) => match.status !== 'complete').reduce((sum, match) => sum + match.pointsAvailable, 0);
   const pointsToWinOutright = totalPointsAvailable > 0 ? totalPointsAvailable / 2 + 0.5 : undefined;
   const scheduled = visibleMatches
-    .filter((match) => match.status === 'planned' || match.status === 'active' || match.status !== 'complete')
+    .filter((match) => match.status !== 'complete')
     .map((match) => ({ match, round: roundById.get(match.roundId) }))
-    .filter((item) => item.match.status !== 'complete')
-    .sort(sortBySchedule);
+    .sort((a, b) => (getScheduledDate(a.round?.roundDate, a.match.teeTime ?? a.round?.teeTime)?.getTime() ?? Number.MAX_SAFE_INTEGER) - (getScheduledDate(b.round?.roundDate, b.match.teeTime ?? b.round?.teeTime)?.getTime() ?? Number.MAX_SAFE_INTEGER) || a.match.matchNumber - b.match.matchNumber);
   const nextTee = scheduled[0];
-  const nextRound = nextTee?.round ?? rounds.find((round) => round.status !== 'complete');
-  const latestResult = [...visibleMatches]
-    .filter((match) => match.status === 'complete')
-    .sort((a, b) => sortBySchedule({ match: b, round: roundById.get(b.roundId) }, { match: a, round: roundById.get(a.roundId) }))[0];
-  const countdown = getCountdown(tour?.startDate, tour?.endDate, tour?.status);
+  const latestResult = [...visibleMatches].filter((match) => match.status === 'complete').sort((a, b) => (getScheduledDate(roundById.get(b.roundId)?.roundDate, b.teeTime)?.getTime() ?? 0) - (getScheduledDate(roundById.get(a.roundId)?.roundDate, a.teeTime)?.getTime() ?? 0) || b.matchNumber - a.matchNumber)[0] ?? activeData.summary.recentResults[0];
+  const countdown = countdownParts(tour?.startDate, tour?.endDate, tour?.status);
   const openMarkets = activeData.betting.betMarkets.filter((market) => market.status === 'open');
 
   useEffect(() => {
-    const interval = window.setInterval(() => setNowTick((value) => value + 1), 1000);
+    const interval = window.setInterval(() => setTick((value) => value + 1), 1000);
     return () => window.clearInterval(interval);
   }, []);
 
-  void nowTick;
-
-  return <div className="page-stack overview-page">
-    {loading && <p className="card">Loading tour data…</p>}
-    {error && <p className="card form-error">{error}</p>}
+  return <div className="page-stack dashboard-page">
+    {loading && <p className="card">Loading…</p>}
+    {error && <p className="card form-error">Data could not be loaded. Please refresh.</p>}
 
     <section className="countdown-card card">
       <p className="eyebrow">Tour countdown</p>
-      <strong>{countdown.value}</strong>
-      <span>{tour?.startDate ? `${formatDate(tour.startDate)} — ${formatDate(tour.endDate)}` : 'Tour date TBC'}</span>
+      {'state' in countdown ? <strong>{countdown.state}</strong> : <div className="countdown-grid">
+        <span><b>{countdown.days}</b><small>days</small></span>
+        <span><b>{countdown.hours}</b><small>hours</small></span>
+        <span><b>{countdown.minutes}</b><small>minutes</small></span>
+        <span><b>{countdown.seconds}</b><small>seconds</small></span>
+      </div>}
+      <span>{formatTourDisplayName(tour)}</span>
     </section>
 
-    <a className="score-feature card tappable-card" href="/matches">
+    <section className="score-feature card">
       <div className="section-heading"><div><p className="eyebrow">Team score</p><h2>Team score</h2></div><span className="card-chevron" aria-hidden="true">›</span></div>
-      <Scoreboard scores={teamRows} rounds={activeData.score.rounds} />
-    </a>
+      <Scoreboard scores={teamRows} href="/matches" />
+    </section>
 
     <section className="overview-highlight-grid">
       <a className="card tappable-card victory-card" href="/matches">
         <p className="eyebrow">Points to victory</p>
         <h3>{pointsToWinOutright === undefined ? 'Points target TBC' : `${formatPoints(pointsToWinOutright)} to win`}</h3>
-        {pointsToWinOutright !== undefined && <p>{formatPoints(remainingPoints)} points remaining</p>}
+        {pointsToWinOutright !== undefined && <p>{formatPoints(totalPointsAvailable)} available · {formatPoints(remainingPoints)} remaining</p>}
         <span className="card-chevron" aria-hidden="true">›</span>
       </a>
       <a className="next-tee-card card tappable-card" href="/matches">
         <p className="eyebrow">Next tee</p>
-        <h3>{nextRound?.name ?? 'Next tee TBC'}</h3>
-        {nextRound ? <p>{nextRound.courseName ?? 'Course TBC'} · {formatShortDate(nextRound.roundDate)}</p> : <p>Next tee TBC</p>}
-        <div className="tee-time-lockup"><strong>{nextTee?.match.teeTime ?? nextRound?.teeTime ?? 'TBC'}</strong><span className="card-chevron" aria-hidden="true">›</span></div>
+        <h3>{nextTee?.round ? formatRoundDisplayName(nextTee.round) : 'Next tee TBC'}</h3>
+        {nextTee?.round ? <p>{nextTee.round.courseName ?? 'Course TBC'} · {formatShortDate(nextTee.round.roundDate)}</p> : <p>Next tee TBC</p>}
+        <div className="tee-time-lockup"><strong>{normalizeTeeTime(nextTee?.match.teeTime) ?? normalizeTeeTime(nextTee?.round?.teeTime) ?? nextTee?.match.teeTime ?? nextTee?.round?.teeTime ?? 'TBC'}</strong><span className="card-chevron" aria-hidden="true">›</span></div>
       </a>
     </section>
 
@@ -144,12 +119,11 @@ export function Dashboard() {
       {!latestResult ? <p>No results yet</p> : <MatchCard match={latestResult} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === latestResult.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />}
     </a>
 
-    <div className="quick-link-grid">
+    <div className="quick-link-grid dashboard-links">
       <a className="card tappable-card" href="/matches"><strong>Results</strong><span>›</span></a>
-      <a className="card tappable-card" href="/teams"><strong>Teams</strong><span>›</span></a>
+      <a className="card tappable-card" href="/tours"><strong>Tours</strong><span>›</span></a>
       <a className="card tappable-card" href="/stats"><strong>Stats</strong><span>›</span></a>
       <a className="card tappable-card" href="/betting"><strong>Bet Punto</strong><small>{openMarkets.length} open</small><span>›</span></a>
-      <a className="card tappable-card" href="/info"><strong>Info</strong><span>›</span></a>
     </div>
   </div>;
 }
