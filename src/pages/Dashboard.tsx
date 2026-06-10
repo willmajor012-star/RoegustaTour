@@ -54,19 +54,25 @@ export function Dashboard() {
     {loading && <p className="card">Loading tour data…</p>}
     {error && <p className="card form-error">{error}</p>}
     <section className="overview-highlight-grid">
-      <article className="score-feature card">
-        <div className="section-heading"><div><p className="eyebrow">Team score</p><h2>{leader ? tied ? 'All square' : `${leader.teamName} lead` : 'Score pending'}</h2></div>{leader && <strong>{formatPoints(leader.points)} pts</strong>}</div>
+      <a className="score-feature card tappable-card" href="/matches">
+        <div className="section-heading"><div><p className="eyebrow">Team score</p><h2>{leader ? tied ? 'All square' : `${leader.teamName} lead` : 'Score pending'}</h2></div>{leader && <strong>{formatPoints(leader.points)} pts</strong>}<span className="card-chevron" aria-hidden="true">›</span></div>
         {activeData.score.scores.length === 0 ? <p>Team score will build as results are entered.</p> : <Scoreboard scores={activeData.score.scores} rounds={activeData.score.rounds} />}
-      </article>
-      <article className="next-tee-card card">
+      </a>
+      <a className="next-tee-card card tappable-card" href="/matches">
         <p className="eyebrow">Next round / next tee</p>
         <h3>{nextRound?.name ?? 'Next round TBC'}</h3>
         <p>{nextRound?.courseName ?? 'Course TBC'}</p>
-        <div className="tee-time-lockup"><strong>{nextTeeMatch?.teeTime ?? nextRound?.teeTime ?? 'TBC'}</strong><span>{formatShortDate(nextRound?.roundDate)}</span></div>
-      </article>
+        <div className="tee-time-lockup"><strong>{nextTeeMatch?.teeTime ?? nextRound?.teeTime ?? 'TBC'}</strong><span>{formatShortDate(nextRound?.roundDate)}</span><span className="card-chevron" aria-hidden="true">›</span></div>
+      </a>
     </section>
-    <div className="stat-grid"><StatCard label="Remaining points" value={formatPoints(publicRemainingPoints)} detail="Published points still on the board" /><StatCard label="Open Bet Punto" value={openMarkets.length} detail="Live public markets" /><StatCard label="Players" value={activeData.matches.players.length} detail="Published player list" /></div>
-    <section className="card market-preview"><div className="section-heading"><div><p className="eyebrow">Bet Punto</p><h2>Open markets</h2></div></div>{!loading && !error && openMarkets.length === 0 ? <p>Bet Punto markets will appear once they are added.</p> : <div className="premium-list">{openMarkets.slice(0, 4).map((market) => <div className="premium-list-row" key={market.id}><strong>{market.title}</strong><span>{market.marketType.replace('_', ' ')}</span></div>)}</div>}</section>
-    <section><div className="section-heading"><div><p className="eyebrow">Latest</p><h2>Recent results</h2></div></div>{!loading && !error && recentResults.length === 0 && <p className="card">No results have been entered yet.</p>}{recentResults.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />)}</section>
+    <div className="stat-grid">
+      <StatCard href="/matches" label="Remaining points" value={formatPoints(publicRemainingPoints)} detail="Published points still on the board" />
+      <StatCard href="/betting" label="Open Bet Punto" value={openMarkets.length} detail="Live public markets" />
+      <StatCard href="/players" label="Players" value={activeData.matches.players.length} detail="Published player list" />
+      <StatCard href="/teams" label="Teams" value={activeData.matches.tourTeams.length} detail="Current tour squads" />
+    </div>
+    <a className="card market-preview tappable-card" href="/betting"><div className="section-heading"><div><p className="eyebrow">Bet Punto</p><h2>Open markets</h2></div><span className="card-chevron" aria-hidden="true">›</span></div>{!loading && !error && openMarkets.length === 0 ? <p>Bet Punto markets will appear once they are added.</p> : <div className="premium-list">{openMarkets.slice(0, 4).map((market) => <div className="premium-list-row" key={market.id}><strong>{market.title}</strong><span>{market.marketType.replace('_', ' ')}</span></div>)}</div>}</a>
+    <section><div className="section-heading"><div><p className="eyebrow">Latest</p><h2>Recent results</h2></div><a className="text-link" href="/matches">All results ›</a></div>{!loading && !error && recentResults.length === 0 && <p className="card">No results have been entered yet.</p>}{recentResults.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />)}</section>
+    <a className="handbook-link card tappable-card" href="/info"><div><p className="eyebrow">Handbook</p><strong>Tour details, itinerary, kit and rules</strong></div><span className="card-chevron" aria-hidden="true">›</span></a>
   </div>;
 }
