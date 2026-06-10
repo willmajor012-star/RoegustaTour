@@ -1,25 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LeaderboardTable } from '../components/LeaderboardTable';
 import {
-  calculateMvpLeaderboard,
   calculatePlayerAdvancedSummaries,
-  calculateTourSummary,
   getHeadToHead,
   type AdvancedStatsData,
   type HeadToHeadRecord,
   type MatchListItem,
-  type MvpLeaderboardRow,
   type PartnerRecord,
   type PlayerAdvancedSummary,
   type RelationshipRanking,
-  type TourSummary,
 } from '../lib/advancedStats';
-import { formatDate, formatMatchFormat, formatPercent, formatPoints } from '../lib/formatting';
+import { formatMatchFormat, formatPercent, formatPoints } from '../lib/formatting';
 import type { LeaderboardRow, Player, Tour } from '../lib/types';
 import { fetchPublicAdvancedStats, type PublicAdvancedStatsResponse } from '../lib/publicApi';
 
 type StatsSource = 'supabase';
-type StatsTab = 'leaderboard' | 'mvp' | 'head-to-head' | 'players';
 type PlayerSortOption = 'points-desc' | 'points-asc' | 'win-desc' | 'win-asc' | 'matches-desc' | 'matches-asc' | 'name-asc' | 'name-desc';
 
 type StatsResponse = Omit<PublicAdvancedStatsResponse, 'source'> & { source: StatsSource };
@@ -94,8 +89,6 @@ function normaliseStatsResponse(response: StatsResponse): StatsResponse {
     ...data,
     source: response.source,
     currentTour,
-    tourSummary: response.tourSummary ?? calculateTourSummary(currentTourId, data),
-    mvpLeaderboard: response.mvpLeaderboard ?? calculateMvpLeaderboard(currentTourId, data),
     playerSummaries: response.playerSummaries ?? calculatePlayerAdvancedSummaries(data, currentTourId),
   };
 }
@@ -110,7 +103,7 @@ function toLeaderboardRows(summaries: PlayerAdvancedSummary[], key: 'allTimeReco
     losses: summary[key].losses,
     points: summary[key].pointsWon,
     winPercent: summary[key].winPercent,
-  })).filter((row) => row.matches > 0);
+  })).filter((row) => row.matches > 0).sort((a, b) => b.points - a.points || b.winPercent - a.winPercent || a.playerName.localeCompare(b.playerName, undefined, { sensitivity: 'base' }));
 }
 
 function LeaderboardCards({ rows, selectedPlayerId, onSelect }: { rows: LeaderboardRow[]; selectedPlayerId?: string; onSelect: (playerId: string) => void }) {
@@ -120,63 +113,11 @@ function LeaderboardCards({ rows, selectedPlayerId, onSelect }: { rows: Leaderbo
         <button className={`leaderboard-card card ${selectedPlayerId === row.playerId ? 'selected' : ''}`} key={row.playerId} onClick={() => onSelect(row.playerId)}>
           <span className="rank">#{index + 1}</span>
           <span className="leaderboard-name">{row.playerName}</span>
-          <strong>{formatPercent(row.winPercent)}</strong>
-          <span>{formatPoints(row.points)} pts · {compactRecord(row)}</span>
+          <strong>{formatPoints(row.points)} pts</strong>
+          <span>{compactRecord(row)} · {formatPercent(row.winPercent)}</span>
         </button>
       ))}
     </div>
-  );
-}
-
-function TourSummaryPanel({ summary }: { summary: TourSummary }) {
-  const tour = summary.tour;
-
-  return (
-    <section className="card stats-panel">
-      <div className="stats-section-title"><h3>Tour Summary</h3><span>{summary.totalMatchesCompleted} complete · {summary.remainingMatches} remaining</span></div>
-      <p className="eyebrow">{tour?.name ?? 'Current tour'}</p>
-      <p>{tour?.location ?? 'Location TBC'} · {formatDate(tour?.startDate)} – {formatDate(tour?.endDate)}</p>
-      {summary.totalMatchesCompleted === 0 && <p className="settled">Tour summary will build as results are entered.</p>}
-      <div className="stat-grid">
-        {summary.summaryCards.map((card) => <div className="stat-card card" key={card.label}><span>{card.label}</span><strong>{card.value}</strong>{card.detail && <small>{card.detail}</small>}</div>)}
-      </div>
-      <div className="profile-records">
-        <div><span>Team score</span><strong>{summary.teamScore.length ? summary.teamScore.map((row) => `${row.team.name} ${formatPoints(row.points)}`).join(' · ') : 'No score yet'}</strong></div>
-        <div><span>Leading / winning team</span><strong>{summary.winningTeam?.name ?? summary.teamScore[0]?.team.name ?? 'TBC'}</strong></div>
-        <div><span>Best singles</span><strong>{summary.bestSinglesPlayer?.player.displayName ?? 'TBC'}</strong><small>{summary.bestSinglesPlayer ? advancedRecord(summary.bestSinglesPlayer.currentTourSinglesRecord) : 'No singles completed'}</small></div>
-        <div><span>Best team-format</span><strong>{summary.bestTeamFormatPlayer?.player.displayName ?? 'TBC'}</strong><small>{summary.bestTeamFormatPlayer ? advancedRecord(summary.bestTeamFormatPlayer.currentTourTeamFormatRecord) : 'No team matches completed'}</small></div>
-      </div>
-      <div>
-        <h4>Unbeaten players</h4>
-        {summary.unbeatenPlayers.length === 0 ? <p>No unbeaten records yet.</p> : <div className="chip-list">{summary.unbeatenPlayers.map((player) => <span className="pill" key={player.player.id}>{player.player.displayName} · {advancedRecord(player.currentTourRecord)}</span>)}</div>}
-      </div>
-    </section>
-  );
-}
-
-function MvpSection({ rows }: { rows: MvpLeaderboardRow[] }) {
-  return (
-    <section className="stats-panel">
-      <div className="stats-section-title"><h3>MVP leaderboard</h3><span>Matchplay-only v1 formula</span></div>
-      <p className="settled">MVP is currently calculated from matchplay results only. Scorecard stats such as birdies, bogeys and stableford can be added later.</p>
-      {rows.length === 0 ? <p className="card">MVP standings will appear once matches have been completed.</p> : (
-        <div className="mvp-grid">
-          {rows.map((row, index) => <MvpCard key={row.player.id} row={row} rank={index + 1} />)}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function MvpCard({ row, rank }: { row: MvpLeaderboardRow; rank: number }) {
-  return (
-    <article className="card mvp-card">
-      <span className="rank">#{rank}</span>
-      <h3>{row.player.displayName}</h3>
-      <strong>{formatPoints(row.mvpScore)} MVP</strong>
-      <div className="mini-grid"><span>Points won</span><b>{formatPoints(row.pointsWon)}</b><span>Wins</span><b>{row.wins}</b><span>Singles wins</span><b>{row.singlesWins}</b><span>Unbeaten bonus</span><b>{formatPoints(row.unbeatenBonus)}</b><span>Winning-team bonus</span><b>{formatPoints(row.winningTeamBonus)}</b></div>
-      <p>{row.explanation}</p>
-    </article>
   );
 }
 
@@ -235,7 +176,7 @@ function PlayersSection({ selectedPlayerId, setSelectedPlayerId, summaries }: { 
     <section className="stats-layout players-layout">
       <div>
         <div className="stats-section-title player-profiles-title">
-          <div><h3>Player profiles</h3><span>Advanced matchplay drilldown</span></div>
+          <div><h3>Players</h3></div>
           <label className="player-sort-control">
             <span>Sort players</span>
             <select value={sortBy} onChange={(event) => setSortBy(event.target.value as PlayerSortOption)} disabled={summaries.length === 0}>
@@ -244,7 +185,7 @@ function PlayersSection({ selectedPlayerId, setSelectedPlayerId, summaries }: { 
           </label>
         </div>
         <div className="leaderboard-cards player-card-list always-show">
-          {sortedSummaries.length === 0 ? <p className="card">Player profiles will appear once matchplay results are available.</p> : sortedSummaries.map((summary) => {
+          {sortedSummaries.length === 0 ? <p className="card">Players will appear once results are available.</p> : sortedSummaries.map((summary) => {
             const isSelected = selectedPlayerId === summary.player.id;
             return (
               <div className={`player-card-row ${isSelected ? 'expanded' : ''}`} key={summary.player.id}>
@@ -264,7 +205,6 @@ function PlayersSection({ selectedPlayerId, setSelectedPlayerId, summaries }: { 
 function PlayerProfile({ summary }: { summary: PlayerAdvancedSummary }) {
   return (
     <aside className="player-profile card">
-      <p className="eyebrow">Player profile</p>
       <h3>{summary.player.displayName}</h3>
       <div className="profile-records">
         <RecordTile label="All-time" record={summary.allTimeRecord} />
@@ -296,7 +236,6 @@ function RelationshipList({ title, rows }: { title: string; rows: RelationshipRa
 }
 
 export function Stats() {
-  const [tab, setTab] = useState<StatsTab>('leaderboard');
   const [stats, setStats] = useState<StatsResponse | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
@@ -339,34 +278,29 @@ export function Stats() {
     playerMatchResults: activeStats.playerMatchResults,
   }), [activeStats]);
   const summaries = useMemo(() => activeStats.playerSummaries ?? calculatePlayerAdvancedSummaries(data, currentTourId), [activeStats.playerSummaries, currentTourId, data]);
-  const mvpRows = useMemo(() => activeStats.mvpLeaderboard ?? calculateMvpLeaderboard(currentTourId, data), [activeStats.mvpLeaderboard, currentTourId, data]);
-  const tourSummary = useMemo(() => activeStats.tourSummary ?? calculateTourSummary(currentTourId, data), [activeStats.tourSummary, currentTourId, data]);
-  const allTimeRows = useMemo(() => toLeaderboardRows(summaries, 'allTimeRecord'), [summaries]);
-  const currentRows = useMemo(() => toLeaderboardRows(summaries, 'currentTourRecord'), [summaries]);
+  const leaderboardRows = useMemo(() => toLeaderboardRows(summaries, 'allTimeRecord'), [summaries]);
 
   useEffect(() => {
     if (selectedPlayerId && !summaries.some((summary) => summary.player.id === selectedPlayerId)) setSelectedPlayerId(undefined);
   }, [selectedPlayerId, summaries]);
 
   return (
-    <div className="page-stack">
+    <div className="page-stack stats-page">
       <section className="page-title">
-        <p className="eyebrow">Core Stats Intelligence</p>
         <h2>Stats</h2>
-        <p>Matchplay-derived leaderboards, MVP standings, head-to-head comparison and player profiles. Scorecard, birdie, bogey, stableford and Golf GameBook data are intentionally not included yet.</p>
       </section>
-      {loading && <p className="card">Loading live stats…</p>}
+      {loading && <p className="card">Loading stats…</p>}
       {error && <p className="card form-error">{error}</p>}
-      <div className="segmented">
-        <button className={tab === 'leaderboard' ? 'active' : ''} onClick={() => setTab('leaderboard')}>Leaderboard</button>
-        <button className={tab === 'mvp' ? 'active' : ''} onClick={() => setTab('mvp')}>MVP</button>
-        <button className={tab === 'head-to-head' ? 'active' : ''} onClick={() => setTab('head-to-head')}>Head-to-head</button>
-        <button className={tab === 'players' ? 'active' : ''} onClick={() => setTab('players')}>Players</button>
-      </div>
-      {tab === 'leaderboard' && <section className="stats-panel"><TourSummaryPanel summary={tourSummary} /><div className="stats-section-title"><h3>All-time leaderboard</h3><span>Match-level all-time rows</span></div><LeaderboardCards rows={allTimeRows} selectedPlayerId={selectedPlayerId} onSelect={setSelectedPlayerId} /><LeaderboardTable rows={allTimeRows} selectedPlayerId={selectedPlayerId} onSelectPlayer={setSelectedPlayerId} />{currentRows.length > 0 && <><div className="stats-section-title"><h3>Current tour leaderboard</h3><span>Completed matches only</span></div><LeaderboardCards rows={currentRows} selectedPlayerId={selectedPlayerId} onSelect={setSelectedPlayerId} /><LeaderboardTable rows={currentRows} selectedPlayerId={selectedPlayerId} onSelectPlayer={setSelectedPlayerId} /></>}</section>}
-      {tab === 'mvp' && <MvpSection rows={mvpRows} />}
-      {tab === 'head-to-head' && <HeadToHeadSection players={activeStats.players} data={data} />}
-      {tab === 'players' && <PlayersSection selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={summaries} />}
+
+      <section className="stats-panel" aria-labelledby="leaderboard-heading">
+        <div className="stats-section-title"><h3 id="leaderboard-heading">Leaderboard</h3></div>
+        <LeaderboardCards rows={leaderboardRows} selectedPlayerId={selectedPlayerId} onSelect={setSelectedPlayerId} />
+        <LeaderboardTable rows={leaderboardRows} selectedPlayerId={selectedPlayerId} onSelectPlayer={setSelectedPlayerId} />
+      </section>
+
+      <PlayersSection selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={summaries} />
+
+      <HeadToHeadSection players={activeStats.players} data={data} />
     </div>
   );
 }

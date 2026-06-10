@@ -9,7 +9,7 @@ export function TourInfo() {
   const activeData = data ?? emptyTourInfo;
   const tour = activeData.tour;
 
-  return <div className="page-stack handbook-page"><section className="page-title premium-title"><p className="eyebrow">Tour handbook</p><h2>{tour?.name ?? 'Handbook'}</h2><p>Itinerary, courses, kit notes and tour details in one polished public guide.</p></section>
+  return <div className="page-stack handbook-page"><section className="page-title premium-title"><p className="eyebrow">Tour handbook</p><h2>{tour?.name ?? 'Handbook'}</h2></section>
     {loading && <p className="card">Loading tour handbook…</p>}
     {error && <p className="card form-error">{error}</p>}
     <section className="handbook-hero card"><div><p className="eyebrow">Details</p><h3>{tour?.location ?? 'Location TBC'}</h3><p>{formatDate(tour?.startDate)} — {formatDate(tour?.endDate)}</p>{tour?.description && <p>{tour.description}</p>}{!loading && !error && !tour && <p>No live data has been added yet.</p>}</div><img src="/brand/roegusta-logo-square.png" alt="Roegusta" /></section>
