@@ -11,6 +11,13 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (!playerId) return badRequest('Player ID is required.');
 
   const attending = typeof body.attending === 'boolean' ? body.attending : false;
+
+  if (attending) {
+    const players = await runRows(supabase.from('players').select('id, active').eq('id', playerId).limit(1), 'find attendance player');
+    if (players.length === 0) return badRequest('Player must exist.');
+    if (players[0].active === false) return badRequest('Inactive players cannot be marked as attending.');
+  }
+
   const existing = await runRows(supabase.from('tour_players').select('id').eq('tour_id', tourId).eq('player_id', playerId).limit(1), 'find tour player');
   const values = {
     tour_id: tourId,

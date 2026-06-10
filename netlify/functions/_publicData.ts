@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from './_supabase';
 import { mapBet, mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapTour, mapTourHandbookSection, mapTourItineraryItem, mapTourPlayer, mapTourTeam, mapTourTeamDayKit, mapTourTeamMember, mapTourTeamResult } from './_mappers';
+import { selectDefaultTour } from './_tourResolution';
 
 type SupabaseResult<T> = { data: T[] | null; error: { message: string } | null };
 type QueryBuilder<T = Record<string, unknown>> = PromiseLike<SupabaseResult<T>> & {
@@ -34,8 +35,8 @@ export async function withLiveData<T extends object>(read: (supabase: SupabaseCl
 }
 
 export async function getCurrentTour(supabase: SupabaseClient) {
-  const tours = (await runQuery(table(supabase, 'tours').select('*').order('year', { ascending: false }).limit(1), 'tours')).map(mapTour);
-  return tours[0];
+  const tours = (await runQuery(table(supabase, 'tours').select('*').order('year', { ascending: false }), 'tours')).map(mapTour);
+  return selectDefaultTour(tours);
 }
 
 export async function getPublicMatchBundle(supabase: SupabaseClient) {
@@ -105,7 +106,12 @@ export async function getStatsBundle(supabase: SupabaseClient) {
   const [playerRows, matchRows, participantRows, historicalRows] = await Promise.all([
     runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'players'),
     runQuery(table(supabase, 'matches').select('*').eq('status', 'complete'), 'complete matches'),
-    runQuery(table(supabase, 'match_participants').select('*'), 'match participants'),
+    runQuery(
+      table(supabase, 'match_participants')
+        .select('*, matches!inner(status)')
+        .eq('matches.status', 'complete'),
+      'match participants',
+    ),
     runQuery(table(supabase, 'historical_player_stats').select('*'), 'historical player stats'),
   ]);
 

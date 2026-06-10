@@ -16,8 +16,9 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (!Number.isFinite(sortOrder)) return badRequest('Sort order must be numeric.');
 
   if (captainPlayerId) {
-    const captains = await runRows(supabase.from('players').select('id').eq('id', captainPlayerId).limit(1), 'find captain');
+    const captains = await runRows(supabase.from('players').select('id, active').eq('id', captainPlayerId).limit(1), 'find captain');
     if (captains.length === 0) return badRequest('Captain must be a real player.');
+    if (captains[0].active === false) return badRequest('Inactive players cannot be team captains.');
   }
 
   const row = {

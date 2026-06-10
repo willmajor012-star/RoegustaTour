@@ -1,9 +1,10 @@
 import { clearStoredAdminSession, getAdminAuthorizationHeaders } from './adminSession';
-import type { Player, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from './types';
+import type { Match, MatchFormat, MatchParticipant, Player, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from './types';
 
 export type AdminDataResponse = {
   ok: true;
   source: 'supabase';
+  selectedTour?: Tour;
   currentTour?: Tour;
   tours: Tour[];
   players: Player[];
@@ -11,6 +12,9 @@ export type AdminDataResponse = {
   tourTeams: TourTeam[];
   tourTeamMembers: TourTeamMember[];
   tourTeamResults: TourTeamResult[];
+  rounds: Round[];
+  matches: Match[];
+  matchParticipants: MatchParticipant[];
 };
 
 export type SavePlayerPayload = {
@@ -22,7 +26,7 @@ export type SavePlayerPayload = {
 };
 
 export type SaveTourPayload = {
-  id: string;
+  id?: string;
   name: string;
   year: number;
   location?: string;
@@ -53,6 +57,39 @@ export type SaveTourTeamMembersPayload = {
   tourId: string;
   teamId: string;
   playerIds: string[];
+};
+
+export type SaveRoundPayload = {
+  id?: string;
+  tourId: string;
+  roundNumber: number;
+  name: string;
+  roundDate?: string | null;
+  courseName?: string | null;
+  teeTime?: string | null;
+  format?: MatchFormat;
+  formatLabel?: string | null;
+  notes?: string | null;
+  status: Round['status'];
+};
+
+export type SaveMatchPayload = {
+  id?: string;
+  tourId: string;
+  roundId: string;
+  matchNumber: number;
+  format: MatchFormat;
+  status: Match['status'];
+  sideATeamId: string;
+  sideBTeamId: string;
+  sideALabel?: string | null;
+  sideBLabel?: string | null;
+  pointsAvailable: number;
+  teeTime?: string | null;
+  published?: boolean;
+  notes?: string | null;
+  sideAPlayerIds: string[];
+  sideBPlayerIds: string[];
 };
 
 async function fetchAdminJson<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -88,9 +125,11 @@ function postAdminJson<T>(path: string, payload: unknown): Promise<T> {
   return fetchAdminJson<T>(path, { method: 'POST', body: JSON.stringify(payload) });
 }
 
-export const fetchAdminData = () => fetchAdminJson<AdminDataResponse>('/.netlify/functions/admin-data', { method: 'GET' });
+export const fetchAdminData = (tourId?: string) => fetchAdminJson<AdminDataResponse>(`/.netlify/functions/admin-data${tourId ? `?tourId=${encodeURIComponent(tourId)}` : ''}`, { method: 'GET' });
 export const savePlayer = (payload: SavePlayerPayload) => postAdminJson<{ ok: true; player: Player }>('/.netlify/functions/admin-save-player', payload);
 export const saveTour = (payload: SaveTourPayload) => postAdminJson<{ ok: true; tour: Tour }>('/.netlify/functions/admin-save-tour', payload);
 export const saveTourPlayer = (payload: SaveTourPlayerPayload) => postAdminJson<{ ok: true; tourPlayer: TourPlayer; tourTeamMembers?: TourTeamMember[] }>('/.netlify/functions/admin-save-tour-player', payload);
 export const saveTourTeam = (payload: SaveTourTeamPayload) => postAdminJson<{ ok: true; tourTeam: TourTeam }>('/.netlify/functions/admin-save-team', payload);
 export const saveTourTeamMembers = (payload: SaveTourTeamMembersPayload) => postAdminJson<{ ok: true; tourTeamMembers: TourTeamMember[] }>('/.netlify/functions/admin-save-team-members', payload);
+export const saveRound = (payload: SaveRoundPayload) => postAdminJson<{ ok: true; round: Round }>('/.netlify/functions/admin-save-round', payload);
+export const saveMatch = (payload: SaveMatchPayload) => postAdminJson<{ ok: true; match: Match; matchParticipants: MatchParticipant[] }>('/.netlify/functions/admin-save-match', payload);

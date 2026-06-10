@@ -66,7 +66,7 @@ export type Round = {
   status: 'draft' | 'planned' | 'active' | 'complete';
 };
 
-export type MatchFormat = 'singles' | 'better_ball' | 'scramble' | 'custom';
+export type MatchFormat = 'singles' | 'better_ball' | 'foursomes' | 'scramble' | 'custom';
 
 export type Match = {
   id: string;
