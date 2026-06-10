@@ -23,7 +23,7 @@ export function Matches() {
   const filtered = activeData.matches.filter((match) => (roundId === 'all' || match.roundId === roundId) && (format === 'all' || match.format === format));
   const rounds = activeData.rounds.filter((round) => roundId === 'all' || round.id === roundId);
 
-  return <div className="page-stack results-page"><section className="page-title premium-title"><p className="eyebrow">Published results</p><h2>Results</h2><p>Round-by-round match outcomes, pairings and points in a mobile-first results view.</p></section>
+  return <div className="page-stack results-page"><section className="page-title premium-title"><p className="eyebrow">Published results</p><h2>Results</h2><p>Compact round-by-round matchplay ledger for pairings, results and points.</p></section>
     {loading && <p className="card">Loading results…</p>}
     {error && <p className="card form-error">{error}</p>}
     <div className="filters card"><label><span>Round</span><select value={roundId} onChange={(event) => setRoundId(event.target.value)}><option value="all">All rounds</option>{activeData.rounds.map((round) => <option key={round.id} value={round.id}>{round.name}</option>)}</select></label><label><span>Format</span><select value={format} onChange={(event) => setFormat(event.target.value as 'all' | MatchFormat)}>{formatOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label></div>
@@ -37,8 +37,8 @@ export function Matches() {
       const roundFormats = [...new Set(roundMatches.map((match) => formatMatchFormat(match.format)))].join(' / ');
       return <section className="round-results card" key={round.id}>
         <div className="round-results-header">
-          <div><p className="eyebrow">Round {round.roundNumber}</p><h3>{round.name}</h3><p>{round.courseName ?? 'Course TBC'} · {formatShortDate(round.roundDate)}</p></div>
-          <div className="round-score"><span>{round.formatLabel ?? roundFormats}</span><strong>{formatPoints(sideAPoints)}–{formatPoints(sideBPoints)}</strong></div>
+          <div><p className="eyebrow">Round {round.roundNumber}</p><h3>{round.name}</h3><p>{round.courseName ?? 'Course TBC'} · {formatShortDate(round.roundDate)}</p><span className="round-format-label">{round.formatLabel ?? roundFormats}</span></div>
+          <div className="round-score"><span>Round score</span><strong>{formatPoints(sideAPoints)}–{formatPoints(sideBPoints)}</strong></div>
         </div>
         <div className="round-match-list">{roundMatches.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.players} teams={activeData.tourTeams} />)}</div>
       </section>;
