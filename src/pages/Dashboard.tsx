@@ -29,9 +29,19 @@ async function fetchDashboardData(): Promise<DashboardData> {
   return { summary, score, matches, betting, source: 'supabase' };
 }
 
+function normaliseTimeForDate(value?: string | null) {
+  const match = value?.trim().match(/^(\d{1,2}):([0-5]\d)$/);
+  if (!match) return undefined;
+  const [, hour, minute] = match;
+  const hourNumber = Number(hour);
+  if (!Number.isInteger(hourNumber) || hourNumber < 0 || hourNumber > 23) return undefined;
+  return `${hour.padStart(2, '0')}:${minute}`;
+}
+
 function getDateTime(date?: string, time?: string) {
   if (!date) return undefined;
-  const timePart = time && /^\d{1,2}:\d{2}/.test(time) ? time : '00:00';
+  const timePart = time === undefined ? '00:00' : normaliseTimeForDate(time);
+  if (!timePart) return undefined;
   const value = new Date(`${date}T${timePart}`);
   return Number.isNaN(value.getTime()) ? undefined : value;
 }
