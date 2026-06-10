@@ -1,7 +1,7 @@
 import { MatchCard } from '../components/MatchCard';
 import { Scoreboard } from '../components/Scoreboard';
 import { StatCard } from '../components/StatCard';
-import { formatShortDate } from '../lib/formatting';
+import { formatDate, formatPoints, formatShortDate } from '../lib/formatting';
 import { fetchPublicBetMarkets, fetchPublicMatches, fetchPublicScore, fetchPublicSummary, type PublicBetMarketsResponse, type PublicMatchesResponse, type PublicScoreResponse, type PublicSummaryResponse } from '../lib/publicApi';
 import { usePublicData } from '../lib/usePublicData';
 
@@ -33,19 +33,40 @@ export function Dashboard() {
   const rounds = activeData.summary.rounds.length > 0 ? activeData.summary.rounds : activeData.score.rounds;
   const nextRound = rounds.find((round) => round.status !== 'complete');
   const upcomingMatches = activeData.matches.matches.filter((match) => match.status !== 'complete');
-  const todayMatches = upcomingMatches.filter((match) => !nextRound || match.roundId === nextRound.id).slice(0, 2);
+  const nextTeeMatch = upcomingMatches.find((match) => !nextRound || match.roundId === nextRound.id);
   const recentResults = activeData.matches.matches.filter((match) => match.status === 'complete').slice(0, 3);
   const publicRemainingPoints = upcomingMatches.reduce((sum, match) => sum + match.pointsAvailable, 0);
   const openMarkets = activeData.betting.betMarkets.filter((market) => market.status === 'open');
+  const leader = activeData.score.scores[0];
+  const tied = activeData.score.scores.length > 1 && activeData.score.scores[0]?.points === activeData.score.scores[1]?.points;
 
-  return <div className="page-stack"><section className="hero card"><p className="eyebrow">Current tour</p><h2>{tour?.name ?? 'Roegusta Tour'}</h2>{tour?.location && <p>{tour.location}</p>}{tour?.description && <p>{tour.description}</p>}{!loading && !error && !tour && <p>No live data has been added yet.</p>}</section>
+  return <div className="page-stack overview-page">
+    <section className="tour-landing-card card">
+      <div>
+        <p className="eyebrow">Current tour</p>
+        <h2>{tour?.name ?? 'Roegusta Tour'}</h2>
+        <p>{tour?.location ?? 'Location TBC'} · {formatDate(tour?.startDate)} — {formatDate(tour?.endDate)}</p>
+        {tour?.description && <p>{tour.description}</p>}
+        {!loading && !error && !tour && <p>No live data has been added yet.</p>}
+      </div>
+      <img src="/brand/roegusta-logo-landscape.png" alt="Roegusta Tour" />
+    </section>
     {loading && <p className="card">Loading tour data…</p>}
     {error && <p className="card form-error">{error}</p>}
-    <div className="stat-grid"><StatCard label="Next tee" value={nextRound?.teeTime ?? 'TBC'} detail={nextRound ? `${nextRound.name} · ${formatShortDate(nextRound.roundDate)}` : 'Next round TBC'} /><StatCard label="Open Bet Punto" value={openMarkets.length} detail="Visible Bet Punto log" /><StatCard label="Public remaining" value={publicRemainingPoints} detail="Published points still on the board" /></div>
-    <section><h2>Team score</h2>{!loading && !error && activeData.score.scores.length === 0 ? <p className="card">Team score will build as results are entered.</p> : <Scoreboard scores={activeData.score.scores} rounds={activeData.score.rounds} />}</section>
-    <section><h2>Today’s matches</h2>{!loading && !error && todayMatches.length === 0 && <p className="card">Matches will appear once captains publish the pairings.</p>}{todayMatches.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />)}</section>
-    <section><h2>Open Bet Punto markets</h2>{!loading && !error && openMarkets.length === 0 ? <p className="card">Bet Punto markets will appear once they are added.</p> : <div className="pill-row">{openMarkets.map((market) => <span className="pill" key={market.id}>{market.title}</span>)}</div>}</section>
-    <section><h2>Recent results</h2>{!loading && !error && recentResults.length === 0 && <p className="card">No results have been entered yet.</p>}{recentResults.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />)}</section>
-    <section className="quick-links card"><h2>Quick links</h2><p>Use the bottom navigation for score, matches, players, stats, Bet Punto and info.</p></section>
+    <section className="overview-highlight-grid">
+      <article className="score-feature card">
+        <div className="section-heading"><div><p className="eyebrow">Team score</p><h2>{leader ? tied ? 'All square' : `${leader.teamName} lead` : 'Score pending'}</h2></div>{leader && <strong>{formatPoints(leader.points)} pts</strong>}</div>
+        {activeData.score.scores.length === 0 ? <p>Team score will build as results are entered.</p> : <Scoreboard scores={activeData.score.scores} rounds={activeData.score.rounds} />}
+      </article>
+      <article className="next-tee-card card">
+        <p className="eyebrow">Next round / next tee</p>
+        <h3>{nextRound?.name ?? 'Next round TBC'}</h3>
+        <p>{nextRound?.courseName ?? 'Course TBC'}</p>
+        <div className="tee-time-lockup"><strong>{nextTeeMatch?.teeTime ?? nextRound?.teeTime ?? 'TBC'}</strong><span>{formatShortDate(nextRound?.roundDate)}</span></div>
+      </article>
+    </section>
+    <div className="stat-grid"><StatCard label="Remaining points" value={formatPoints(publicRemainingPoints)} detail="Published points still on the board" /><StatCard label="Open Bet Punto" value={openMarkets.length} detail="Live public markets" /><StatCard label="Players" value={activeData.matches.players.length} detail="Published player list" /></div>
+    <section className="card market-preview"><div className="section-heading"><div><p className="eyebrow">Bet Punto</p><h2>Open markets</h2></div></div>{!loading && !error && openMarkets.length === 0 ? <p>Bet Punto markets will appear once they are added.</p> : <div className="premium-list">{openMarkets.slice(0, 4).map((market) => <div className="premium-list-row" key={market.id}><strong>{market.title}</strong><span>{market.marketType.replace('_', ' ')}</span></div>)}</div>}</section>
+    <section><div className="section-heading"><div><p className="eyebrow">Latest</p><h2>Recent results</h2></div></div>{!loading && !error && recentResults.length === 0 && <p className="card">No results have been entered yet.</p>}{recentResults.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />)}</section>
   </div>;
 }

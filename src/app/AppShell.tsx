@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { navigationItems } from './navigation';
 import { routes } from './routes';
 import { BrandHeader } from '../components/BrandHeader';
 import { BottomNav } from '../components/BottomNav';
+import { TourSubNav } from '../components/TourSubNav';
 
 function getCurrentPath() {
   return window.location.pathname === '/' ? '/' : window.location.pathname;
@@ -27,9 +27,7 @@ export function AppShell() {
   return (
     <div className="app-shell">
       <BrandHeader />
-      <nav className="top-nav" aria-label="Desktop navigation">
-        {navigationItems.map(({ path: itemPath, label }) => <button className={path === itemPath ? 'active' : ''} key={itemPath} onClick={() => navigate(itemPath)}>{label}</button>)}
-      </nav>
+      <TourSubNav currentPath={path} onNavigate={navigate} />
       <main>{route.element}</main>
       <BottomNav currentPath={path} onNavigate={navigate} />
     </div>

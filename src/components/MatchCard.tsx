@@ -1,21 +1,35 @@
 import type { Match, MatchParticipant, Player, TourTeam } from '../lib/types';
 import { formatMatchFormat, formatPoints } from '../lib/formatting';
+import { getPlayerInitials } from '../lib/people';
 
 type Props = { match: Match; participants: MatchParticipant[]; players: Player[]; teams: TourTeam[] };
+
 export function MatchCard({ match, participants, players, teams }: Props) {
-  const nameFor = (playerId: string) => players.find((player) => player.id === playerId)?.displayName ?? 'Unknown';
+  const playerFor = (playerId: string) => players.find((player) => player.id === playerId);
   const teamFor = (teamId: string) => teams.find((team) => team.id === teamId)?.name ?? 'Team';
-  const sideA = participants.filter((participant) => participant.side === 'A').map((participant) => nameFor(participant.playerId)).join(', ');
-  const sideB = participants.filter((participant) => participant.side === 'B').map((participant) => nameFor(participant.playerId)).join(', ');
+  const sideAPlayers = participants.filter((participant) => participant.side === 'A').map((participant) => playerFor(participant.playerId));
+  const sideBPlayers = participants.filter((participant) => participant.side === 'B').map((participant) => playerFor(participant.playerId));
+  const resultLabel = match.resultText ?? `${formatPoints(match.pointsAvailable)} point${match.pointsAvailable === 1 ? '' : 's'} available`;
+  const isComplete = match.status === 'complete';
+
   return (
-    <article className="match-card card">
+    <article className={`match-card card result-${match.winningSide ?? match.status}`}>
       <div className="card-meta"><span>Match {match.matchNumber}</span><span>{formatMatchFormat(match.format)}</span><span>{match.status}</span></div>
-      <div className="match-sides">
-        <div><strong>{match.sideALabel ?? teamFor(match.sideATeamId)}</strong><p>{sideA}</p></div>
-        <span className="versus">v</span>
-        <div><strong>{match.sideBLabel ?? teamFor(match.sideBTeamId)}</strong><p>{sideB}</p></div>
+      <div className="match-result-grid">
+        <MatchSide label={match.sideALabel ?? teamFor(match.sideATeamId)} players={sideAPlayers} state={match.winningSide === 'A' ? 'winner' : match.winningSide === 'halved' ? 'halved' : undefined} />
+        <div className={`result-chip ${isComplete ? 'complete' : ''}`}>{resultLabel}</div>
+        <MatchSide label={match.sideBLabel ?? teamFor(match.sideBTeamId)} players={sideBPlayers} state={match.winningSide === 'B' ? 'winner' : match.winningSide === 'halved' ? 'halved' : undefined} align="right" />
       </div>
-      <footer>{match.resultText ?? `${formatPoints(match.pointsAvailable)} point available`}</footer>
+      {match.teeTime && <footer className="match-footer">Tee {match.teeTime}</footer>}
     </article>
   );
+}
+
+function MatchSide({ label, players, state, align }: { label: string; players: Array<Player | undefined>; state?: 'winner' | 'halved'; align?: 'right' }) {
+  return <div className={`match-side ${align === 'right' ? 'right' : ''} ${state ?? ''}`}>
+    <strong>{label}</strong>
+    <div className="player-token-list">
+      {players.length === 0 ? <span className="muted">Players TBC</span> : players.map((player, index) => <span className="player-token" key={player?.id ?? index}><b>{getPlayerInitials(player)}</b>{player?.displayName ?? 'Unknown'}</span>)}
+    </div>
+  </div>;
 }
