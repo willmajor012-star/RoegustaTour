@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { MatchCard } from '../components/MatchCard';
 import { LeaderboardTable } from '../components/LeaderboardTable';
 import { calculatePlayerAdvancedSummaries, type AdvancedStatsData } from '../lib/advancedStats';
@@ -8,6 +8,7 @@ import { getPlayerInitials } from '../lib/people';
 import { fetchPublicAdvancedStats, type PublicAdvancedStatsResponse } from '../lib/publicApi';
 import type { LeaderboardRow, Match, Round, Tour, TourTeam } from '../lib/types';
 import { usePublicData } from '../lib/usePublicData';
+import { normalizeTeamColour } from '../lib/teamColours';
 
 const emptyToursData: Omit<PublicAdvancedStatsResponse, 'source'> = { players: [], tours: [], tourTeams: [], tourPlayers: [], tourTeamMembers: [], tourTeamResults: [], rounds: [], matches: [], matchParticipants: [] };
 type TourSection = 'overview' | 'results' | 'teams' | 'leaderboard';
@@ -147,7 +148,7 @@ function TourDetail({ tour, data, dataForStats, onBack }: { tour: Tour; data: Om
     <button className="back-to-tours" onClick={onBack}>‹ Back to tours</button>
     <section className="selected-tour-hero card">
       <div><span className="tour-status-badge">{statusLabel(tour)}</span><h2>{formatTourDisplayName(tour)}</h2><p>{tour.location ?? 'Location TBC'} · {formatDate(tour.startDate)} — {formatDate(tour.endDate)}</p>{winner && <strong>{winner.team.name} won</strong>}</div>
-      <div className="tour-detail-score">{scores.length > 0 ? scores.map((row) => <span key={row.team.id}>{row.team.name} <b>{formatPoints(row.points)}</b></span>) : <span>Score TBC</span>}</div>
+      <div className="tour-detail-score">{scores.length > 0 ? scores.map((row, index) => <span key={row.team.id} style={{ '--team-colour': normalizeTeamColour(row.team.colour, index) } as CSSProperties}>{row.team.name} <b>{formatPoints(row.points)}</b></span>) : <span>Score TBC</span>}</div>
     </section>
     <div className="segmented tour-detail-switch" role="tablist" aria-label="Tour detail sections">{[
       ['overview', 'Overview'], ['results', 'Results'], ['teams', 'Teams'], ['leaderboard', 'Leaderboard'],
@@ -183,10 +184,10 @@ function TourResults({ rounds, matches, data, teams }: { rounds: Round[]; matche
 
 function TourTeams({ teams, data }: { teams: TourTeam[]; data: Omit<PublicAdvancedStatsResponse, 'source'> }) {
   const playerById = new Map(data.players.map((player) => [player.id, player]));
-  return <section className="tour-detail-section"><h3>Teams</h3>{teams.length === 0 ? <p className="card">Teams TBC</p> : <div className="team-card-grid">{teams.map((team) => {
+  return <section className="tour-detail-section"><h3>Teams</h3>{teams.length === 0 ? <p className="card">Teams TBC</p> : <div className="team-card-grid">{teams.map((team, index) => {
     const captain = team.captainPlayerId ? playerById.get(team.captainPlayerId) : undefined;
     const members = data.tourTeamMembers.filter((member) => member.teamId === team.id).map((member) => playerById.get(member.playerId)).filter(Boolean);
-    return <article className="team-display-card card" key={team.id}><div className="team-card-topline"><span className="team-dot" /><p className="eyebrow">Team</p></div><h3>{team.name}</h3>{captain && <div className="captain-strip"><span>Captain</span><strong>{captain.displayName}</strong></div>}<div className="team-member-list">{members.length === 0 ? <p>Players TBC</p> : members.map((player) => player && <div className="team-member-row" key={player.id}><span className="avatar small">{getPlayerInitials(player)}</span><div><strong>{player.displayName}</strong>{player.nickname && <span>{player.nickname}</span>}</div></div>)}</div></article>;
+    return <article className="team-display-card card" key={team.id} style={{ '--team-colour': normalizeTeamColour(team.colour, index) } as CSSProperties}><div className="team-card-topline"><span className="team-dot" /><p className="eyebrow">Team</p></div><h3>{team.name}</h3>{captain && <div className="captain-strip"><span>Captain</span><strong>{captain.displayName}</strong></div>}<div className="team-member-list">{members.length === 0 ? <p>Players TBC</p> : members.map((player) => player && <div className="team-member-row" key={player.id}><span className="avatar small">{getPlayerInitials(player)}</span><div><strong>{player.displayName}</strong>{player.nickname && <span>{player.nickname}</span>}</div></div>)}</div></article>;
   })}</div>}</section>;
 }
 

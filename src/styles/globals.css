@@ -416,3 +416,317 @@ main { padding: 14px; }
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Targeted UI polish for compact match rows and the stats player list */
+.brand-logo-roundel {
+  background: var(--rt-cream);
+  border: 2px solid var(--rt-gold);
+  padding: 9px;
+  overflow: hidden;
+}
+
+.brand-logo-roundel .brand-logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+.match-side {
+  border: 1px solid rgba(15, 47, 36, .1);
+  border-left: 4px solid transparent;
+  background: rgba(255, 253, 246, .86);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .35);
+}
+
+.match-side.right {
+  border-left: 1px solid rgba(15, 47, 36, .1);
+  border-right: 4px solid transparent;
+}
+
+.match-side.winner {
+  background:
+    linear-gradient(135deg, rgba(184, 154, 93, .34), rgba(46, 112, 70, .18)),
+    var(--rt-cream);
+  border-color: var(--rt-gold);
+  box-shadow: inset 0 0 0 1px rgba(184, 154, 93, .34), 0 8px 18px rgba(15, 47, 36, .1);
+}
+
+.match-side.halved {
+  background: linear-gradient(135deg, rgba(184, 154, 93, .18), rgba(255, 253, 246, .92));
+  border-color: rgba(184, 154, 93, .7);
+}
+
+.result-chip {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-card-list {
+  width: 100%;
+}
+
+.player-card-row {
+  display: grid;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+.player-card-row.expanded {
+  border-radius: 18px;
+  background: rgba(184, 154, 93, .16);
+  border: 1px solid rgba(184, 154, 93, .38);
+  overflow: hidden;
+}
+
+.player-card-row .leaderboard-card,
+.player-card-row.expanded .leaderboard-card {
+  margin: 0;
+  border-radius: 18px;
+}
+
+.player-card-row.expanded .leaderboard-card {
+  border-bottom-right-radius: 8px;
+  border-bottom-left-radius: 8px;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.player-card-row .player-profile {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: 0;
+  border-top: 1px solid rgba(184, 154, 93, .28);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-bottom-left-radius: 18px;
+  border-bottom-right-radius: 18px;
+  overflow: visible;
+  box-shadow: none;
+}
+
+.player-rank-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  align-items: center;
+  padding: 12px 14px;
+  min-height: 0;
+  background: rgba(255, 253, 246, .96);
+}
+
+.player-rank-card .rank {
+  grid-row: span 2;
+  color: var(--rt-gold);
+  font-weight: 950;
+}
+
+.player-rank-card .leaderboard-name {
+  min-width: 0;
+  color: var(--rt-green-900);
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
+.player-rank-card strong {
+  justify-self: end;
+  font-size: 1.02rem;
+  white-space: nowrap;
+}
+
+.player-rank-card > span:last-child {
+  grid-column: 2 / 4;
+  color: #6f6a5d;
+  font-size: .82rem;
+  font-weight: 850;
+}
+
+.player-rank-card.selected {
+  background:
+    linear-gradient(135deg, rgba(15, 47, 36, .08), rgba(184, 154, 93, .18)),
+    var(--rt-cream);
+  box-shadow: inset 4px 0 0 var(--rt-gold);
+}
+
+.player-profile {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 380px) {
+  .profile-records {
+    grid-template-columns: 1fr;
+  }
+
+  .player-rank-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .player-rank-card strong {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .player-rank-card > span:last-child {
+    grid-column: 2;
+  }
+}
+
+/* Definitive masthead crest fix: the source logo files are square canvases with a
+   round crest inside, so enlarge the contained image just enough that the square
+   canvas is clipped outside the circular badge without cutting the monogram. */
+.brand-header {
+  padding-top: max(16px, calc(env(safe-area-inset-top) + 14px));
+  overflow: visible;
+}
+
+.brand-logo-roundel {
+  display: block;
+  position: relative;
+  isolation: isolate;
+  padding: 5px;
+  background: var(--rt-cream);
+  border: 2px solid var(--rt-gold);
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.brand-logo-roundel .brand-logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  transform: scale(1.16);
+  transform-origin: center;
+}
+
+@media (max-width: 560px) {
+  .brand-header {
+    padding-top: max(16px, calc(env(safe-area-inset-top) + 14px));
+  }
+
+  .brand-logo-roundel {
+    padding: 5px;
+  }
+}
+
+/* Homepage score banner: team cards already show the points, so remove the
+   duplicate centre score pill from the overview banner only. */
+.score-feature .scoreboard.no-centre-score {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Expanded stat cards need breathing room when one player is open. */
+.player-card-list {
+  gap: 14px;
+}
+
+.player-card-row.expanded {
+  margin: 2px 0 10px;
+  overflow: visible;
+}
+
+.player-card-row.expanded .leaderboard-card {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.player-card-row .player-profile {
+  padding: 20px;
+  border-top: 0;
+  border-radius: 0 0 20px 20px;
+  background: linear-gradient(180deg, rgba(255, 250, 240, .98), rgba(245, 241, 232, .98));
+}
+
+.player-card-row .profile-records {
+  gap: 12px;
+}
+
+.player-card-row .profile-records > div {
+  padding: 14px;
+}
+
+.player-profile details {
+  padding-top: 12px;
+}
+
+.player-profile details + details {
+  border-top: 1px solid rgba(184, 154, 93, .26);
+}
+
+/* Carry the resolved team colour through cards, match sides and team dots. */
+.score-team-block {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--team-colour) 88%, #000 12%), rgba(0, 0, 0, .24));
+}
+
+.match-side {
+  border-left-color: color-mix(in srgb, var(--team-colour, var(--rt-gold)) 55%, transparent);
+}
+
+.match-side.right {
+  border-right-color: color-mix(in srgb, var(--team-colour, var(--rt-gold)) 55%, transparent);
+}
+
+.match-side.winner {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--team-colour, var(--rt-green-900)) 26%, var(--rt-cream)), rgba(184, 154, 93, .24)),
+    var(--rt-cream);
+  border-color: var(--team-colour, var(--rt-gold));
+}
+
+.team-display-card {
+  border-top: 5px solid var(--team-colour, var(--rt-gold));
+}
+
+.team-display-card .team-dot,
+.team-display-card .avatar.small {
+  background: var(--team-colour, var(--rt-gold));
+}
+
+@media (max-width: 560px) {
+  .player-card-row .player-profile {
+    padding: 16px;
+  }
+
+  .player-card-row .profile-records {
+    gap: 10px;
+  }
+}
+
+/* Selected historic tour hero: make team score chips branded and compact. */
+.selected-tour-hero {
+  align-items: center;
+}
+
+.selected-tour-hero .tour-detail-score {
+  align-items: center;
+  justify-content: end;
+}
+
+.selected-tour-hero .tour-detail-score span {
+  min-width: 190px;
+  min-height: 0;
+  padding: 12px 14px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--team-colour, var(--rt-green-900)) 88%, #000 12%), color-mix(in srgb, var(--team-colour, var(--rt-green-900)) 62%, #fff 38%));
+  border: 1px solid color-mix(in srgb, var(--team-colour, var(--rt-gold)) 54%, var(--rt-gold));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
+}
+
+.selected-tour-hero .tour-detail-score b {
+  color: var(--rt-cream);
+}
+
+@media (max-width: 760px) {
+  .selected-tour-hero .tour-detail-score {
+    justify-content: stretch;
+  }
+
+  .selected-tour-hero .tour-detail-score span {
+    min-width: 0;
+  }
+}

@@ -2,16 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { MatchCard } from '../components/MatchCard';
 import { Scoreboard } from '../components/Scoreboard';
 import { formatPoints, formatShortDate } from '../lib/formatting';
-import { fetchPublicBetMarkets, fetchPublicMatches, fetchPublicScore, fetchPublicSummary, type PublicBetMarketsResponse, type PublicMatchesResponse, type PublicScoreResponse, type PublicSummaryResponse } from '../lib/publicApi';
+import { fetchPublicMatches, fetchPublicScore, fetchPublicSummary, type PublicMatchesResponse, type PublicScoreResponse, type PublicSummaryResponse } from '../lib/publicApi';
 import type { Match, TeamScoreRow, TourTeam } from '../lib/types';
 import { formatRoundDisplayName, formatTourDisplayName, getDateOnlyScheduledDate, getScheduledDate, getScheduleSortTime, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
 import { usePublicData } from '../lib/usePublicData';
+import { normalizeTeamColour } from '../lib/teamColours';
 
 type DashboardData = {
   summary: Omit<PublicSummaryResponse, 'source'>;
   score: Omit<PublicScoreResponse, 'source'>;
   matches: Omit<PublicMatchesResponse, 'source'>;
-  betting: Omit<PublicBetMarketsResponse, 'source'>;
   source: 'supabase';
 };
 
@@ -20,12 +20,11 @@ const emptyDashboardData: DashboardData = {
   summary: { rounds: [], recentResults: [], openMarkets: [] },
   score: { teams: [], rounds: [], matches: [], scores: [] },
   matches: { rounds: [], matches: [], matchParticipants: [], players: [], tourTeams: [] },
-  betting: { betMarkets: [], betOptions: [], bets: [] },
 };
 
 async function fetchDashboardData(): Promise<DashboardData> {
-  const [summary, score, matches, betting] = await Promise.all([fetchPublicSummary(), fetchPublicScore(), fetchPublicMatches(), fetchPublicBetMarkets()]);
-  return { summary, score, matches, betting, source: 'supabase' };
+  const [summary, score, matches] = await Promise.all([fetchPublicSummary(), fetchPublicScore(), fetchPublicMatches()]);
+  return { summary, score, matches, source: 'supabase' };
 }
 
 function countdownParts(startDate?: string, endDate?: string, status?: string) {
@@ -46,7 +45,7 @@ function countdownParts(startDate?: string, endDate?: string, status?: string) {
 }
 
 function teamScoreRows(scores: TeamScoreRow[], teams: TourTeam[]): TeamScoreRow[] {
-  const rows = scores.length > 0 ? scores : teams.slice(0, 2).map((team) => ({ teamId: team.id, teamName: team.name, colour: team.colour, points: 0, pointsByRound: {} }));
+  const rows = scores.length > 0 ? scores : teams.slice(0, 2).map((team, index) => ({ teamId: team.id, teamName: team.name, colour: normalizeTeamColour(team.colour, index), points: 0, pointsByRound: {} }));
   return [
     rows[0] ?? { teamId: 'team-1-tbc', teamName: 'Team 1 TBC', colour: '#062B22', points: 0, pointsByRound: {} },
     rows[1] ?? { teamId: 'team-2-tbc', teamName: 'Team 2 TBC', colour: '#7A1E1E', points: 0, pointsByRound: {} },
@@ -72,8 +71,6 @@ export function Dashboard() {
   const nextTee = scheduled[0];
   const latestResult = [...visibleMatches].filter((match) => match.status === 'complete').sort((a, b) => (getScheduledDate(roundById.get(b.roundId)?.roundDate, b.teeTime)?.getTime() ?? 0) - (getScheduledDate(roundById.get(a.roundId)?.roundDate, a.teeTime)?.getTime() ?? 0) || b.matchNumber - a.matchNumber)[0] ?? activeData.summary.recentResults[0];
   const countdown = countdownParts(tour?.startDate, tour?.endDate, tour?.status);
-  const openMarkets = activeData.betting.betMarkets.filter((market) => market.status === 'open');
-
   useEffect(() => {
     const interval = window.setInterval(() => setTick((value) => value + 1), 1000);
     return () => window.clearInterval(interval);
@@ -96,7 +93,7 @@ export function Dashboard() {
 
     <section className="score-feature card">
       <div className="section-heading"><div><p className="eyebrow">Team score</p><h2>Team score</h2></div><span className="card-chevron" aria-hidden="true">›</span></div>
-      <Scoreboard scores={teamRows} href="/matches" />
+      <Scoreboard scores={teamRows} href="/matches" hideCentreScore />
     </section>
 
     <section className="overview-highlight-grid">
@@ -119,11 +116,5 @@ export function Dashboard() {
       {!latestResult ? <p>No results yet</p> : <MatchCard match={latestResult} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === latestResult.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />}
     </a>
 
-    <div className="quick-link-grid dashboard-links">
-      <a className="card tappable-card" href="/matches"><strong>Results</strong><span>›</span></a>
-      <a className="card tappable-card" href="/tours"><strong>Tours</strong><span>›</span></a>
-      <a className="card tappable-card" href="/stats"><strong>Stats</strong><span>›</span></a>
-      <a className="card tappable-card" href="/betting"><strong>Bet Punto</strong><small>{openMarkets.length} open</small><span>›</span></a>
-    </div>
   </div>;
 }
