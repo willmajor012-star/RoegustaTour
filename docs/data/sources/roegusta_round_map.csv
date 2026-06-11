@@ -1,0 +1,14 @@
+year,round_number,format,format_label,course,match_count,side_a_points,side_b_points
+2022,1,better_ball,Better ball,Faldo Course,4,1,3
+2022,2,better_ball,Better ball,O'Connor Jnr. Course,4,1,3
+2022,3,better_ball,Better ball,O'Connor Jnr. Course (Sun),4,3.0,1.0
+2022,4,singles,Singles,Faldo Course,8,5.5,2.5
+2023,1,better_ball,Better ball,Old Course,5,3.5,1.5
+2023,2,better_ball,Better ball,Millenium Course,5,3,2
+2023,3,singles,Singles,Victoria Course,10,6,4
+2024,1,better_ball,Better ball,Monte Rei Golf & Country Club,5,3,2
+2024,2,scramble,Scramble,Laranjal Course,5,1,4
+2024,3,singles,Singles,North Course,10,4.0,6.0
+2025,1,better_ball,Better ball,South Course,6,2,4
+2025,2,scramble,Scramble,Laranjal Course,6,4,2
+2025,3,singles,Singles,Ombria Golf Resort,12,7.5,4.5

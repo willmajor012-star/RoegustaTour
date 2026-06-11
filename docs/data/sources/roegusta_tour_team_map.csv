@@ -1,0 +1,9 @@
+year,side,team_name,final_points,result_status,confirmation_note
+2022,A,Team Truman,10.5,winner,confirmed_by_sam_jack_side_presence
+2022,B,Team Bamford,9.5,runner_up,confirmed_by_sam_jack_side_presence
+2023,A,Team Truman,12.5,winner,confirmed_by_sam_jack_side_presence
+2023,B,Team Bamford,7.5,runner_up,confirmed_by_sam_jack_side_presence
+2024,A,Team Bamford,8.0,runner_up,confirmed_bamford_absent_team_name_retained_sam_on_team_truman_side
+2024,B,Team Truman,12.0,winner,confirmed_bamford_absent_team_name_retained_sam_on_team_truman_side
+2025,A,Team Truman,13.5,winner,confirmed_by_sam_jack_side_presence
+2025,B,Team Bamford,10.5,runner_up,confirmed_by_sam_jack_side_presence
