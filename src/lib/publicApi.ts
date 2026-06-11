@@ -76,6 +76,22 @@ export type TourTeamDayKit = {
   sortOrder: number;
 };
 
+
+export type SavePublicBetPayload = {
+  marketId: string;
+  optionId: string;
+  bettorName: string;
+  stakeAmountPence: number;
+  comment?: string;
+};
+
+async function postPublicJson<T>(path: string, payload: unknown): Promise<T> {
+  const response = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+  const data = await response.json().catch(() => undefined) as { message?: string } | undefined;
+  if (!response.ok) throw new Error(data?.message ?? 'Public request failed.');
+  return data as T;
+}
+
 export type PublicTourInfoResponse = PublicResponse<{
   tour?: Tour;
   rounds: Round[];
@@ -107,3 +123,5 @@ export const fetchPublicPlayers = () => fetchPublicJson<PublicPlayersResponse>('
 export const fetchPublicBetMarkets = () => fetchPublicJson<PublicBetMarketsResponse>('/.netlify/functions/public-bet-markets');
 export const fetchPublicAdvancedStats = () => fetchPublicJson<PublicAdvancedStatsResponse>('/.netlify/functions/public-advanced-stats');
 export const fetchPublicTourInfo = () => fetchPublicJson<PublicTourInfoResponse>('/.netlify/functions/public-tour-info');
+
+export const savePublicBet = (payload: SavePublicBetPayload) => postPublicJson<{ ok: true; bet: Bet }>('/.netlify/functions/public-save-bet', payload);

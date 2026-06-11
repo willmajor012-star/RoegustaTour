@@ -1,6 +1,6 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { withAdminSupabase, runRows } from './_adminSupabase';
-import { mapMatch, mapMatchParticipant, mapPlayer, mapRound, mapTour, mapTourPlayer, mapTourTeam, mapTourTeamMember, mapTourTeamResult } from './_mappers';
+import { mapBet, mapBetMarket, mapBetOption, mapMatch, mapMatchParticipant, mapPlayer, mapRound, mapTour, mapTourPlayer, mapTourTeam, mapTourTeamMember, mapTourTeamResult } from './_mappers';
 import { selectDefaultTour } from './_tourResolution';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
@@ -29,25 +29,36 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
       rounds: [],
       matches: [],
       matchParticipants: [],
+      betMarkets: [],
+      betOptions: [],
+      bets: [],
     });
   }
 
-  const [tourPlayerRows, teamRows, memberRows, roundRows, matchRows] = await Promise.all([
+  const [tourPlayerRows, teamRows, memberRows, roundRows, matchRows, marketRows] = await Promise.all([
     runRows(supabase.from('tour_players').select('*').eq('tour_id', selectedTour.id), 'admin tour players'),
     runRows(supabase.from('tour_teams').select('*').eq('tour_id', selectedTour.id).order('sort_order', { ascending: true }), 'admin tour teams'),
     runRows(supabase.from('tour_team_members').select('*').eq('tour_id', selectedTour.id), 'admin team members'),
     runRows(supabase.from('rounds').select('*').eq('tour_id', selectedTour.id).order('round_number', { ascending: true }), 'admin rounds'),
     runRows(supabase.from('matches').select('*').eq('tour_id', selectedTour.id).order('match_number', { ascending: true }), 'admin matches'),
+    runRows(supabase.from('bet_markets').select('*').eq('tour_id', selectedTour.id).order('created_at', { ascending: true }), 'admin bet markets'),
   ]);
 
   const matchIds = matchRows.map((row) => String(row.id));
-  const [resultRows, participantRows] = await Promise.all([
+  const marketIds = marketRows.map((row) => String(row.id));
+  const [resultRows, participantRows, optionRows, betRows] = await Promise.all([
     runRows(supabase.from('tour_team_results').select('*').eq('tour_id', selectedTour.id), 'admin team results').catch((error) => {
       console.warn('Optional tour_team_results admin read failed:', error);
       return [] as Record<string, unknown>[];
     }),
     matchIds.length > 0
       ? runRows(supabase.from('match_participants').select('*').in('match_id', matchIds), 'admin match participants')
+      : Promise.resolve([] as Record<string, unknown>[]),
+    marketIds.length > 0
+      ? runRows(supabase.from('bet_options').select('*').in('market_id', marketIds).order('sort_order', { ascending: true }), 'admin bet options')
+      : Promise.resolve([] as Record<string, unknown>[]),
+    marketIds.length > 0
+      ? runRows(supabase.from('bets').select('*').in('market_id', marketIds).order('created_at', { ascending: true }), 'admin bets')
       : Promise.resolve([] as Record<string, unknown>[]),
   ]);
 
@@ -65,5 +76,8 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
     rounds: roundRows.map(mapRound),
     matches: matchRows.map(mapMatch),
     matchParticipants: participantRows.map(mapMatchParticipant),
+    betMarkets: marketRows.map(mapBetMarket),
+    betOptions: optionRows.map(mapBetOption),
+    bets: betRows.map(mapBet),
   });
 });

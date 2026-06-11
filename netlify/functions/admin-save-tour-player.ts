@@ -11,6 +11,8 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (!playerId) return badRequest('Player ID is required.');
 
   const attending = typeof body.attending === 'boolean' ? body.attending : false;
+  const tourHandicap = optionalNumber(body.tourHandicap);
+  if (tourHandicap !== null && (tourHandicap < -10 || tourHandicap > 54)) return badRequest('Handicap must be blank or between -10 and 54.');
 
   if (attending) {
     const players = await runRows(supabase.from('players').select('id, active').eq('id', playerId).limit(1), 'find attendance player');
@@ -23,7 +25,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     tour_id: tourId,
     player_id: playerId,
     attending,
-    tour_handicap: optionalNumber(body.tourHandicap),
+    tour_handicap: tourHandicap,
     notes: optionalString(body.notes),
   };
 

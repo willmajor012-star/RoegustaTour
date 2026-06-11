@@ -122,11 +122,11 @@ export const historicalPlayerStats: HistoricalPlayerStats[] = players.slice(0, 1
 });
 
 export const betMarkets: BetMarket[] = [
-  { id: 'bm1', tourId: currentTourId, roundId: 'r1', matchId: 'm1', title: 'Who wins the opening match?', description: 'Opening match market. Final teams can be linked once captains make picks.', marketType: 'match_winner', status: 'open', closesAt: '2026-11-06T08:30:00.000Z' },
-  { id: 'bm2', tourId: currentTourId, roundId: 'r2', title: 'Over/under 7.5 birdies on Saturday', marketType: 'over_under', status: 'open', closesAt: '2026-11-07T08:40:00.000Z' },
-  { id: 'bm3', tourId: currentTourId, title: 'Most balls lost', marketType: 'special', status: 'closed' },
-  { id: 'bm4', tourId: currentTourId, roundId: 'r1', title: 'Which team wins the Friday session?', marketType: 'team_result', status: 'closed' },
-  { id: 'bm5', tourId: currentTourId, title: 'Will anyone eagle today?', marketType: 'custom', status: 'open' },
+  { id: 'bm1', tourId: currentTourId, roundId: 'r1', matchId: 'm1', title: 'Who wins the opening match?', description: 'Opening match market. Final teams can be linked once captains make picks.', marketType: 'match_winner', marketScope: 'general_pot', status: 'open', closesAt: '2026-11-06T08:30:00.000Z' },
+  { id: 'bm2', tourId: currentTourId, roundId: 'r2', title: 'Over/under 7.5 birdies on Saturday', marketType: 'over_under', marketScope: 'special', status: 'open', closesAt: '2026-11-07T08:40:00.000Z' },
+  { id: 'bm3', tourId: currentTourId, title: 'Most balls lost', marketType: 'special', marketScope: 'special', status: 'closed' },
+  { id: 'bm4', tourId: currentTourId, roundId: 'r1', title: 'Which team wins the Friday session?', marketType: 'team_result', marketScope: 'general_pot', status: 'closed' },
+  { id: 'bm5', tourId: currentTourId, title: 'Will anyone eagle today?', marketType: 'custom', marketScope: 'general_pot', status: 'open' },
 ];
 
 export const betOptions: BetOption[] = [
@@ -144,10 +144,10 @@ export const betOptions: BetOption[] = [
 ];
 
 export const bets: Bet[] = [
-  { id: 'bet1', marketId: 'bm1', optionId: 'bo1', bettorName: 'Will Major', stakeText: '£5', stakeAmount: 5, stakeAmountPence: 500, comment: 'Oaks start fast.', createdAt: now, status: 'active' },
-  { id: 'bet2', marketId: 'bm1', optionId: 'bo2', bettorName: 'Finn Begley', stakeText: '£10', stakeAmount: 10, stakeAmountPence: 1000, createdAt: now, status: 'active' },
-  { id: 'bet3', marketId: 'bm2', optionId: 'bo4', bettorName: 'Sam Truman', stakeText: '£5', stakeAmount: 5, stakeAmountPence: 500, comment: 'Greens are gettable.', createdAt: now, status: 'active' },
-  { id: 'bet4', marketId: 'bm4', optionId: 'bo9', bettorName: 'Alex Tonge', stakeText: '£2', stakeAmount: 2, stakeAmountPence: 200, createdAt: '2026-11-06T10:00:00.000Z', status: 'active' },
+  { id: 'bet1', marketId: 'bm1', optionId: 'bo1', bettorName: 'Will Major', stakeText: '£5', stakeAmount: 5, stakeAmountPence: 500, outcomeStatus: 'pending', payoutStatus: 'not_applicable', comment: 'Oaks start fast.', createdAt: now, status: 'active' },
+  { id: 'bet2', marketId: 'bm1', optionId: 'bo2', bettorName: 'Finn Begley', stakeText: '£10', stakeAmount: 10, stakeAmountPence: 1000, outcomeStatus: 'pending', payoutStatus: 'not_applicable', createdAt: now, status: 'active' },
+  { id: 'bet3', marketId: 'bm2', optionId: 'bo4', bettorName: 'Sam Truman', stakeText: '£5', stakeAmount: 5, stakeAmountPence: 500, outcomeStatus: 'pending', payoutStatus: 'not_applicable', comment: 'Greens are gettable.', createdAt: now, status: 'active' },
+  { id: 'bet4', marketId: 'bm4', optionId: 'bo9', bettorName: 'Alex Tonge', stakeText: '£2', stakeAmount: 2, stakeAmountPence: 200, outcomeStatus: 'pending', payoutStatus: 'not_applicable', createdAt: '2026-11-06T10:00:00.000Z', status: 'active' },
 ];
 
 export const itinerary = [
