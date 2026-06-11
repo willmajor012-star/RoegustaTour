@@ -574,3 +574,41 @@ main { padding: 14px; }
     grid-column: 2;
   }
 }
+
+/* Definitive masthead crest fix: the source logo files are square canvases with a
+   round crest inside, so enlarge the contained image just enough that the square
+   canvas is clipped outside the circular badge without cutting the monogram. */
+.brand-header {
+  padding-top: max(16px, calc(env(safe-area-inset-top) + 14px));
+  overflow: visible;
+}
+
+.brand-logo-roundel {
+  display: block;
+  position: relative;
+  isolation: isolate;
+  padding: 5px;
+  background: var(--rt-cream);
+  border: 2px solid var(--rt-gold);
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.brand-logo-roundel .brand-logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  transform: scale(1.16);
+  transform-origin: center;
+}
+
+@media (max-width: 560px) {
+  .brand-header {
+    padding-top: max(16px, calc(env(safe-area-inset-top) + 14px));
+  }
+
+  .brand-logo-roundel {
+    padding: 5px;
+  }
+}
