@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { TeamScoreRow } from '../lib/types';
 import { formatPoints } from '../lib/formatting';
+import { normalizeTeamColourPair } from '../lib/teamColours';
 
 const fallbackRows: TeamScoreRow[] = [
   { teamId: 'team-1-tbc', teamName: 'Team 1 TBC', colour: '#062B22', points: 0, pointsByRound: {} },
@@ -10,7 +11,10 @@ const fallbackRows: TeamScoreRow[] = [
 type Props = { scores: TeamScoreRow[]; href?: string; rounds?: unknown[]; hideCentreScore?: boolean };
 
 function safeRows(scores: TeamScoreRow[]) {
-  return [scores[0] ?? fallbackRows[0], scores[1] ?? fallbackRows[1]];
+  const left = scores[0] ?? fallbackRows[0];
+  const right = scores[1] ?? fallbackRows[1];
+  const [leftColour, rightColour] = normalizeTeamColourPair(left.colour, right.colour);
+  return [{ ...left, colour: leftColour }, { ...right, colour: rightColour }];
 }
 
 export function Scoreboard({ scores, href, hideCentreScore = false }: Props) {

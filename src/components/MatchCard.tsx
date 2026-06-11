@@ -1,6 +1,8 @@
 import type { Match, MatchParticipant, Player, TourTeam } from '../lib/types';
 import { formatMatchFormat, formatPoints } from '../lib/formatting';
 import { normalizeTeeTime } from '../lib/display';
+import { normalizeTeamColour } from '../lib/teamColours';
+import type { CSSProperties } from 'react';
 
 type Props = { match: Match; participants: MatchParticipant[]; players: Player[]; teams: TourTeam[] };
 
@@ -40,17 +42,17 @@ export function MatchCard({ match, participants, players, teams }: Props) {
     <article className={`match-card result-${match.winningSide ?? match.status}`}>
       <div className="match-card-topline"><span>Match {match.matchNumber}</span><span>{formatMatchFormat(match.format)}</span>{tee && <span>Tee {tee}</span>}</div>
       <div className="match-ledger-row">
-        <MatchSide label={match.sideALabel ?? teamName(match.sideATeamId, 'Team 1')} players={sideAPlayers} state={match.winningSide === 'A' ? 'winner' : match.winningSide === 'halved' ? 'halved' : undefined} />
+        <MatchSide label={match.sideALabel ?? teamName(match.sideATeamId, 'Team 1')} players={sideAPlayers} colour={normalizeTeamColour(teamFor(match.sideATeamId)?.colour, 0)} state={match.winningSide === 'A' ? 'winner' : match.winningSide === 'halved' ? 'halved' : undefined} />
         <div className={`result-chip ${match.status === 'complete' ? 'complete' : ''}`}>{resultLabel(match)}</div>
-        <MatchSide label={match.sideBLabel ?? teamName(match.sideBTeamId, 'Team 2')} players={sideBPlayers} state={match.winningSide === 'B' ? 'winner' : match.winningSide === 'halved' ? 'halved' : undefined} align="right" />
+        <MatchSide label={match.sideBLabel ?? teamName(match.sideBTeamId, 'Team 2')} players={sideBPlayers} colour={normalizeTeamColour(teamFor(match.sideBTeamId)?.colour, 1)} state={match.winningSide === 'B' ? 'winner' : match.winningSide === 'halved' ? 'halved' : undefined} align="right" />
       </div>
     </article>
   );
 }
 
-function MatchSide({ label, players, state, align }: { label: string; players: Player[]; state?: 'winner' | 'halved'; align?: 'right' }) {
+function MatchSide({ label, players, colour, state, align }: { label: string; players: Player[]; colour: string; state?: 'winner' | 'halved'; align?: 'right' }) {
   const names = players.map((player) => player.displayName).join(' / ');
-  return <div className={`match-side ${align === 'right' ? 'right' : ''} ${state ?? ''}`}>
+  return <div className={`match-side ${align === 'right' ? 'right' : ''} ${state ?? ''}`} style={{ '--team-colour': colour } as CSSProperties}>
     <strong>{names || label || 'Players TBC'}</strong>
     {names && <span>{label}</span>}
   </div>;

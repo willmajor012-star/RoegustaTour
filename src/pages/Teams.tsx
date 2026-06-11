@@ -3,6 +3,7 @@ import { fetchPublicAdvancedStats, type PublicAdvancedStatsResponse } from '../l
 import { usePublicData } from '../lib/usePublicData';
 import { getPlayerInitials } from '../lib/people';
 import type { Player, TourPlayer, TourTeam, TourTeamMember } from '../lib/types';
+import { normalizeTeamColour } from '../lib/teamColours';
 
 const emptyTeamsData: Omit<PublicAdvancedStatsResponse, 'source'> = { players: [], tours: [], tourTeams: [], tourPlayers: [], tourTeamMembers: [], tourTeamResults: [], rounds: [], matches: [], matchParticipants: [] };
 
@@ -48,10 +49,10 @@ export function Teams() {
     {error && <p className="card form-error">{error}</p>}
     {!loading && !error && teams.length === 0 && <p className="card">Teams will appear once captains publish squads.</p>}
     <div className="team-card-grid">
-      {teams.map((team) => {
+      {teams.map((team, index) => {
         const members = membersForTeam(team, currentMembers, activeData.players, currentTourPlayers);
         const captain = activeData.players.find((player) => player.id === team.captainPlayerId);
-        return <article className="team-display-card card" key={team.id} style={{ '--team-colour': team.colour ?? '#C9A24A' } as CSSProperties}>
+        return <article className="team-display-card card" key={team.id} style={{ '--team-colour': normalizeTeamColour(team.colour, index) } as CSSProperties}>
           <div className="team-card-topline"><span className="team-dot" /><p className="eyebrow">Team</p></div>
           <h3>{team.name}</h3>
           {captain && <div className="captain-strip"><span>Captain</span><strong>{captain.displayName}</strong></div>}

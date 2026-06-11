@@ -6,6 +6,7 @@ import { fetchPublicMatches, fetchPublicScore, fetchPublicSummary, type PublicMa
 import type { Match, TeamScoreRow, TourTeam } from '../lib/types';
 import { formatRoundDisplayName, formatTourDisplayName, getDateOnlyScheduledDate, getScheduledDate, getScheduleSortTime, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
 import { usePublicData } from '../lib/usePublicData';
+import { normalizeTeamColour } from '../lib/teamColours';
 
 type DashboardData = {
   summary: Omit<PublicSummaryResponse, 'source'>;
@@ -44,7 +45,7 @@ function countdownParts(startDate?: string, endDate?: string, status?: string) {
 }
 
 function teamScoreRows(scores: TeamScoreRow[], teams: TourTeam[]): TeamScoreRow[] {
-  const rows = scores.length > 0 ? scores : teams.slice(0, 2).map((team) => ({ teamId: team.id, teamName: team.name, colour: team.colour, points: 0, pointsByRound: {} }));
+  const rows = scores.length > 0 ? scores : teams.slice(0, 2).map((team, index) => ({ teamId: team.id, teamName: team.name, colour: normalizeTeamColour(team.colour, index), points: 0, pointsByRound: {} }));
   return [
     rows[0] ?? { teamId: 'team-1-tbc', teamName: 'Team 1 TBC', colour: '#062B22', points: 0, pointsByRound: {} },
     rows[1] ?? { teamId: 'team-2-tbc', teamName: 'Team 2 TBC', colour: '#7A1E1E', points: 0, pointsByRound: {} },

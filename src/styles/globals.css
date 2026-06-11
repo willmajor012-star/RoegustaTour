@@ -618,3 +618,81 @@ main { padding: 14px; }
 .score-feature .scoreboard.no-centre-score {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+
+/* Expanded stat cards need breathing room when one player is open. */
+.player-card-list {
+  gap: 14px;
+}
+
+.player-card-row.expanded {
+  margin: 2px 0 10px;
+  overflow: visible;
+}
+
+.player-card-row.expanded .leaderboard-card {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.player-card-row .player-profile {
+  padding: 20px;
+  border-top: 0;
+  border-radius: 0 0 20px 20px;
+  background: linear-gradient(180deg, rgba(255, 250, 240, .98), rgba(245, 241, 232, .98));
+}
+
+.player-card-row .profile-records {
+  gap: 12px;
+}
+
+.player-card-row .profile-records > div {
+  padding: 14px;
+}
+
+.player-profile details {
+  padding-top: 12px;
+}
+
+.player-profile details + details {
+  border-top: 1px solid rgba(184, 154, 93, .26);
+}
+
+/* Carry the resolved team colour through cards, match sides and team dots. */
+.score-team-block {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--team-colour) 88%, #000 12%), rgba(0, 0, 0, .24));
+}
+
+.match-side {
+  border-left-color: color-mix(in srgb, var(--team-colour, var(--rt-gold)) 55%, transparent);
+}
+
+.match-side.right {
+  border-right-color: color-mix(in srgb, var(--team-colour, var(--rt-gold)) 55%, transparent);
+}
+
+.match-side.winner {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--team-colour, var(--rt-green-900)) 26%, var(--rt-cream)), rgba(184, 154, 93, .24)),
+    var(--rt-cream);
+  border-color: var(--team-colour, var(--rt-gold));
+}
+
+.team-display-card {
+  border-top: 5px solid var(--team-colour, var(--rt-gold));
+}
+
+.team-display-card .team-dot,
+.team-display-card .avatar.small {
+  background: var(--team-colour, var(--rt-gold));
+}
+
+@media (max-width: 560px) {
+  .player-card-row .player-profile {
+    padding: 16px;
+  }
+
+  .player-card-row .profile-records {
+    gap: 10px;
+  }
+}
