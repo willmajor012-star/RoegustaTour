@@ -31,7 +31,7 @@ export async function withAdminSupabase(
     return await action(supabase, body, session);
   } catch (error) {
     console.error('Admin Supabase request failed:', error);
-    return jsonResponse(500, { ok: false, message: 'Admin request could not be completed.' });
+    return jsonResponse(500, { ok: false, message: error instanceof Error ? error.message : 'Admin request could not be completed.' });
   }
 }
 

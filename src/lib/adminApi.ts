@@ -1,5 +1,5 @@
 import { clearStoredAdminSession, getAdminAuthorizationHeaders } from './adminSession';
-import type { Match, MatchFormat, MatchParticipant, Player, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from './types';
+import type { Bet, BetMarket, BetOption, Match, MatchFormat, MatchParticipant, Player, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from './types';
 
 export type AdminDataResponse = {
   ok: true;
@@ -15,6 +15,9 @@ export type AdminDataResponse = {
   rounds: Round[];
   matches: Match[];
   matchParticipants: MatchParticipant[];
+  betMarkets: BetMarket[];
+  betOptions: BetOption[];
+  bets: Bet[];
 };
 
 export type SavePlayerPayload = {
@@ -88,8 +91,48 @@ export type SaveMatchPayload = {
   teeTime?: string | null;
   published?: boolean;
   notes?: string | null;
+  pointsSideA?: number | null;
+  pointsSideB?: number | null;
+  winningSide?: Match['winningSide'] | null;
+  resultText?: string | null;
   sideAPlayerIds: string[];
   sideBPlayerIds: string[];
+};
+
+
+export type SaveBetOptionPayload = {
+  id?: string;
+  label: string;
+  linkedPlayerId?: string | null;
+  linkedTeamId?: string | null;
+  linkedMatchSide?: BetOption['linkedMatchSide'] | null;
+  oddsDecimal?: number | null;
+  sortOrder: number;
+};
+
+export type SaveBetMarketPayload = {
+  id?: string;
+  tourId: string;
+  roundId?: string | null;
+  matchId?: string | null;
+  title: string;
+  description?: string | null;
+  marketType: BetMarket['marketType'];
+  marketScope: BetMarket['marketScope'];
+  status: BetMarket['status'];
+  closesAt?: string | null;
+  resultOptionId?: string | null;
+  resultText?: string | null;
+  options: SaveBetOptionPayload[];
+};
+
+export type UpdateBetPayload = {
+  id: string;
+  status: Bet['status'];
+  outcomeStatus: Bet['outcomeStatus'];
+  payoutStatus: Bet['payoutStatus'];
+  payoutAmountPence?: number | null;
+  payoutNotes?: string | null;
 };
 
 async function fetchAdminJson<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -128,8 +171,12 @@ function postAdminJson<T>(path: string, payload: unknown): Promise<T> {
 export const fetchAdminData = (tourId?: string) => fetchAdminJson<AdminDataResponse>(`/.netlify/functions/admin-data${tourId ? `?tourId=${encodeURIComponent(tourId)}` : ''}`, { method: 'GET' });
 export const savePlayer = (payload: SavePlayerPayload) => postAdminJson<{ ok: true; player: Player }>('/.netlify/functions/admin-save-player', payload);
 export const saveTour = (payload: SaveTourPayload) => postAdminJson<{ ok: true; tour: Tour }>('/.netlify/functions/admin-save-tour', payload);
+export const deleteTour = (payload: { id: string }) => postAdminJson<{ ok: true; deletedTourId: string }>('/.netlify/functions/admin-delete-tour', payload);
 export const saveTourPlayer = (payload: SaveTourPlayerPayload) => postAdminJson<{ ok: true; tourPlayer: TourPlayer; tourTeamMembers?: TourTeamMember[] }>('/.netlify/functions/admin-save-tour-player', payload);
 export const saveTourTeam = (payload: SaveTourTeamPayload) => postAdminJson<{ ok: true; tourTeam: TourTeam }>('/.netlify/functions/admin-save-team', payload);
 export const saveTourTeamMembers = (payload: SaveTourTeamMembersPayload) => postAdminJson<{ ok: true; tourTeamMembers: TourTeamMember[] }>('/.netlify/functions/admin-save-team-members', payload);
 export const saveRound = (payload: SaveRoundPayload) => postAdminJson<{ ok: true; round: Round }>('/.netlify/functions/admin-save-round', payload);
+export const deleteRound = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedRoundId: string }>('/.netlify/functions/admin-delete-round', payload);
 export const saveMatch = (payload: SaveMatchPayload) => postAdminJson<{ ok: true; match: Match; matchParticipants: MatchParticipant[] }>('/.netlify/functions/admin-save-match', payload);
+export const saveBetMarket = (payload: SaveBetMarketPayload) => postAdminJson<{ ok: true; betMarket: BetMarket; betOptions: BetOption[] }>('/.netlify/functions/admin-save-bet-market', payload);
+export const updateBet = (payload: UpdateBetPayload) => postAdminJson<{ ok: true; bet: Bet }>('/.netlify/functions/admin-update-bet', payload);

@@ -134,6 +134,7 @@ export type BetMarket = {
   description?: string;
   marketType: 'match_winner' | 'player_performance' | 'team_result' | 'over_under' | 'special' | 'custom';
   status: 'open' | 'closed' | 'settled' | 'void';
+  marketScope: 'general_pot' | 'special';
   closesAt?: string;
   resultOptionId?: string;
   resultText?: string;
@@ -146,6 +147,7 @@ export type BetOption = {
   linkedPlayerId?: string;
   linkedTeamId?: string;
   linkedMatchSide?: 'A' | 'B' | 'halved';
+  oddsDecimal?: number;
   sortOrder: number;
 };
 
@@ -158,6 +160,10 @@ export type Bet = {
   stakeText?: string;
   stakeAmount?: number;
   stakeAmountPence?: number;
+  payoutAmountPence?: number;
+  outcomeStatus: 'pending' | 'won' | 'lost' | 'void' | 'push';
+  payoutStatus: 'unpaid' | 'paid' | 'not_applicable';
+  payoutNotes?: string;
   comment?: string;
   createdAt: string;
   deviceId?: string;
