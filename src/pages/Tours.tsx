@@ -155,7 +155,7 @@ function TourDetail({ tour, data, dataForStats, onBack }: { tour: Tour; data: Om
     {section === 'overview' && <TourOverview tour={tour} data={data} scores={scores} rounds={rounds} matches={matches} winner={winner} />}
     {section === 'results' && <TourResults rounds={rounds} matches={matches} data={data} teams={teams} />}
     {section === 'teams' && <TourTeams teams={teams} data={data} />}
-    {section === 'leaderboard' && <TourLeaderboard rows={leaderboard} />}
+    {section === 'leaderboard' && <TourLeaderboard rows={leaderboard} hasMatches={matches.length > 0} />}
   </div>;
 }
 
@@ -164,7 +164,7 @@ function TourOverview({ tour, data, scores, rounds, matches, winner }: { tour: T
   const playerIds = new Set(data.tourTeamMembers.filter((member) => teamIds.has(member.teamId)).map((member) => member.playerId));
   const courses = new Set(rounds.map((round) => round.courseName).filter(Boolean));
   const completeMatches = matches.filter((match) => match.status === 'complete').length;
-  return <section className="tour-detail-section card"><h3>Overview</h3><div className="tour-overview-grid"><Stat label="Team score" value={scoreLine(scores)} /><Stat label="Winner" value={winner ? `${winner.team.name} won` : isCompletedTour(tour) ? 'Winner TBC' : 'TBC'} /><Stat label="Players" value={playerIds.size || 'TBC'} /><Stat label="Rounds" value={rounds.length || 'TBC'} /><Stat label="Courses" value={courses.size || 'TBC'} /><Stat label="Results" value={`${completeMatches}/${matches.length}`} /></div></section>;
+  return <section className="tour-detail-section card"><h3>Overview</h3><div className="tour-overview-grid"><Stat label="Team score" value={scoreLine(scores)} /><Stat label="Winner" value={winner ? `${winner.team.name} won` : isCompletedTour(tour) ? 'Winner TBC' : 'TBC'} /><Stat label="Players" value={playerIds.size || 'TBC'} /><Stat label="Rounds" value={rounds.length || 'TBC'} /><Stat label="Courses" value={courses.size || 'TBC'} /><Stat label="Results" value={matches.length > 0 ? `${completeMatches}/${matches.length}` : 'TBC'} /></div></section>;
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {
@@ -172,6 +172,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 }
 
 function TourResults({ rounds, matches, data, teams }: { rounds: Round[]; matches: Match[]; data: Omit<PublicAdvancedStatsResponse, 'source'>; teams: TourTeam[] }) {
+  if (matches.length === 0) return <section className="tour-detail-section card"><h3>Results</h3><p>Matches will appear once pairings/results are available.</p></section>;
   return <section className="tour-detail-section card"><h3>Results</h3>{rounds.length === 0 ? <p>No results yet.</p> : rounds.map((round, index) => {
     const roundMatches = matches.filter((match) => match.roundId === round.id);
     const score = roundTeamScore(roundMatches);
@@ -189,6 +190,7 @@ function TourTeams({ teams, data }: { teams: TourTeam[]; data: Omit<PublicAdvanc
   })}</div>}</section>;
 }
 
-function TourLeaderboard({ rows }: { rows: LeaderboardRow[] }) {
-  return <section className="tour-detail-section"><h3>Leaderboard</h3>{rows.length === 0 ? <p className="card">Leaderboard will appear once results are available.</p> : <><LeaderboardCards rows={rows} /><LeaderboardTable rows={rows} /></>}</section>;
+function TourLeaderboard({ rows, hasMatches }: { rows: LeaderboardRow[]; hasMatches: boolean }) {
+  if (!hasMatches || rows.length === 0) return <section className="tour-detail-section"><h3>Leaderboard</h3><p className="card">Leaderboard will appear once results are available.</p></section>;
+  return <section className="tour-detail-section"><h3>Leaderboard</h3><LeaderboardCards rows={rows} /><LeaderboardTable rows={rows} /></section>;
 }
