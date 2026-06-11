@@ -612,3 +612,9 @@ main { padding: 14px; }
     padding: 5px;
   }
 }
+
+/* Homepage score banner: team cards already show the points, so remove the
+   duplicate centre score pill from the overview banner only. */
+.score-feature .scoreboard.no-centre-score {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}

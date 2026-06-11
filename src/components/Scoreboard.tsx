@@ -7,22 +7,22 @@ const fallbackRows: TeamScoreRow[] = [
   { teamId: 'team-2-tbc', teamName: 'Team 2 TBC', colour: '#7A1E1E', points: 0, pointsByRound: {} },
 ];
 
-type Props = { scores: TeamScoreRow[]; href?: string; rounds?: unknown[] };
+type Props = { scores: TeamScoreRow[]; href?: string; rounds?: unknown[]; hideCentreScore?: boolean };
 
 function safeRows(scores: TeamScoreRow[]) {
   return [scores[0] ?? fallbackRows[0], scores[1] ?? fallbackRows[1]];
 }
 
-export function Scoreboard({ scores, href }: Props) {
+export function Scoreboard({ scores, href, hideCentreScore = false }: Props) {
   const rows = safeRows(scores);
   const [left, right] = rows;
   const content = (
-    <section className="scoreboard" aria-label="Team score">
+    <section className={`scoreboard ${hideCentreScore ? 'no-centre-score' : ''}`} aria-label="Team score">
       <TeamBlock score={left} side="left" fallbackColour="#062B22" />
-      <div className="scoreboard-centre" aria-hidden="true">
+      {!hideCentreScore && <div className="scoreboard-centre" aria-hidden="true">
         <span>Score</span>
         <strong>{formatPoints(left.points)}–{formatPoints(right.points)}</strong>
-      </div>
+      </div>}
       <TeamBlock score={right} side="right" fallbackColour="#7A1E1E" />
     </section>
   );
