@@ -212,6 +212,7 @@ create table bet_markets (
   title text not null,
   description text,
   market_type text not null check (market_type in ('match_winner','player_performance','team_result','over_under','special','custom')),
+  market_scope text not null default 'general_pot' check (market_scope in ('general_pot', 'special')),
   status text not null check (status in ('open','closed','settled','void')),
   closes_at timestamptz,
   result_option_id uuid,
@@ -228,6 +229,7 @@ create table bet_options (
   linked_player_id uuid references players(id) on delete set null,
   linked_team_id uuid references tour_teams(id) on delete set null,
   linked_match_side text check (linked_match_side in ('A','B','halved')),
+  odds_decimal numeric,
   sort_order integer not null default 0,
   created_at timestamptz not null default now()
 );
@@ -240,6 +242,11 @@ create table bets (
   option_id uuid not null references bet_options(id) on delete cascade,
   bettor_name text not null,
   stake_text text,
+  stake_amount_pence integer check (stake_amount_pence is null or stake_amount_pence > 0),
+  payout_amount_pence integer check (payout_amount_pence is null or payout_amount_pence >= 0),
+  outcome_status text not null check (outcome_status in ('pending','won','lost','void','push')) default 'pending',
+  payout_status text not null check (payout_status in ('unpaid','paid','not_applicable')) default 'not_applicable',
+  payout_notes text,
   comment text,
   device_id text,
   status text not null check (status in ('active','void')) default 'active',

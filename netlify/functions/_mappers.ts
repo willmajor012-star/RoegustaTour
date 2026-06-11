@@ -192,6 +192,7 @@ export function mapBetMarket(row: Row): BetMarket {
     description: asString(row.description),
     marketType: requiredString(row, 'market_type') as BetMarket['marketType'],
     status: requiredString(row, 'status') as BetMarket['status'],
+    marketScope: (asString(row.market_scope) ?? 'general_pot') as BetMarket['marketScope'],
     closesAt: asString(row.closes_at),
     resultOptionId: asString(row.result_option_id),
     resultText: asString(row.result_text),
@@ -206,6 +207,7 @@ export function mapBetOption(row: Row): BetOption {
     linkedPlayerId: asString(row.linked_player_id),
     linkedTeamId: asString(row.linked_team_id),
     linkedMatchSide: asString(row.linked_match_side) as BetOption['linkedMatchSide'],
+    oddsDecimal: asNumber(row.odds_decimal),
     sortOrder: requiredNumber(row, 'sort_order'),
   };
 }
@@ -217,6 +219,12 @@ export function mapBet(row: Row): Bet {
     optionId: requiredString(row, 'option_id'),
     bettorName: requiredString(row, 'bettor_name'),
     stakeText: asString(row.stake_text),
+    stakeAmount: asNumber(row.stake_amount_pence) === undefined ? undefined : Number(asNumber(row.stake_amount_pence)) / 100,
+    stakeAmountPence: asNumber(row.stake_amount_pence),
+    payoutAmountPence: asNumber(row.payout_amount_pence),
+    outcomeStatus: (asString(row.outcome_status) ?? 'pending') as Bet['outcomeStatus'],
+    payoutStatus: (asString(row.payout_status) ?? 'not_applicable') as Bet['payoutStatus'],
+    payoutNotes: asString(row.payout_notes),
     comment: asString(row.comment),
     createdAt: requiredString(row, 'created_at'),
     deviceId: asString(row.device_id),
