@@ -45,7 +45,10 @@ export type PlayerAdvancedSummary = {
   currentTourScrambleRecord: MatchRecord;
   totalPointsWon: number;
   winPercent: number;
-  tourWins: Tour[];
+  tourAppearances: number;
+  tourWins: number;
+  tourLosses: number;
+  tourHalves: number;
   toursAttended: number;
   bestPartners: RelationshipRanking[];
   mostCommonPartners: RelationshipRanking[];
@@ -134,7 +137,7 @@ export type TourSummary = {
   summaryCards: Array<{ label: string; value: string; detail?: string }>;
 };
 
-const TEAM_FORMATS: MatchFormat[] = ['better_ball', 'scramble', 'custom'];
+const TEAM_FORMATS: MatchFormat[] = ['better_ball', 'foursomes', 'scramble', 'custom'];
 
 function blankRecord(): MatchRecord {
   return { matches: 0, wins: 0, draws: 0, losses: 0, pointsWon: 0, pointsAgainst: 0, winPercent: 0 };
@@ -219,10 +222,25 @@ function getPlayerToursAttended(playerId: string, data: AdvancedStatsData): numb
   return tourIds.size;
 }
 
-function getPlayerTourWins(playerId: string, data: AdvancedStatsData): Tour[] {
-  const winningTeamIds = new Set(data.tourTeamResults.filter((result) => result.resultStatus === 'winner').map((result) => result.teamId));
-  const winningTourIds = new Set(data.tourTeamMembers.filter((member) => member.playerId === playerId && winningTeamIds.has(member.teamId)).map((member) => member.tourId));
-  return data.tours.filter((tour) => winningTourIds.has(tour.id));
+function getPlayerTourRecord(playerId: string, data: AdvancedStatsData) {
+  const resultByTourTeam = new Map(data.tourTeamResults.map((result) => [`${result.tourId}:${result.teamId}`, result]));
+  const seenTours = new Set<string>();
+  const record = { tourAppearances: 0, tourWins: 0, tourLosses: 0, tourHalves: 0 };
+
+  data.tourTeamMembers
+    .filter((member) => member.playerId === playerId)
+    .forEach((member) => {
+      if (seenTours.has(member.tourId)) return;
+      seenTours.add(member.tourId);
+      record.tourAppearances += 1;
+
+      const result = resultByTourTeam.get(`${member.tourId}:${member.teamId}`);
+      if (result?.resultStatus === 'winner') record.tourWins += 1;
+      if (result?.resultStatus === 'runner_up') record.tourLosses += 1;
+      if (result?.resultStatus === 'draw') record.tourHalves += 1;
+    });
+
+  return record;
 }
 
 export function calculatePlayerAdvancedSummaries(data: AdvancedStatsData, currentTourId?: string): PlayerAdvancedSummary[] {
@@ -240,6 +258,7 @@ export function calculatePlayerAdvancedSummaries(data: AdvancedStatsData, curren
     const currentTourScrambleRecord = getRecordForPlayer(player.id, results, (result) => result.tourId === currentTour && result.format === 'scramble');
     const matchHistory = getPlayerMatchHistory(player.id, data);
     const relationships = getPartnerOpponentRankings(player.id, data);
+    const tourRecord = getPlayerTourRecord(player.id, data);
 
     return {
       player,
@@ -253,12 +272,12 @@ export function calculatePlayerAdvancedSummaries(data: AdvancedStatsData, curren
       currentTourScrambleRecord,
       totalPointsWon: allTimeRecord.pointsWon,
       winPercent: allTimeRecord.winPercent,
-      tourWins: getPlayerTourWins(player.id, data),
-      toursAttended: getPlayerToursAttended(player.id, data),
+      ...tourRecord,
+      toursAttended: Math.max(getPlayerToursAttended(player.id, data), tourRecord.tourAppearances),
       ...relationships,
       matchHistory,
     };
-  }).filter((summary) => summary.allTimeRecord.matches > 0 || summary.currentTourRecord.matches > 0 || summary.tourWins.length > 0 || summary.toursAttended > 0)
+  }).filter((summary) => summary.allTimeRecord.matches > 0 || summary.currentTourRecord.matches > 0 || summary.tourAppearances > 0 || summary.toursAttended > 0)
     .sort((a, b) => b.allTimeRecord.pointsWon - a.allTimeRecord.pointsWon || a.player.displayName.localeCompare(b.player.displayName));
 }
 
