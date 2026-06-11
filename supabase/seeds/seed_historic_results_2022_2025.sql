@@ -1,10 +1,15 @@
 -- One-off historic Roegusta Tour backfill for 2022-2025.
+-- Supabase-safe DO-block variant: all staging TEMP tables are created and
+-- consumed inside this single statement so Supabase SQL Editor cannot lose
+-- relation scope between separately submitted statements.
 -- Re-runnable/idempotent: data is located by natural keys and upserted where
 -- unique constraints exist. Future tours should be created through the admin app,
 -- not by extending this CSV seed.
 
-begin;
+do $$
+begin
 
+drop table if exists pg_temp.historic_players;
 create temp table historic_players (display_name text primary key) on commit drop;
 insert into historic_players (display_name) values
   ('Adam Musikant'),
@@ -47,6 +52,7 @@ where not exists (
   select 1 from players p where lower(btrim(p.display_name)) = lower(btrim(hp.display_name))
 );
 
+drop table if exists pg_temp.historic_tours;
 create temp table historic_tours (year integer primary key, name text, status text) on commit drop;
 insert into historic_tours (year, name, status) values
   (2022, 'Roegusta Tour 2022', 'complete'),
@@ -64,6 +70,7 @@ on conflict (year) do update set
   description = excluded.description,
   updated_at = now();
 
+drop table if exists pg_temp.historic_team_map;
 create temp table historic_team_map (
   year integer,
   side text,
@@ -93,6 +100,7 @@ on conflict (tour_id, name) do update set
   colour = excluded.colour,
   sort_order = excluded.sort_order;
 
+drop table if exists pg_temp.historic_rounds;
 create temp table historic_rounds (
   year integer,
   round_number integer,
@@ -132,6 +140,7 @@ on conflict (tour_id, round_number) do update set
   notes = excluded.notes,
   updated_at = now();
 
+drop table if exists pg_temp.historic_matches;
 create temp table historic_matches (
   year integer,
   round_number integer,
@@ -263,6 +272,7 @@ on conflict (round_id, match_number) do update set
   notes = excluded.notes,
   updated_at = now();
 
+drop table if exists pg_temp.historic_match_players;
 create temp table historic_match_players as
 select hm.year, hm.round_number, hm.match_number, hm.format, hm.winning_side,
        hm.points_side_a, hm.points_side_b, 'A'::text as side, hm.side_a_team as team_name, btrim(player_name) as display_name
@@ -348,5 +358,4 @@ on conflict (tour_id, team_id) do update set
 
 -- Match-level rows are seeded above, so do not insert historical_player_stats
 -- from the legacy Records sheet; that would double-count all-time stats.
-
-commit;
+end $$;
