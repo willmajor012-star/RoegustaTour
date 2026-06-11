@@ -6,6 +6,7 @@ import { Players } from '../pages/Players';
 import { Stats } from '../pages/Stats';
 import { Teams } from '../pages/Teams';
 import { TourInfo } from '../pages/TourInfo';
+import { Tours } from '../pages/Tours';
 import { TourScore } from '../pages/TourScore';
 
 export const routes = [
@@ -13,6 +14,7 @@ export const routes = [
   { path: '/matches', element: <Matches /> },
   { path: '/teams', element: <Teams /> },
   { path: '/players', element: <Players /> },
+  { path: '/tours', element: <Tours /> },
   { path: '/info', element: <TourInfo /> },
   { path: '/betting', element: <Betting /> },
   { path: '/score', element: <TourScore /> },

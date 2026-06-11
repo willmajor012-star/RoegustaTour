@@ -196,3 +196,223 @@ main { padding: 14px; }
 .legacy-players-card p { margin-top: 0; color: var(--rt-charcoal); }
 @media (min-width: 760px) { .quick-link-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } .h2h-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .h2h-match-list { grid-column: 1 / -1; } }
 @media (max-width: 560px) { .brand-header { padding: 12px 14px; } .brand-logo-roundel { width: 56px; height: 56px; flex-basis: 56px; padding: 7px; } .brand-copy h1 { font-size: 1.45rem; } .brand-location, .brand-dates { font-size: .82rem; } .quick-link-grid { grid-template-columns: 1fr 1fr; } .player-profiles-title { display: grid; align-items: stretch; } }
+
+/* Public front-end rescue */
+.brand-header{padding:12px 16px 14px;border-bottom:3px solid var(--rt-gold)}
+.brand-lockup{gap:12px;align-items:center}.brand-logo-roundel{width:58px;height:58px;flex:0 0 58px;padding:8px;border-radius:50%;overflow:hidden;background:var(--rt-cream);border:2px solid var(--rt-gold);box-shadow:0 8px 22px rgba(0,0,0,.18)}.brand-logo-roundel .brand-logo{width:100%;height:100%;object-fit:contain;display:block}.brand-copy h1{font-size:clamp(1.28rem,4.8vw,1.8rem);line-height:1.02;margin:0;color:var(--rt-cream)}.brand-copy .eyebrow,.brand-location,.brand-dates{margin:.08rem 0}.brand-location,.brand-dates{font-size:.84rem;color:var(--rt-stone)}
+.bottom-nav{z-index:50}.bottom-nav button{min-width:0}.bottom-nav span{white-space:nowrap}
+.countdown-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.countdown-grid span{display:grid;place-items:center;padding:10px 6px;border-radius:14px;background:rgba(15,47,36,.06)}.countdown-grid b{font-family:'Libre Baskerville',Georgia,serif;font-size:clamp(1.35rem,7vw,2.4rem);color:var(--rt-green-900)}.countdown-grid small{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#6f6a5d;font-weight:800}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.card-chevron{font-size:1.6rem;color:var(--rt-gold)}
+.scoreboard-link{display:block;text-decoration:none;color:inherit}.scoreboard{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:10px;align-items:stretch;background:var(--rt-green-900);border-radius:18px;padding:10px!important;border:1px solid rgba(201,162,74,.35)}.score-team-block{min-width:0;display:grid;gap:4px;align-content:center;border-radius:16px;padding:14px 12px;background:linear-gradient(135deg,var(--team-colour),rgba(0,0,0,.28));color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}.score-team-block.right{text-align:right}.score-team-block strong{font-size:clamp(1rem,4.8vw,1.55rem);line-height:1.05;color:#fff;overflow-wrap:anywhere}.score-team-block b{font-family:'Libre Baskerville',Georgia,serif;font-size:clamp(2rem,11vw,3.8rem);line-height:.95;color:#fff}.score-team-block small{color:rgba(255,255,255,.82);font-weight:900;text-transform:uppercase;letter-spacing:.08em}.scoreboard-centre{align-self:center;display:grid;gap:2px;place-items:center;padding:8px 10px;border-radius:999px;background:var(--rt-cream);color:var(--rt-green-900);box-shadow:0 8px 18px rgba(0,0,0,.18)}.scoreboard-centre span{font-size:.63rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#6f6a5d}.scoreboard-centre strong{font-family:'Libre Baskerville',Georgia,serif;font-size:clamp(1rem,4vw,1.35rem);white-space:nowrap}.team-dot{width:10px;height:10px;border-radius:50%;background:var(--rt-gold);display:inline-block}.score-team-block.right .team-dot{justify-self:end}.score-row,.round-breakdown{display:none!important}
+.match-card{padding:10px 0;border-top:1px solid rgba(15,47,36,.12)}.round-match-list .match-card:first-child,.latest-result-card .match-card{border-top:0}.match-card-topline{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;color:#6f6a5d;font-size:.72rem;font-weight:800}.match-ledger-row{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center}.match-side{min-width:0;padding:8px 9px;border-radius:12px;background:rgba(15,47,36,.055);border-left:4px solid transparent}.match-side.right{text-align:right;border-left:0;border-right:4px solid transparent}.match-side.winner{background:rgba(46,112,70,.12);border-color:var(--rt-gold)}.match-side.halved{background:rgba(184,154,93,.12);border-color:var(--rt-gold)}.match-side strong{display:block;color:var(--rt-green-900);font-size:.92rem;line-height:1.18;overflow-wrap:anywhere}.match-side span{display:block;color:#6f6a5d;font-size:.72rem;font-weight:800;margin-top:2px}.result-chip{display:grid;place-items:center;min-width:58px;max-width:76px;border-radius:999px;padding:7px 8px;background:var(--rt-cream);border:1px solid var(--rt-gold);color:var(--rt-green-900);font-weight:900;font-size:.78rem;text-align:center}.result-chip.complete{background:var(--rt-green-900);color:var(--rt-cream)}.round-format-label{display:inline-block;margin-top:4px;color:#6f6a5d;font-weight:800}.round-results-header h3{color:var(--rt-green-900)}.round-score{color:var(--rt-green-900)}
+.tour-card-list,.tour-archive-section{display:grid;gap:10px}.tour-archive-card{display:grid;gap:5px;text-align:left;width:100%;color:var(--rt-charcoal)}.tour-archive-card strong{font-family:'Libre Baskerville',Georgia,serif;color:var(--rt-green-900);font-size:1.15rem}.tour-archive-card.selected{border-color:var(--rt-gold);box-shadow:0 0 0 2px rgba(184,154,93,.25),var(--shadow)}.tour-archive-card small{color:#6f6a5d;font-weight:800}.tour-detail{display:grid;gap:14px}.tour-detail-header{display:grid;gap:12px}.tour-detail-header h3{color:var(--rt-green-900);margin:.1rem 0}.tour-detail-score{display:flex;gap:8px;flex-wrap:wrap}.tour-detail-score span,.tour-team-sheet{border-radius:14px;background:rgba(15,47,36,.06);padding:9px 10px;color:var(--rt-green-900);font-weight:800}.tour-detail-grid{display:grid;gap:14px}.tour-detail-grid h4{margin:.2rem 0 .5rem;color:var(--rt-green-900)}.tour-round-block{display:grid;gap:6px;padding:10px 0;border-top:1px solid rgba(15,47,36,.12)}.tour-round-block>strong{color:var(--rt-green-900)}.tour-round-block>span,.tour-team-sheet span{display:block;color:#6f6a5d;font-size:.85rem;font-weight:700}.tour-team-sheet{display:grid;gap:3px;margin-bottom:8px}.tour-score-line{font-weight:900;color:var(--rt-green-900)}
+.stats-switch{background:rgba(255,255,255,.72);border:1px solid var(--rt-stone);border-radius:999px;padding:5px;display:flex;gap:4px;overflow-x:auto}.stats-switch button{border:0;background:transparent;border-radius:999px;padding:9px 12px;color:var(--rt-green-900);font-weight:900}.stats-switch button.active{background:var(--rt-green-900);color:var(--rt-cream)}.leaderboard-card{width:100%;text-align:left}.leaderboard-card strong{color:var(--rt-green-900)}.leaderboard-card.selected{border-color:var(--rt-gold);box-shadow:0 0 0 2px rgba(184,154,93,.2),var(--shadow)}.player-card-list{display:grid;gap:10px}.player-card-row{min-width:0}.player-card-row .player-profile{margin-top:-2px;border-top-left-radius:8px;border-top-right-radius:8px}.player-profile{max-width:100%;overflow:hidden}.profile-records{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.profile-records>div{min-width:0;border-radius:14px;background:rgba(15,47,36,.06);padding:10px}.profile-records span{display:block;color:#6f6a5d;font-size:.75rem;font-weight:900}.profile-records strong{display:block;color:var(--rt-green-900);font-size:1.1rem}.profile-records small{font-weight:800;color:#6f6a5d}.player-profile details{margin-top:10px}.player-profile summary{cursor:pointer;color:var(--rt-green-900);font-weight:900}.format-stat-list{display:flex;flex-wrap:wrap;gap:6px}.pill{max-width:100%;overflow-wrap:anywhere}.head-to-head-selects{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.head-to-head-selects label,.filters label{display:grid;gap:5px;color:var(--rt-green-900);font-weight:900}.head-to-head-selects select,.filters select,.player-sort-control select{width:100%;min-width:0}.h2h-match-list{min-width:0}.h2h-match-list p,.match-history-list p{overflow-wrap:anywhere}
+@media (min-width:760px){.tour-detail-header{grid-template-columns:minmax(0,1fr) auto}.tour-detail-grid{grid-template-columns:1.25fr .85fr 1fr}.tour-detail-grid section:first-child{grid-row:span 2}.dashboard-links{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (max-width:560px){.bottom-nav{grid-template-columns:repeat(6,minmax(0,1fr));gap:0;padding:7px 4px}.bottom-nav button{font-size:.58rem;padding:6px 2px}.bottom-nav svg{width:19px;height:19px}.scoreboard{gap:6px;padding:7px!important}.score-team-block{padding:11px 8px}.scoreboard-centre{padding:7px 6px}.match-ledger-row{gap:5px}.match-side{padding:7px 6px}.match-side strong{font-size:.82rem}.result-chip{min-width:50px;max-width:60px;font-size:.7rem;padding:6px 4px}.head-to-head-selects{grid-template-columns:1fr}.profile-records{grid-template-columns:1fr 1fr}.stats-switch button{font-size:.78rem;padding:8px 10px}}
+.info-logo-roundel{width:96px;height:96px;align-self:center;justify-self:end;padding:12px;border-radius:50%;overflow:hidden;background:var(--rt-cream);border:2px solid var(--rt-gold);box-shadow:0 12px 28px rgba(15,47,36,.14)}.info-logo-roundel img{width:100%;height:100%;object-fit:contain;display:block}@media(max-width:560px){.info-logo-roundel{display:none}}
+/* Tours archive and selected-tour detail */
+.tour-year-card {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-radius: 24px;
+  padding: 20px;
+  min-height: 150px;
+  background:
+    radial-gradient(circle at top right, rgba(201, 162, 74, .36), transparent 34%),
+    linear-gradient(135deg, var(--rt-green-900), var(--rt-green-700));
+  color: var(--rt-cream);
+  box-shadow: 0 18px 45px rgba(15, 47, 36, .2);
+}
+
+.tour-year-card strong {
+  font-family: 'Libre Baskerville', Georgia, serif;
+  color: var(--rt-cream);
+  font-size: clamp(1.35rem, 6vw, 2rem);
+  line-height: 1;
+}
+
+.tour-year-card span {
+  color: rgba(245, 241, 232, .86);
+  font-weight: 800;
+}
+
+.tour-year-card small {
+  color: var(--rt-gold);
+  font-weight: 900;
+}
+
+.tour-status-badge {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(245, 241, 232, .12);
+  border: 1px solid rgba(201, 162, 74, .55);
+  color: var(--rt-gold) !important;
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.back-to-tours {
+  justify-self: start;
+  border: 0;
+  border-radius: 999px;
+  background: var(--rt-green-900);
+  color: var(--rt-cream);
+  padding: 10px 14px;
+  font-weight: 900;
+}
+
+.selected-tour-hero {
+  display: grid;
+  gap: 14px;
+  background: linear-gradient(135deg, var(--rt-green-900), var(--rt-green-700));
+  color: var(--rt-cream);
+  border-color: rgba(201, 162, 74, .55);
+}
+
+.selected-tour-hero h2 {
+  font-size: clamp(1.7rem, 7vw, 2.8rem);
+  line-height: 1;
+  margin: .35rem 0;
+  color: var(--rt-cream);
+}
+
+.selected-tour-hero p {
+  color: rgba(245, 241, 232, .84);
+  font-weight: 800;
+}
+
+.selected-tour-hero .tour-detail-score span {
+  background: rgba(245, 241, 232, .12);
+  color: var(--rt-cream);
+  border: 1px solid rgba(201, 162, 74, .35);
+}
+
+.tour-detail-switch {
+  background: rgba(255, 255, 255, .72);
+  border: 1px solid var(--rt-stone);
+  border-radius: 999px;
+  padding: 5px;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.tour-detail-switch button {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 9px 12px;
+  color: var(--rt-green-900);
+  font-weight: 900;
+}
+
+.tour-detail-switch button.active {
+  background: var(--rt-green-900);
+  color: var(--rt-cream);
+}
+
+.tour-detail-section {
+  display: grid;
+  gap: 12px;
+}
+
+.tour-detail-section h3 {
+  margin: .1rem 0;
+  color: var(--rt-green-900);
+}
+
+.tour-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tour-overview-grid article {
+  min-width: 0;
+  border-radius: 16px;
+  background: rgba(15, 47, 36, .06);
+  padding: 12px;
+}
+
+.tour-overview-grid span {
+  display: block;
+  color: #6f6a5d;
+  font-weight: 900;
+  font-size: .78rem;
+}
+
+.tour-overview-grid strong {
+  display: block;
+  color: var(--rt-green-900);
+  overflow-wrap: anywhere;
+}
+
+.tour-round-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.tour-round-header strong {
+  color: var(--rt-green-900);
+}
+
+.tour-round-header span {
+  display: block;
+  color: #6f6a5d;
+  font-size: .85rem;
+  font-weight: 800;
+}
+
+.tour-round-header b {
+  color: var(--rt-green-900);
+  white-space: nowrap;
+}
+
+.tour-leaderboard-cards {
+  display: grid;
+}
+
+.selected-tour-page .team-display-card {
+  min-width: 0;
+}
+
+@media (min-width: 760px) {
+  .selected-tour-hero {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .tour-overview-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tour-leaderboard-cards {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .tour-year-card {
+    min-height: 132px;
+    padding: 17px;
+  }
+
+  .tour-round-header {
+    display: grid;
+  }
+
+  .tour-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .selected-tour-hero .tour-detail-score {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}

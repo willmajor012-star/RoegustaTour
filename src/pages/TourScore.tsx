@@ -1,5 +1,6 @@
 import { Scoreboard } from '../components/Scoreboard';
 import { formatPoints } from '../lib/formatting';
+import { formatRoundDisplayName } from '../lib/display';
 import { fetchPublicScore, type PublicScoreResponse } from '../lib/publicApi';
 import { usePublicData } from '../lib/usePublicData';
 
@@ -19,7 +20,7 @@ export function TourScore() {
     {!loading && !error && activeData.scores.length === 0 ? <p className="card">Team score will build as results are entered.</p> : <Scoreboard scores={activeData.scores} rounds={activeData.rounds} />}
     <div className="stat-grid"><StatCardShim label="Completed" value={completedCount} /><StatCardShim label="Remaining" value={formatPoints(remaining)} /><StatCardShim label="Current leader" value={completedCount === 0 ? 'TBC' : tied ? 'Tied' : leader?.teamName ?? 'TBC'} /></div>
     {!loading && !error && completedCount === 0 && <p className="card">Team score will build as results are entered.</p>}
-    <section className="card"><h3>Round-by-round</h3>{activeData.rounds.length === 0 ? <p>No live data has been added yet.</p> : activeData.rounds.map((round) => <p key={round.id}><strong>Round {round.roundNumber}:</strong> {round.name} · {round.status}</p>)}{activeData.tour?.status === 'complete' && <p>Winner: {tied ? 'Shared' : leader?.teamName ?? 'TBC'}</p>}</section>
+    <section className="card"><h3>Round-by-round</h3>{activeData.rounds.length === 0 ? <p>Round scores TBC.</p> : activeData.rounds.map((round, index) => <p key={round.id}><strong>{formatRoundDisplayName(round, index)}</strong></p>)}{activeData.tour?.status === 'complete' && <p>Winner: {tied ? 'Shared' : leader?.teamName ?? 'TBC'}</p>}</section>
   </div>;
 }
 function StatCardShim({ label, value }: { label: string; value: string | number }) { return <article className="stat-card"><span>{label}</span><strong>{value}</strong></article>; }
