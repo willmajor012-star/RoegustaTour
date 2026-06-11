@@ -56,9 +56,14 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
 
   try {
     const supabase = createServerSupabaseClient();
-    const markets = await runRows<{ id: string; status: string }>(supabase.from('bet_markets').select('id, status').eq('id', marketId).limit(1), 'find bet market');
+    const markets = await runRows<{ id: string; status: string; closes_at: string | null }>(supabase.from('bet_markets').select('id, status, closes_at').eq('id', marketId).limit(1), 'find bet market');
     if (markets.length === 0) return jsonResponse(404, { ok: false, message: 'Bet market was not found.' });
     if (markets[0].status !== 'open') return jsonResponse(400, { ok: false, message: 'This Bet Punto market is not open for new picks.' });
+
+    const marketCloseTime = markets[0].closes_at ? Date.parse(markets[0].closes_at) : null;
+    if (marketCloseTime !== null && Number.isFinite(marketCloseTime) && marketCloseTime <= Date.now()) {
+      return jsonResponse(400, { ok: false, message: 'This Bet Punto market has closed for new picks.' });
+    }
 
     const options = await runRows<{ id: string; market_id: string }>(supabase.from('bet_options').select('id, market_id').eq('id', optionId).eq('market_id', marketId).limit(1), 'find bet option');
     if (options.length === 0) return jsonResponse(400, { ok: false, message: 'Option does not belong to this market.' });
