@@ -444,7 +444,6 @@ export function calculateTourSummary(tourId: string | undefined, data: AdvancedS
       { label: 'Team score', value: teamScore.length ? teamScore.map((row) => `${row.team.name} ${formatNumber(row.points)}`).join(' · ') : 'No team score yet' },
       { label: winningTeamId ? 'Winning team' : 'Leading team', value: leader?.name ?? 'TBC' },
       { label: 'Top points scorer', value: topPointsScorer ? topPointsScorer.player.displayName : 'TBC' },
-      { label: 'MVP leader', value: mvpLeaderboard[0] ? mvpLeaderboard[0].player.displayName : 'TBC' },
       { label: 'Completed matches', value: String(completedMatches.length), detail: `${Math.max(0, tourMatches.length - completedMatches.length)} remaining` },
     ],
   };

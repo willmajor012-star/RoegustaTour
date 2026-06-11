@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LeaderboardTable } from '../components/LeaderboardTable';
 import {
   calculatePlayerAdvancedSummaries,
   getHeadToHead,
@@ -13,11 +12,11 @@ import {
 } from '../lib/advancedStats';
 import { formatPercent, formatPoints } from '../lib/formatting';
 import { formatMatchDisplayLabel, formatTourDisplayName } from '../lib/display';
-import type { LeaderboardRow, Player, Tour } from '../lib/types';
+import type { Player, Tour } from '../lib/types';
 import { fetchPublicAdvancedStats, type PublicAdvancedStatsResponse } from '../lib/publicApi';
 
 type StatsSource = 'supabase';
-type StatsView = 'current' | 'previous' | 'total' | 'h2h';
+type StatsView = 'current' | 'previous' | 'all' | 'h2h';
 type PlayerSortOption = 'points-desc' | 'points-asc' | 'win-desc' | 'win-asc' | 'matches-desc' | 'matches-asc' | 'name-asc' | 'name-desc';
 type StatsResponse = Omit<PublicAdvancedStatsResponse, 'source'> & { source: StatsSource };
 type RecordSelector = (summary: PlayerAdvancedSummary) => MatchRecord;
@@ -77,26 +76,6 @@ function normaliseStatsResponse(response: StatsResponse): StatsResponse {
   return { ...data, source: response.source, currentTour, playerSummaries: response.playerSummaries ?? calculatePlayerAdvancedSummaries(data, currentTour?.id) };
 }
 
-function toLeaderboardRows(summaries: PlayerAdvancedSummary[], selectRecord: RecordSelector): LeaderboardRow[] {
-  return summaries.map((summary) => {
-    const record = selectRecord(summary);
-    return {
-      playerId: summary.player.id,
-      playerName: summary.player.displayName,
-      matches: record.matches,
-      wins: record.wins,
-      draws: record.draws,
-      losses: record.losses,
-      points: record.pointsWon,
-      winPercent: record.winPercent,
-    };
-  }).filter((row) => row.matches > 0).sort((a, b) => b.points - a.points || b.winPercent - a.winPercent || a.playerName.localeCompare(b.playerName, undefined, { sensitivity: 'base' }));
-}
-
-function LeaderboardCards({ rows, selectedPlayerId, onSelect }: { rows: LeaderboardRow[]; selectedPlayerId?: string; onSelect?: (playerId: string) => void }) {
-  return <div className="leaderboard-cards">{rows.length === 0 ? <p className="card">No results yet.</p> : rows.map((row, index) => <button className={`leaderboard-card card ${selectedPlayerId === row.playerId ? 'selected' : ''}`} key={row.playerId} onClick={() => onSelect?.(selectedPlayerId === row.playerId ? '' : row.playerId)}><span className="rank">#{index + 1}</span><span className="leaderboard-name">{row.playerName}</span><strong>{formatPoints(row.points)} pts</strong><span>{recordText(row)} · {formatPercent(row.winPercent)}</span></button>)}</div>;
-}
-
 function HeadToHeadSection({ players, data }: { players: Player[]; data: AdvancedStatsData }) {
   const [playerAId, setPlayerAId] = useState('');
   const [playerBId, setPlayerBId] = useState('');
@@ -130,13 +109,13 @@ function MatchListLine({ item }: { item: MatchListItem }) {
   return <p><strong>{formatMatchDisplayLabel(item.match, item.round)}</strong><br />{item.sideAPlayers.map((player) => player.displayName).join(' / ') || item.match.sideALabel || 'Team 1'} vs {item.sideBPlayers.map((player) => player.displayName).join(' / ') || item.match.sideBLabel || 'Team 2'} · {item.resultText}</p>;
 }
 
-function PlayersSection({ selectedPlayerId, setSelectedPlayerId, summaries, emptyText, selectRecord }: { selectedPlayerId?: string; setSelectedPlayerId: (playerId: string | undefined) => void; summaries: PlayerAdvancedSummary[]; emptyText: string; selectRecord: RecordSelector }) {
+function PlayersSection({ title, subtitle, selectedPlayerId, setSelectedPlayerId, summaries, emptyText, selectRecord }: { title: string; subtitle?: string; selectedPlayerId?: string; setSelectedPlayerId: (playerId: string | undefined) => void; summaries: PlayerAdvancedSummary[]; emptyText: string; selectRecord: RecordSelector }) {
   const [sortBy, setSortBy] = useState<PlayerSortOption>('points-desc');
-  const sortedSummaries = useMemo(() => [...summaries].sort((a, b) => comparePlayerSummaries(a, b, sortBy, selectRecord)), [sortBy, summaries, selectRecord]);
-  return <section className="stats-layout players-layout"><div className="stats-section-title player-profiles-title"><div><h3>Players</h3></div><label className="player-sort-control"><span>Sort</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value as PlayerSortOption)}>{playerSortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label></div><div className="leaderboard-cards player-card-list always-show">{sortedSummaries.length === 0 ? <p className="card">{emptyText}</p> : sortedSummaries.map((summary) => {
+  const rankedSummaries = useMemo(() => [...summaries].filter((summary) => selectRecord(summary).matches > 0).sort((a, b) => comparePlayerSummaries(a, b, sortBy, selectRecord)), [sortBy, summaries, selectRecord]);
+  return <section className="stats-layout players-layout"><div className="stats-section-title player-profiles-title"><div><h3>{title}</h3>{subtitle && <span>{subtitle}</span>}</div><label className="player-sort-control"><span>Sort</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value as PlayerSortOption)}>{playerSortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label></div><div className="leaderboard-cards player-card-list always-show">{rankedSummaries.length === 0 ? <p className="card">{emptyText}</p> : rankedSummaries.map((summary, index) => {
     const isSelected = selectedPlayerId === summary.player.id;
     const record = selectRecord(summary);
-    return <div className={`player-card-row ${isSelected ? 'expanded' : ''}`} key={summary.player.id}><button className={`leaderboard-card card ${isSelected ? 'selected' : ''}`} onClick={() => setSelectedPlayerId(isSelected ? undefined : summary.player.id)}><span className="leaderboard-name">{summary.player.displayName}</span><strong>{formatPoints(record.pointsWon)} pts</strong><span>{recordText(record)} · {formatPercent(record.winPercent)}</span></button>{isSelected && <PlayerProfile summary={summary} />}</div>;
+    return <div className={`player-card-row ${isSelected ? 'expanded' : ''}`} key={summary.player.id}><button className={`leaderboard-card player-rank-card card ${isSelected ? 'selected' : ''}`} onClick={() => setSelectedPlayerId(isSelected ? undefined : summary.player.id)}><span className="rank">#{index + 1}</span><span className="leaderboard-name">{summary.player.displayName}</span><strong>{formatPoints(record.pointsWon)} pts</strong><span>{recordText(record)} · {formatPercent(record.winPercent)}</span></button>{isSelected && <PlayerProfile summary={summary} />}</div>;
   })}</div></section>;
 }
 
@@ -149,7 +128,7 @@ function RecordTile({ label, record }: { label: string; record: MatchRecord }) {
 }
 
 function RelationshipList({ title, rows }: { title: string; rows: RelationshipRanking[] }) {
-  const meaningful = rows.filter((row) => row.matches > 0).slice(0, 5);
+  const meaningful = rows.filter((row) => row.matches > 0 && (title === 'Best partners' ? row.pointsWon > 0 : row.pointsWon > 0 || row.pointsAgainst > 0)).slice(0, 5);
   if (meaningful.length === 0) return null;
   return <div><h4>{title}</h4><div className="format-stat-list">{meaningful.map((row) => <span className="pill" key={row.player.id}>{row.player.displayName}: {row.matches} match{row.matches === 1 ? '' : 'es'}, {formatPoints(row.pointsWon)} pts</span>)}</div></div>;
 }
@@ -217,22 +196,19 @@ export function Stats() {
   const currentSummaries = useMemo(() => calculatePlayerAdvancedSummaries(data, currentTour?.id), [data, currentTour?.id]);
   const previousSummaries = useMemo(() => selectedTour ? calculatePlayerAdvancedSummaries(data, selectedTour.id) : [], [data, selectedTour]);
   const allSummaries = useMemo(() => activeStats.playerSummaries ?? calculatePlayerAdvancedSummaries(data, currentTour?.id), [activeStats.playerSummaries, currentTour?.id, data]);
-  const currentLeaderboard = useMemo(() => toLeaderboardRows(currentSummaries, selectCurrentRecord), [currentSummaries, selectCurrentRecord]);
-  const previousLeaderboard = useMemo(() => toLeaderboardRows(previousSummaries, selectCurrentRecord), [previousSummaries, selectCurrentRecord]);
-  const allLeaderboard = useMemo(() => toLeaderboardRows(allSummaries, selectAllTimeRecord), [allSummaries, selectAllTimeRecord]);
 
   useEffect(() => { setSelectedPlayerId(undefined); }, [view, selectedTourId]);
 
   return <div className="page-stack stats-page"><section className="page-title"><h2>Stats</h2></section>{loading && <p className="card">Loading stats…</p>}{error && <p className="card form-error">{error}</p>}
     <div className="segmented stats-switch" role="tablist" aria-label="Stats views">{[
-      ['current', 'Current tour'], ['previous', 'Previous tours'], ['total', 'Total points'], ['h2h', 'Head-to-head'],
+      ['current', 'Current tour'], ['previous', 'Previous tours'], ['all', 'All tours'], ['h2h', 'Head-to-head'],
     ].map(([value, label]) => <button key={value} className={view === value ? 'active' : ''} onClick={() => setView(value as StatsView)}>{label}</button>)}</div>
 
-    {view === 'current' && <><section className="stats-panel"><div className="stats-section-title"><h3>Leaderboard</h3><span>{currentTour ? formatTourDisplayName(currentTour) : 'Current tour'}</span></div>{currentLeaderboard.length === 0 ? <p className="card">Current tour stats will appear once results are entered.</p> : <><LeaderboardCards rows={currentLeaderboard} selectedPlayerId={selectedPlayerId} onSelect={(id) => setSelectedPlayerId(id || undefined)} /><LeaderboardTable rows={currentLeaderboard} selectedPlayerId={selectedPlayerId} onSelectPlayer={(id) => setSelectedPlayerId(selectedPlayerId === id ? undefined : id)} /></>}</section><PlayersSection selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={currentSummaries.filter((summary) => summary.currentTourRecord.matches > 0)} emptyText="Current tour stats will appear once results are entered." selectRecord={selectCurrentRecord} /></>}
+    {view === 'current' && <PlayersSection title="Current tour" subtitle={currentTour ? formatTourDisplayName(currentTour) : undefined} selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={currentSummaries} emptyText="Current tour stats will appear once results are entered." selectRecord={selectCurrentRecord} />}
 
-    {view === 'previous' && <><section className="stats-panel"><div className="stats-section-title"><h3>Previous tours</h3><span><a href="/tours">Tours</a></span></div>{previousTours.length === 0 ? <p className="card">Previous tours will appear here once available.</p> : <div className="filters card"><label><span>Tour</span><select value={selectedTour?.id ?? ''} onChange={(event) => setSelectedTourId(event.target.value)}>{previousTours.map((tour) => <option key={tour.id} value={tour.id}>{formatTourDisplayName(tour)}</option>)}</select></label></div>}{selectedTour && <p className="card tour-score-line">{scoreForTour(activeStats, selectedTour)}</p>}{previousLeaderboard.length > 0 ? <><LeaderboardCards rows={previousLeaderboard} /><LeaderboardTable rows={previousLeaderboard} /></> : selectedTour && <p className="card">No leaderboard yet.</p>}</section>{selectedTour && <PlayersSection selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={previousSummaries.filter((summary) => summary.currentTourRecord.matches > 0)} emptyText="No player records yet." selectRecord={selectCurrentRecord} />}</>}
+    {view === 'previous' && <><section className="stats-panel"><div className="stats-section-title"><h3>Previous tours</h3><span><a href="/tours">Tours</a></span></div>{previousTours.length === 0 ? <p className="card">Previous tours will appear here once available.</p> : <div className="filters card"><label><span>Tour</span><select value={selectedTour?.id ?? ''} onChange={(event) => setSelectedTourId(event.target.value)}>{previousTours.map((tour) => <option key={tour.id} value={tour.id}>{formatTourDisplayName(tour)}</option>)}</select></label></div>}{selectedTour && <p className="card tour-score-line">{scoreForTour(activeStats, selectedTour)}</p>}</section>{selectedTour && <PlayersSection title={formatTourDisplayName(selectedTour)} subtitle="Selected previous tour" selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={previousSummaries} emptyText="No player records yet." selectRecord={selectCurrentRecord} />}</>}
 
-    {view === 'total' && <><section className="stats-panel"><div className="stats-section-title"><h3>Total points</h3></div><LeaderboardCards rows={allLeaderboard} selectedPlayerId={selectedPlayerId} onSelect={(id) => setSelectedPlayerId(id || undefined)} /><LeaderboardTable rows={allLeaderboard} selectedPlayerId={selectedPlayerId} onSelectPlayer={(id) => setSelectedPlayerId(selectedPlayerId === id ? undefined : id)} /></section><PlayersSection selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={allSummaries} emptyText="No completed records yet." selectRecord={selectAllTimeRecord} /></>}
+    {view === 'all' && <PlayersSection title="All tours" selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={allSummaries} emptyText="No completed records yet." selectRecord={selectAllTimeRecord} />}
 
     {view === 'h2h' && <HeadToHeadSection players={activeStats.players} data={data} />}
   </div>;

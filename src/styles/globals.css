@@ -416,3 +416,161 @@ main { padding: 14px; }
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Targeted UI polish for compact match rows and the stats player list */
+.brand-logo-roundel {
+  background: var(--rt-cream);
+  border: 2px solid var(--rt-gold);
+  padding: 9px;
+  overflow: hidden;
+}
+
+.brand-logo-roundel .brand-logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+.match-side {
+  border: 1px solid rgba(15, 47, 36, .1);
+  border-left: 4px solid transparent;
+  background: rgba(255, 253, 246, .86);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .35);
+}
+
+.match-side.right {
+  border-left: 1px solid rgba(15, 47, 36, .1);
+  border-right: 4px solid transparent;
+}
+
+.match-side.winner {
+  background:
+    linear-gradient(135deg, rgba(184, 154, 93, .34), rgba(46, 112, 70, .18)),
+    var(--rt-cream);
+  border-color: var(--rt-gold);
+  box-shadow: inset 0 0 0 1px rgba(184, 154, 93, .34), 0 8px 18px rgba(15, 47, 36, .1);
+}
+
+.match-side.halved {
+  background: linear-gradient(135deg, rgba(184, 154, 93, .18), rgba(255, 253, 246, .92));
+  border-color: rgba(184, 154, 93, .7);
+}
+
+.result-chip {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-card-list {
+  width: 100%;
+}
+
+.player-card-row {
+  display: grid;
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+.player-card-row.expanded {
+  border-radius: 18px;
+  background: rgba(184, 154, 93, .16);
+  border: 1px solid rgba(184, 154, 93, .38);
+  overflow: hidden;
+}
+
+.player-card-row .leaderboard-card,
+.player-card-row.expanded .leaderboard-card {
+  margin: 0;
+  border-radius: 18px;
+}
+
+.player-card-row.expanded .leaderboard-card {
+  border-bottom-right-radius: 8px;
+  border-bottom-left-radius: 8px;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.player-card-row .player-profile {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: 0;
+  border-top: 1px solid rgba(184, 154, 93, .28);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-bottom-left-radius: 18px;
+  border-bottom-right-radius: 18px;
+  overflow: visible;
+  box-shadow: none;
+}
+
+.player-rank-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  align-items: center;
+  padding: 12px 14px;
+  min-height: 0;
+  background: rgba(255, 253, 246, .96);
+}
+
+.player-rank-card .rank {
+  grid-row: span 2;
+  color: var(--rt-gold);
+  font-weight: 950;
+}
+
+.player-rank-card .leaderboard-name {
+  min-width: 0;
+  color: var(--rt-green-900);
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
+.player-rank-card strong {
+  justify-self: end;
+  font-size: 1.02rem;
+  white-space: nowrap;
+}
+
+.player-rank-card > span:last-child {
+  grid-column: 2 / 4;
+  color: #6f6a5d;
+  font-size: .82rem;
+  font-weight: 850;
+}
+
+.player-rank-card.selected {
+  background:
+    linear-gradient(135deg, rgba(15, 47, 36, .08), rgba(184, 154, 93, .18)),
+    var(--rt-cream);
+  box-shadow: inset 4px 0 0 var(--rt-gold);
+}
+
+.player-profile {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 380px) {
+  .profile-records {
+    grid-template-columns: 1fr;
+  }
+
+  .player-rank-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .player-rank-card strong {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .player-rank-card > span:last-child {
+    grid-column: 2;
+  }
+}
