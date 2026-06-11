@@ -38,6 +38,14 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     if (rounds[0].tour_id !== tourId) return badRequest('Round does not belong to this tour.');
   }
 
+  const conflictingRounds = await runRows<{ id: string }>(supabase
+    .from('rounds')
+    .select('id')
+    .eq('tour_id', tourId)
+    .eq('round_number', roundNumber)
+    .limit(1), 'find conflicting round number');
+  if (conflictingRounds.length > 0 && conflictingRounds[0].id !== id) return badRequest('Another round already uses this round number.');
+
   const row = {
     id: id ?? crypto.randomUUID(),
     tour_id: tourId,

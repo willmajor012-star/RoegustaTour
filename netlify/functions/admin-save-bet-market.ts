@@ -172,6 +172,11 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     if (saved.error) throw new Error(`save bet option: ${saved.error.message}`);
   }
 
+  if (status === 'settled' && !resultOptionId) return badRequest('Settled markets require a result option.');
+  if (resultOptionId) {
+    const resultOptions = await runRows<{ id: string }>(supabase.from('bet_options').select('id').eq('id', resultOptionId).eq('market_id', marketId).limit(1), 'find result option');
+    if (resultOptions.length === 0) return badRequest('Result option must belong to this market.');
+  }
   const updatedMarket = await runSingle<Record<string, unknown>>(supabase.from('bet_markets').update({ result_option_id: resultOptionId }).eq('id', marketId).select('*').single(), 'save bet result option');
   const optionRows = await runRows<Record<string, unknown>>(supabase.from('bet_options').select('*').eq('market_id', marketId).order('sort_order', { ascending: true }), 'saved bet options');
   if (status === 'settled') await updateSettledBetOutcomes(supabase, marketId, marketScope, resultOptionId);
