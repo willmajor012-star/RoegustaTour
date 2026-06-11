@@ -696,3 +696,37 @@ main { padding: 14px; }
     gap: 10px;
   }
 }
+
+/* Selected historic tour hero: make team score chips branded and compact. */
+.selected-tour-hero {
+  align-items: center;
+}
+
+.selected-tour-hero .tour-detail-score {
+  align-items: center;
+  justify-content: end;
+}
+
+.selected-tour-hero .tour-detail-score span {
+  min-width: 190px;
+  min-height: 0;
+  padding: 12px 14px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--team-colour, var(--rt-green-900)) 88%, #000 12%), color-mix(in srgb, var(--team-colour, var(--rt-green-900)) 62%, #fff 38%));
+  border: 1px solid color-mix(in srgb, var(--team-colour, var(--rt-gold)) 54%, var(--rt-gold));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
+}
+
+.selected-tour-hero .tour-detail-score b {
+  color: var(--rt-cream);
+}
+
+@media (max-width: 760px) {
+  .selected-tour-hero .tour-detail-score {
+    justify-content: stretch;
+  }
+
+  .selected-tour-hero .tour-detail-score span {
+    min-width: 0;
+  }
+}

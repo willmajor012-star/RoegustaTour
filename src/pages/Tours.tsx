@@ -148,7 +148,7 @@ function TourDetail({ tour, data, dataForStats, onBack }: { tour: Tour; data: Om
     <button className="back-to-tours" onClick={onBack}>‹ Back to tours</button>
     <section className="selected-tour-hero card">
       <div><span className="tour-status-badge">{statusLabel(tour)}</span><h2>{formatTourDisplayName(tour)}</h2><p>{tour.location ?? 'Location TBC'} · {formatDate(tour.startDate)} — {formatDate(tour.endDate)}</p>{winner && <strong>{winner.team.name} won</strong>}</div>
-      <div className="tour-detail-score">{scores.length > 0 ? scores.map((row) => <span key={row.team.id}>{row.team.name} <b>{formatPoints(row.points)}</b></span>) : <span>Score TBC</span>}</div>
+      <div className="tour-detail-score">{scores.length > 0 ? scores.map((row, index) => <span key={row.team.id} style={{ '--team-colour': normalizeTeamColour(row.team.colour, index) } as CSSProperties}>{row.team.name} <b>{formatPoints(row.points)}</b></span>) : <span>Score TBC</span>}</div>
     </section>
     <div className="segmented tour-detail-switch" role="tablist" aria-label="Tour detail sections">{[
       ['overview', 'Overview'], ['results', 'Results'], ['teams', 'Teams'], ['leaderboard', 'Leaderboard'],
