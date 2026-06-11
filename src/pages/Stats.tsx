@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   calculatePlayerAdvancedSummaries,
   getHeadToHead,
+  getPartnerOpponentRankings,
+  getPlayerMatchHistory,
   type AdvancedStatsData,
   type HeadToHeadRecord,
   type MatchListItem,
@@ -109,18 +111,32 @@ function MatchListLine({ item }: { item: MatchListItem }) {
   return <p><strong>{formatMatchDisplayLabel(item.match, item.round)}</strong><br />{item.sideAPlayers.map((player) => player.displayName).join(' / ') || item.match.sideALabel || 'Team 1'} vs {item.sideBPlayers.map((player) => player.displayName).join(' / ') || item.match.sideBLabel || 'Team 2'} · {item.resultText}</p>;
 }
 
-function PlayersSection({ title, subtitle, selectedPlayerId, setSelectedPlayerId, summaries, emptyText, selectRecord }: { title: string; subtitle?: string; selectedPlayerId?: string; setSelectedPlayerId: (playerId: string | undefined) => void; summaries: PlayerAdvancedSummary[]; emptyText: string; selectRecord: RecordSelector }) {
+function PlayersSection({ title, subtitle, selectedPlayerId, setSelectedPlayerId, summaries, emptyText, selectRecord, data, tourId }: { title: string; subtitle?: string; selectedPlayerId?: string; setSelectedPlayerId: (playerId: string | undefined) => void; summaries: PlayerAdvancedSummary[]; emptyText: string; selectRecord: RecordSelector; data: AdvancedStatsData; tourId?: string }) {
   const [sortBy, setSortBy] = useState<PlayerSortOption>('points-desc');
   const rankedSummaries = useMemo(() => [...summaries].filter((summary) => selectRecord(summary).matches > 0).sort((a, b) => comparePlayerSummaries(a, b, sortBy, selectRecord)), [sortBy, summaries, selectRecord]);
   return <section className="stats-layout players-layout"><div className="stats-section-title player-profiles-title"><div><h3>{title}</h3>{subtitle && <span>{subtitle}</span>}</div><label className="player-sort-control"><span>Sort</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value as PlayerSortOption)}>{playerSortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label></div><div className="leaderboard-cards player-card-list always-show">{rankedSummaries.length === 0 ? <p className="card">{emptyText}</p> : rankedSummaries.map((summary, index) => {
     const isSelected = selectedPlayerId === summary.player.id;
     const record = selectRecord(summary);
-    return <div className={`player-card-row ${isSelected ? 'expanded' : ''}`} key={summary.player.id}><button className={`leaderboard-card player-rank-card card ${isSelected ? 'selected' : ''}`} onClick={() => setSelectedPlayerId(isSelected ? undefined : summary.player.id)}><span className="rank">#{index + 1}</span><span className="leaderboard-name">{summary.player.displayName}</span><strong>{formatPoints(record.pointsWon)} pts</strong><span>{recordText(record)} · {formatPercent(record.winPercent)}</span></button>{isSelected && <PlayerProfile summary={summary} />}</div>;
+    return <div className={`player-card-row ${isSelected ? 'expanded' : ''}`} key={summary.player.id}><button className={`leaderboard-card player-rank-card card ${isSelected ? 'selected' : ''}`} onClick={() => setSelectedPlayerId(isSelected ? undefined : summary.player.id)}><span className="rank">#{index + 1}</span><span className="leaderboard-name">{summary.player.displayName}</span><strong>{formatPoints(record.pointsWon)} pts</strong><span>{recordText(record)} · {formatPercent(record.winPercent)}</span></button>{isSelected && <PlayerProfile summary={summary} data={data} tourId={tourId} />}</div>;
   })}</div></section>;
 }
 
-function PlayerProfile({ summary }: { summary: PlayerAdvancedSummary }) {
-  return <aside className="player-profile card"><h3>{summary.player.displayName}</h3><div className="profile-records"><RecordTile label="All-time" record={summary.allTimeRecord} /><RecordTile label="Current tour" record={summary.currentTourRecord} /><RecordTile label="Singles" record={summary.singlesRecord} /><RecordTile label="Team" record={summary.teamFormatRecord} /></div><details><summary>Partners and opponents</summary><RelationshipList title="Best partners" rows={summary.bestPartners} /><RelationshipList title="Toughest opponents" rows={summary.toughestOpponents} /></details><details className="match-history-details"><summary>Recent matches</summary><div className="match-history-list">{summary.matchHistory.length === 0 ? <p>No completed match history yet.</p> : summary.matchHistory.map((item) => <p key={item.result.id}><strong>{formatMatchDisplayLabel(item.match, item.round)} · {item.result.result.toUpperCase()}</strong><br />{item.partners.length > 0 && <>Partners: {item.partners.map((player) => player.displayName).join(', ')} · </>}Opponents: {item.opponents.map((player) => player.displayName).join(', ') || 'TBC'} · {formatPoints(item.result.pointsFor)}-{formatPoints(item.result.pointsAgainst)}</p>)}</div></details></aside>;
+function PlayerProfile({ summary, data, tourId }: { summary: PlayerAdvancedSummary; data: AdvancedStatsData; tourId?: string }) {
+  const relationships = getPartnerOpponentRankings(summary.player.id, data, tourId);
+  const matchHistory = getPlayerMatchHistory(summary.player.id, data, tourId);
+  const recordTiles = tourId ? [
+    { label: 'Tour record', record: summary.currentTourRecord },
+    { label: 'Singles', record: summary.currentTourSinglesRecord },
+    { label: 'Team', record: summary.currentTourTeamFormatRecord },
+    ...(summary.currentTourScrambleRecord.matches > 0 ? [{ label: 'Scramble', record: summary.currentTourScrambleRecord }] : []),
+  ] : [
+    { label: 'All tours', record: summary.allTimeRecord },
+    { label: 'Singles', record: summary.singlesRecord },
+    { label: 'Team', record: summary.teamFormatRecord },
+    ...(summary.scrambleRecord.matches > 0 ? [{ label: 'Scramble', record: summary.scrambleRecord }] : []),
+  ];
+
+  return <aside className="player-profile card"><h3>{summary.player.displayName}</h3><div className="profile-records">{recordTiles.map((tile) => <RecordTile key={tile.label} label={tile.label} record={tile.record} />)}</div><details><summary>Partners and opponents</summary><RelationshipList title="Best partners" rows={relationships.bestPartners} /><RelationshipList title="Toughest opponents" rows={relationships.toughestOpponents} /></details><details className="match-history-details"><summary>Recent matches</summary><div className="match-history-list">{matchHistory.length === 0 ? <p>No completed match history yet.</p> : matchHistory.map((item) => <p key={item.result.id}><strong>{formatMatchDisplayLabel(item.match, item.round)} · {item.result.result.toUpperCase()}</strong><br />{item.partners.length > 0 && <>Partners: {item.partners.map((player) => player.displayName).join(', ')} · </>}Opponents: {item.opponents.map((player) => player.displayName).join(', ') || 'TBC'} · {formatPoints(item.result.pointsFor)}-{formatPoints(item.result.pointsAgainst)}</p>)}</div></details></aside>;
 }
 
 function RecordTile({ label, record }: { label: string; record: MatchRecord }) {
@@ -204,11 +220,11 @@ export function Stats() {
       ['current', 'Current tour'], ['previous', 'Previous tours'], ['all', 'All tours'], ['h2h', 'Head-to-head'],
     ].map(([value, label]) => <button key={value} className={view === value ? 'active' : ''} onClick={() => setView(value as StatsView)}>{label}</button>)}</div>
 
-    {view === 'current' && <PlayersSection title="Current tour" subtitle={currentTour ? formatTourDisplayName(currentTour) : undefined} selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={currentSummaries} emptyText="Current tour stats will appear once results are entered." selectRecord={selectCurrentRecord} />}
+    {view === 'current' && <PlayersSection title="Current tour" subtitle={currentTour ? formatTourDisplayName(currentTour) : undefined} selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={currentSummaries} emptyText="Current tour stats will appear once results are entered." selectRecord={selectCurrentRecord} data={data} tourId={currentTour?.id} />}
 
-    {view === 'previous' && <><section className="stats-panel"><div className="stats-section-title"><h3>Previous tours</h3><span><a href="/tours">Tours</a></span></div>{previousTours.length === 0 ? <p className="card">Previous tours will appear here once available.</p> : <div className="filters card"><label><span>Tour</span><select value={selectedTour?.id ?? ''} onChange={(event) => setSelectedTourId(event.target.value)}>{previousTours.map((tour) => <option key={tour.id} value={tour.id}>{formatTourDisplayName(tour)}</option>)}</select></label></div>}{selectedTour && <p className="card tour-score-line">{scoreForTour(activeStats, selectedTour)}</p>}</section>{selectedTour && <PlayersSection title={formatTourDisplayName(selectedTour)} subtitle="Selected previous tour" selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={previousSummaries} emptyText="No player records yet." selectRecord={selectCurrentRecord} />}</>}
+    {view === 'previous' && <><section className="stats-panel"><div className="stats-section-title"><h3>Previous tours</h3><span><a href="/tours">Tours</a></span></div>{previousTours.length === 0 ? <p className="card">Previous tours will appear here once available.</p> : <div className="filters card"><label><span>Tour</span><select value={selectedTour?.id ?? ''} onChange={(event) => setSelectedTourId(event.target.value)}>{previousTours.map((tour) => <option key={tour.id} value={tour.id}>{formatTourDisplayName(tour)}</option>)}</select></label></div>}{selectedTour && <p className="card tour-score-line">{scoreForTour(activeStats, selectedTour)}</p>}</section>{selectedTour && <PlayersSection title={formatTourDisplayName(selectedTour)} subtitle="Selected previous tour" selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={previousSummaries} emptyText="No player records yet." selectRecord={selectCurrentRecord} data={data} tourId={selectedTour.id} />}</>}
 
-    {view === 'all' && <PlayersSection title="All tours" selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={allSummaries} emptyText="No completed records yet." selectRecord={selectAllTimeRecord} />}
+    {view === 'all' && <PlayersSection title="All tours" selectedPlayerId={selectedPlayerId} setSelectedPlayerId={setSelectedPlayerId} summaries={allSummaries} emptyText="No completed records yet." selectRecord={selectAllTimeRecord} data={data} />}
 
     {view === 'h2h' && <HeadToHeadSection players={activeStats.players} data={data} />}
   </div>;

@@ -347,7 +347,7 @@ export function getHeadToHead(playerAId: string, playerBId: string, data: Advanc
   };
 }
 
-export function getPartnerOpponentRankings(playerId: string, data: AdvancedStatsData) {
+export function getPartnerOpponentRankings(playerId: string, data: AdvancedStatsData, tourId?: string) {
   const partnerMap = new Map<string, RelationshipRanking>();
   const opponentMap = new Map<string, RelationshipRanking>();
   const ensure = (map: Map<string, RelationshipRanking>, id: string) => {
@@ -356,11 +356,13 @@ export function getPartnerOpponentRankings(playerId: string, data: AdvancedStats
     return map.get(id)!;
   };
 
-  getCompletedMatches(data).forEach((match) => {
+  const results = getMatchPlayerResults(data, tourId);
+
+  getCompletedMatches(data, tourId).forEach((match) => {
     const participants = data.matchParticipants.filter((participant) => participant.matchId === match.id);
     const selected = participants.find((participant) => participant.playerId === playerId);
     if (!selected) return;
-    const result = getMatchPlayerResults(data).find((item) => item.matchId === match.id && item.playerId === playerId);
+    const result = results.find((item) => item.matchId === match.id && item.playerId === playerId);
     if (!result) return;
 
     participants.filter((participant) => participant.playerId !== playerId).forEach((participant) => {
@@ -388,8 +390,8 @@ export function getPartnerOpponentRankings(playerId: string, data: AdvancedStats
   };
 }
 
-export function getPlayerMatchHistory(playerId: string, data: AdvancedStatsData): PlayerMatchHistoryItem[] {
-  const results = getMatchPlayerResults(data).filter((result) => result.playerId === playerId);
+export function getPlayerMatchHistory(playerId: string, data: AdvancedStatsData, tourId?: string): PlayerMatchHistoryItem[] {
+  const results = getMatchPlayerResults(data, tourId).filter((result) => result.playerId === playerId);
   return results.map((result) => {
     const match = data.matches.find((item) => item.id === result.matchId)!;
     const selected = data.matchParticipants.find((participant) => participant.matchId === match.id && participant.playerId === playerId);
