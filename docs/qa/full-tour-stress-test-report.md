@@ -29,7 +29,7 @@ Scope: public React/Vite app, admin workflows, Netlify Functions, Supabase schem
 | `npx tsc --noEmit` | Pass | No type errors. npm warned: `Unknown env config "http-proxy"`. |
 | `npm run lint` | Fail / unavailable | Missing script: `lint`. |
 | `npm test` | Fail / unavailable | Missing script: `test`. |
-| `node scripts/qa/public-load-smoke.mjs --dry-run` | Pass | Prints the planned read-only endpoint load profile without making requests. |
+| `npm run qa:public-load-smoke -- --dry-run` | Pass | Prints the planned read-only endpoint load profile without making requests. |
 
 ## 3. Environment assumptions
 
@@ -253,14 +253,14 @@ Admin can create/edit markets with:
 
 ## 11. 30-user/load/concurrency findings
 
-A read-only load harness was added at `scripts/qa/public-load-smoke.mjs`.
+A read-only load harness was added at `scripts/qa/public-load-smoke.mjs` and exposed as `npm run qa:public-load-smoke`. The harness validates numeric inputs and base URL configuration before sending requests.
 
 Suggested safe runs:
 
 ```bash
-node scripts/qa/public-load-smoke.mjs --base-url http://localhost:8888 --concurrency 5 --requests 30
-node scripts/qa/public-load-smoke.mjs --base-url http://localhost:8888 --concurrency 15 --requests 60
-node scripts/qa/public-load-smoke.mjs --base-url http://localhost:8888 --concurrency 30 --requests 60
+npm run qa:public-load-smoke -- --base-url http://localhost:8888 --concurrency 5 --requests 30
+npm run qa:public-load-smoke -- --base-url http://localhost:8888 --concurrency 15 --requests 60
+npm run qa:public-load-smoke -- --base-url http://localhost:8888 --concurrency 30 --requests 60
 ```
 
 Covered endpoints:

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "qa:public-load-smoke": "node scripts/qa/public-load-smoke.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2",

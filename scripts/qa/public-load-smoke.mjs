@@ -22,10 +22,52 @@ for (let i = 2; i < process.argv.length; i += 1) {
   }
 }
 
-const baseUrl = String(args.get('base-url') || process.env.BASE_URL || 'http://localhost:8888').replace(/\/$/, '');
-const concurrency = Math.max(1, Number(args.get('concurrency') || process.env.CONCURRENCY || 5));
-const requests = Math.max(1, Number(args.get('requests') || process.env.REQUESTS || 30));
-const timeoutMs = Math.max(500, Number(args.get('timeout-ms') || process.env.TIMEOUT_MS || 10000));
+function usage() {
+  console.log(`Usage: node scripts/qa/public-load-smoke.mjs [options]
+
+Options:
+  --base-url <url>       Target app origin (default: BASE_URL or http://localhost:8888)
+  --concurrency <count>  Concurrent workers, positive integer (default: CONCURRENCY or 5)
+  --requests <count>     Total requests, positive integer (default: REQUESTS or 30)
+  --timeout-ms <ms>      Per-request timeout, integer >= 500 (default: TIMEOUT_MS or 10000)
+  --dry-run              Print the planned endpoint load profile without requests
+  --help                 Show this help text`);
+}
+
+function failConfig(message) {
+  console.error(`Configuration error: ${message}`);
+  console.error('Run with --help for usage.');
+  process.exit(2);
+}
+
+function readOption(name, envName, fallback) {
+  return args.has(name) ? args.get(name) : process.env[envName] || fallback;
+}
+
+function parsePositiveInteger(name, envName, fallback, minimum = 1) {
+  const raw = readOption(name, envName, fallback);
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < minimum) {
+    failConfig(`--${name} must be an integer greater than or equal to ${minimum}; received ${JSON.stringify(raw)}.`);
+  }
+  return value;
+}
+
+if (args.has('help')) {
+  usage();
+  process.exit(0);
+}
+
+const rawBaseUrl = String(readOption('base-url', 'BASE_URL', 'http://localhost:8888')).replace(/\/+$/, '');
+let baseUrl;
+try {
+  baseUrl = new URL(rawBaseUrl).origin;
+} catch {
+  failConfig(`--base-url must be a valid URL origin; received ${JSON.stringify(rawBaseUrl)}.`);
+}
+const concurrency = parsePositiveInteger('concurrency', 'CONCURRENCY', 5);
+const requests = parsePositiveInteger('requests', 'REQUESTS', 30);
+const timeoutMs = parsePositiveInteger('timeout-ms', 'TIMEOUT_MS', 10000, 500);
 const dryRun = args.has('dry-run');
 
 const endpoints = [
