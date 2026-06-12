@@ -1,4 +1,4 @@
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { calculateIndicativePayouts, calculateMarketPotPence, formatPenceCurrency, formatStakeCurrency, parseStakeAmount, stakeAmountToPence } from '../lib/betting';
 import type { Bet, BetMarket, BetOption, Round } from '../lib/types';
 
@@ -25,6 +25,10 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
   const potPence = calculateMarketPotPence(market.id, bets);
   const payoutSummary = useMemo(() => calculateIndicativePayouts(market, options, bets), [market, options, bets]);
   const winningOption = options.find((option) => option.id === market.resultOptionId);
+
+  useEffect(() => {
+    if (!options.some((option) => option.id === selectedOptionId)) setSelectedOptionId(options[0]?.id ?? '');
+  }, [options, selectedOptionId]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

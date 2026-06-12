@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { routes } from './routes';
 import { BrandHeader } from '../components/BrandHeader';
 import { BottomNav } from '../components/BottomNav';
+import { RefreshButton } from '../components/RefreshButton';
 
 function getCurrentPath() {
   return window.location.pathname === '/' ? '/' : window.location.pathname;
@@ -25,6 +26,7 @@ export function AppShell() {
 
   return (
     <div className="app-shell">
+      <RefreshButton />
       <BrandHeader />
       <main>{route.element}</main>
       <BottomNav currentPath={path} onNavigate={navigate} />
