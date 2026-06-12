@@ -9,6 +9,7 @@ const marketTypes: BetMarket['marketType'][] = ['match_winner', 'player_performa
 const marketScopes: BetMarket['marketScope'][] = ['general_pot', 'special'];
 const statuses: BetMarket['status'][] = ['open', 'closed', 'settled', 'void'];
 const sides: NonNullable<BetOption['linkedMatchSide']>[] = ['A', 'B', 'halved'];
+const marketScopeSchemaMessage = 'Bet Punto market scope is not available in the live schema yet. Run the latest Supabase migrations, then refresh the admin page.';
 
 type OptionInput = {
   id?: string;
@@ -143,7 +144,13 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const query = id
     ? supabase.from('bet_markets').update(marketRow).eq('id', id).select('*').single()
     : supabase.from('bet_markets').insert(marketRow).select('*').single();
-  await runSingle<Record<string, unknown>>(query, 'save bet market');
+  try {
+    await runSingle<Record<string, unknown>>(query, 'save bet market');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('market_scope') && message.toLowerCase().includes('schema cache')) return badRequest(marketScopeSchemaMessage);
+    throw error;
+  }
 
   const existingOptions = await runRows<{ id: string }>(supabase.from('bet_options').select('id').eq('market_id', marketId), 'existing bet options');
   const nextIds = new Set(options.map((option) => option.id).filter(Boolean));

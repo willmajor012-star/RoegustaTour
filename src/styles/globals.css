@@ -1001,3 +1001,25 @@ main { padding: 14px; }
   background: rgba(110, 38, 53, .08);
   color: var(--rt-burgundy);
 }
+.match-player-pill.selected {
+  outline: 2px solid var(--rt-gold);
+  background: var(--rt-green-100);
+  color: var(--rt-green-900);
+}
+
+.match-player-pill.unavailable,
+.match-player-pill:disabled {
+  opacity: .55;
+  background: #f7f3e9;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.match-summary {
+  margin: .25rem 0 .5rem;
+  padding: 10px 12px;
+  border: 1px solid var(--rt-stone);
+  border-radius: 16px;
+  background: var(--rt-green-100);
+  color: var(--rt-green-900);
+}

@@ -11,14 +11,16 @@ export const handler: (event: FunctionEvent) => Promise<FunctionResponse> = (eve
   if (teams.length === 0) return badRequest('Team does not exist.');
   if (teams[0].tour_id !== tourId) return badRequest('Team does not belong to this tour.');
 
-  const [completedSideMatches, participantRows, playerResults, betOptions] = await Promise.all([
+  const [completedSideMatches, participantRows, playerResults, betOptions, tourTeamResults] = await Promise.all([
     runRows(supabase.from('matches').select('id').eq('tour_id', tourId).eq('status', 'complete').or(`side_a_team_id.eq.${id},side_b_team_id.eq.${id}`).limit(1), 'completed side matches for team delete'),
     runRows<{ id: string; match_id: string }>(supabase.from('match_participants').select('id, match_id').eq('team_id', id), 'match participants for team delete'),
     runRows(supabase.from('player_match_results').select('id').eq('team_id', id).limit(1), 'player results for team delete'),
     runRows(supabase.from('bet_options').select('id').eq('linked_team_id', id).limit(1), 'Bet Punto options for team delete'),
+    runRows(supabase.from('tour_team_results').select('id').eq('tour_id', tourId).eq('team_id', id).limit(1), 'tour team result history for team delete'),
   ]);
 
   if (completedSideMatches.length > 0) return badRequest('Teams used as a side in completed matches cannot be deleted.');
+  if (tourTeamResults.length > 0) return badRequest('Teams with tour result history cannot be deleted. Result history is protected.');
   if (participantRows.length > 0) {
     const participantMatchIds = [...new Set(participantRows.map((row) => row.match_id))];
     const completedParticipantMatches = participantMatchIds.length > 0

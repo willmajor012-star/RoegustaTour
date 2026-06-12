@@ -7,6 +7,8 @@ type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
 const allowedFormats: MatchFormat[] = ['singles', 'better_ball', 'foursomes', 'scramble', 'custom'];
 const allowedStatuses: Match['status'][] = ['draft', 'planned', 'active', 'complete', 'void'];
+const duplicateMatchNumberMessage = 'A match with this number already exists for this round. Edit the existing match or use the next available match number.';
+const maxPlayersForFormat = (format: MatchFormat) => format === 'singles' ? 1 : format === 'custom' ? Number.POSITIVE_INFINITY : 2;
 
 type IdRow = { id: string };
 type PlayerRow = { id: string; active?: boolean };
@@ -51,6 +53,10 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const allPlayerIds = [...sideAPlayerIds, ...sideBPlayerIds];
   if (status === 'complete' && allPlayerIds.length === 0) return badRequest('Complete matches require at least one participant.');
   if (new Set(allPlayerIds).size !== allPlayerIds.length) return badRequest('A player can only appear once in a match.');
+  const maxPlayersPerSide = maxPlayersForFormat(format);
+  if (sideAPlayerIds.length > maxPlayersPerSide || sideBPlayerIds.length > maxPlayersPerSide) {
+    return badRequest(format === 'singles' ? 'Singles matches allow one player per side.' : 'This match format allows up to two players per side.');
+  }
 
   const [tours, rounds, teams] = await Promise.all([
     runRows<IdRow>(supabase.from('tours').select('id').eq('id', tourId).limit(1), 'find match tour'),
@@ -66,6 +72,9 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     if (matches.length === 0) return badRequest('Match must exist.');
     if (matches[0].tour_id !== tourId || matches[0].round_id !== roundId) return badRequest('Match does not belong to this tour and round.');
   }
+
+  const duplicateMatches = await runRows<{ id: string }>(supabase.from('matches').select('id').eq('round_id', roundId).eq('match_number', matchNumber).limit(1), 'check duplicate match number');
+  if (duplicateMatches.some((match) => match.id !== id)) return badRequest(duplicateMatchNumberMessage);
 
   if (allPlayerIds.length > 0) {
     const [players, attendingPlayers, memberRows] = await Promise.all([
@@ -115,7 +124,14 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const query = id
     ? supabase.from('matches').update(matchRow).eq('id', id).select('*').single()
     : supabase.from('matches').insert(matchRow).select('*').single();
-  const saved = await runSingle<Record<string, unknown>>(query, 'save match');
+  let saved: Record<string, unknown>;
+  try {
+    saved = await runSingle<Record<string, unknown>>(query, 'save match');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('matches_round_id_match_number_key') || message.toLowerCase().includes('duplicate key')) return badRequest(duplicateMatchNumberMessage);
+    throw error;
+  }
   const matchId = String(saved.id);
 
   const removed = await supabase.from('match_participants').delete().eq('match_id', matchId);
