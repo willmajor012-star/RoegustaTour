@@ -53,6 +53,7 @@ export function mapTour(row: Row): Tour {
     endDate: asString(row.end_date),
     status: requiredString(row, 'status') as Tour['status'],
     description: asString(row.description),
+    isCurrentPublic: asBoolean(row.is_current_public),
   };
 }
 
@@ -76,6 +77,7 @@ export function mapTourTeam(row: Row): TourTeam {
     colour: asString(row.colour),
     captainPlayerId: asString(row.captain_player_id),
     sortOrder: requiredNumber(row, 'sort_order'),
+    published: asBoolean(row.published),
   };
 }
 
@@ -113,6 +115,7 @@ export function mapRound(row: Row): Round {
     formatLabel: asString(row.format_label),
     notes: asString(row.notes),
     status: requiredString(row, 'status') as Round['status'],
+    published: asBoolean(row.published),
   };
 }
 

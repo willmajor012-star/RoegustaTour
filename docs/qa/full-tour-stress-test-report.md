@@ -625,3 +625,11 @@ Risks:
 4. **Admin operator UX PR:** improve team/match builder ergonomics without redesign, keep selected round/section stable.
 5. **QA automation PR:** add lint/test scripts, unit tests for scoring/betting/filter rules, and optional Playwright smoke tests.
 6. **Load and live rehearsal PR/runbook:** run read-only load script against Netlify preview and a full write rehearsal against a disposable Supabase project.
+
+## Remediation Status — public visibility/current tour PR
+
+- **QA-001 fixed in this PR:** public tour resolution now uses an explicit `tours.is_current_public` flag and public round filtering requires `rounds.published` for current-tour round visibility.
+- **QA-002 fixed in this PR:** team/roster publication now uses `tour_teams.published`, and public team-member data is filtered to published teams only.
+- **QA-009 fixed in this PR:** the schema adds a partial unique index that permits only one `is_current_public = true` tour, with admin controls to set that tour deliberately.
+- **QA-011 fixed/materially reduced in this PR:** advanced stats now filters tours, rounds, teams, rosters, matches, and results through shared public-safe helpers so draft/current planning context is not broadly returned.
+- **Still deferred:** result entry, deeper Bet Punto settlement/safety work, broader admin operator UX, audit logging implementation, and automated test coverage remain for later PRs in the sequence above.
