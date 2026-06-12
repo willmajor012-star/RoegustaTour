@@ -1,9 +1,10 @@
 import { type FormEvent, useMemo, useState } from 'react';
 import { calculateIndicativePayouts, calculateMarketPotPence, formatPenceCurrency, formatStakeCurrency, parseStakeAmount, stakeAmountToPence } from '../lib/betting';
-import type { Bet, BetMarket, BetOption } from '../lib/types';
+import type { Bet, BetMarket, BetOption, Round } from '../lib/types';
 
 type Props = {
   market: BetMarket;
+  round?: Round;
   options: BetOption[];
   bets: Bet[];
   bettorName: string;
@@ -11,7 +12,7 @@ type Props = {
   submitMessage?: string;
 };
 
-export function BetMarketCard({ market, options, bets, bettorName, onSubmit, submitMessage }: Props) {
+export function BetMarketCard({ market, round, options, bets, bettorName, onSubmit, submitMessage }: Props) {
   const [selectedOptionId, setSelectedOptionId] = useState(options[0]?.id ?? '');
   const [stakeInput, setStakeInput] = useState('');
   const [comment, setComment] = useState('');
@@ -42,7 +43,7 @@ export function BetMarketCard({ market, options, bets, bettorName, onSubmit, sub
 
   return (
     <article className="bet-card card">
-      <div className="card-meta"><span>{market.marketType.replace('_', ' ')}</span><span>{market.marketScope === 'general_pot' ? 'General pot' : 'Special/manual'}</span><span>{market.status}</span></div>
+      <div className="card-meta"><span>{market.marketType.replace('_', ' ')}</span>{round && <span>Round {round.roundNumber}{round.roundDate ? ` · ${round.roundDate}` : ''}</span>}<span>{market.marketScope === 'general_pot' ? 'General pot' : 'Special/manual'}</span><span>{market.status}</span></div>
       <div className="bet-card-title"><h3>{market.title}</h3><span>{formatPenceCurrency(potPence)} pot</span></div>
       {market.description && <p>{market.description}</p>}
       {market.resultText && <p className="settled">Result: {market.resultText}</p>}

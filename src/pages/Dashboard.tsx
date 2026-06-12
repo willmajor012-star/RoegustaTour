@@ -19,7 +19,7 @@ const emptyDashboardData: DashboardData = {
   source: 'supabase',
   summary: { rounds: [], recentResults: [], openMarkets: [] },
   score: { teams: [], rounds: [], matches: [], scores: [] },
-  matches: { rounds: [], matches: [], matchParticipants: [], players: [], tourTeams: [] },
+  matches: { rounds: [], matches: [], matchParticipants: [], players: [], tourTeams: [], tourTeamMembers: [] },
 };
 
 async function fetchDashboardData(): Promise<DashboardData> {
