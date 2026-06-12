@@ -103,3 +103,110 @@ export function calculateIndicativePayouts(market: BetMarket, options: BetOption
   }
   return { totalPotPence, winningStakeTotalPence: marketBets.filter((bet) => bet.optionId === resultOptionId).reduce((total, bet) => total + getBetStakePence(bet), 0), payouts };
 }
+
+
+export type BetPuntoMarketSummary = {
+  market: BetMarket;
+  totalBets: number;
+  totalStakePence: number;
+  settledPayoutPence: number;
+  missingBettorNames: string[];
+};
+
+export type BetPuntoBettorSummary = {
+  bettorName: string;
+  totalBets: number;
+  totalStakePence: number;
+  settledPayoutPence: number;
+  netPence: number;
+  won: number;
+  lost: number;
+  pending: number;
+  void: number;
+  push: number;
+  missingStablefordPicks: number;
+};
+
+function normalizedName(name: string) {
+  return name.trim().toLowerCase();
+}
+
+function isStablefordMarket(market: BetMarket) {
+  return market.status !== 'void' && market.marketType === 'player_performance' && market.title.toLowerCase().includes('stableford');
+}
+
+export function getActiveBetsForMarket(marketId: string, bets: Bet[]) {
+  return bets.filter((bet) => bet.marketId === marketId && bet.status === 'active');
+}
+
+export function calculateMarketPayoutMap(markets: BetMarket[], options: BetOption[], bets: Bet[]) {
+  const payoutMap = new Map<string, number>();
+  for (const market of markets) {
+    const summary = calculateIndicativePayouts(market, options.filter((option) => option.marketId === market.id), bets);
+    for (const [betId, payoutPence] of summary.payouts) payoutMap.set(betId, payoutPence);
+  }
+  return payoutMap;
+}
+
+export function buildBetPuntoMarketSummaries(markets: BetMarket[], options: BetOption[], bets: Bet[], mandatoryBettorNames: string[] = []): BetPuntoMarketSummary[] {
+  const mandatoryNamesByKey = new Map(mandatoryBettorNames.map((name) => [normalizedName(name), name]));
+  return markets.map((market) => {
+    const activeMarketBets = getActiveBetsForMarket(market.id, bets);
+    const backedKeys = new Set(activeMarketBets.map((bet) => normalizedName(bet.bettorName)));
+    const payoutSummary = calculateIndicativePayouts(market, options.filter((option) => option.marketId === market.id), bets);
+    return {
+      market,
+      totalBets: activeMarketBets.length,
+      totalStakePence: activeMarketBets.reduce((total, bet) => total + getBetStakePence(bet), 0),
+      settledPayoutPence: [...payoutSummary.payouts.values()].reduce((total, payout) => total + payout, 0),
+      missingBettorNames: isStablefordMarket(market) ? [...mandatoryNamesByKey].filter(([key]) => !backedKeys.has(key)).map(([, name]) => name) : [],
+    };
+  });
+}
+
+export function buildBetPuntoBettorSummaries(markets: BetMarket[], options: BetOption[], bets: Bet[], mandatoryBettorNames: string[] = []): BetPuntoBettorSummary[] {
+  const marketById = new Map(markets.map((market) => [market.id, market]));
+  const payoutMap = calculateMarketPayoutMap(markets, options, bets);
+  const stablefordMarkets = markets.filter(isStablefordMarket);
+  const summaryByKey = new Map<string, BetPuntoBettorSummary>();
+  const displayNameByKey = new Map<string, string>();
+
+  const ensureSummary = (name: string) => {
+    const key = normalizedName(name);
+    const displayName = displayNameByKey.get(key) ?? name.trim();
+    displayNameByKey.set(key, displayName);
+    const existing = summaryByKey.get(key);
+    if (existing) return existing;
+    const next: BetPuntoBettorSummary = { bettorName: displayName, totalBets: 0, totalStakePence: 0, settledPayoutPence: 0, netPence: 0, won: 0, lost: 0, pending: 0, void: 0, push: 0, missingStablefordPicks: 0 };
+    summaryByKey.set(key, next);
+    return next;
+  };
+
+  for (const name of mandatoryBettorNames) ensureSummary(name);
+
+  for (const bet of bets) {
+    const summary = ensureSummary(bet.bettorName);
+    if (bet.status === 'void' || bet.outcomeStatus === 'void') {
+      summary.void += 1;
+      continue;
+    }
+    summary.totalBets += 1;
+    summary.totalStakePence += getBetStakePence(bet);
+    if (bet.outcomeStatus === 'won') summary.won += 1;
+    else if (bet.outcomeStatus === 'lost') summary.lost += 1;
+    else if (bet.outcomeStatus === 'push') summary.push += 1;
+    else summary.pending += 1;
+
+    const market = marketById.get(bet.marketId);
+    const settledPayout = market?.status === 'settled' ? (bet.payoutAmountPence ?? payoutMap.get(bet.id) ?? 0) : 0;
+    summary.settledPayoutPence += settledPayout;
+  }
+
+  for (const [key, summary] of summaryByKey) {
+    const backedStablefordMarketIds = new Set(bets.filter((bet) => normalizedName(bet.bettorName) === key && bet.status === 'active').map((bet) => bet.marketId));
+    summary.missingStablefordPicks = stablefordMarkets.filter((market) => !backedStablefordMarketIds.has(market.id)).length;
+    summary.netPence = summary.settledPayoutPence - summary.totalStakePence;
+  }
+
+  return [...summaryByKey.values()].sort((a, b) => b.totalStakePence - a.totalStakePence || a.bettorName.localeCompare(b.bettorName));
+}
