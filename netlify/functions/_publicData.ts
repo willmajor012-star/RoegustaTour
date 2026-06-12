@@ -53,13 +53,13 @@ export async function getPublicMatchBundle(supabase: SupabaseClient) {
   )).map(mapMatch);
 
   const publicMatchIds = publicMatches.map((match) => match.id);
-  const publicRoundIds = [...new Set(publicMatches.map((match) => match.roundId))];
 
-  const [roundRows, participantRows, playerRows, teamRows] = await Promise.all([
-    publicRoundIds.length > 0 ? runQuery(table(supabase, 'rounds').select('*').in('id', publicRoundIds).order('round_number', { ascending: true }), 'public rounds') : Promise.resolve([]),
+  const [roundRows, participantRows, playerRows, teamRows, memberRows] = await Promise.all([
+    runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'public rounds'),
     publicMatchIds.length > 0 ? runQuery(table(supabase, 'match_participants').select('*').in('match_id', publicMatchIds), 'public match participants') : Promise.resolve([]),
     runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'public players'),
     runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'public tour teams'),
+    runQuery(table(supabase, 'tour_team_members').select('*').eq('tour_id', tour.id), 'public tour team members'),
   ]);
 
   return {
@@ -69,6 +69,7 @@ export async function getPublicMatchBundle(supabase: SupabaseClient) {
     matchParticipants: participantRows.map(mapMatchParticipant),
     players: playerRows.map(mapPlayer),
     tourTeams: teamRows.map(mapTourTeam),
+    tourTeamMembers: memberRows.map(mapTourTeamMember),
   };
 }
 
@@ -166,9 +167,12 @@ export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
 
 export async function getBettingBundle(supabase: SupabaseClient) {
   const tour = await getCurrentTour(supabase);
-  if (!tour) return { betMarkets: [], betOptions: [], bets: [] };
+  if (!tour) return { rounds: [], betMarkets: [], betOptions: [], bets: [] };
 
-  const marketRows = await runQuery(table(supabase, 'bet_markets').select('*').eq('tour_id', tour.id).order('created_at', { ascending: true }), 'bet markets');
+  const [roundRows, marketRows] = await Promise.all([
+    runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'bet rounds'),
+    runQuery(table(supabase, 'bet_markets').select('*').eq('tour_id', tour.id).order('created_at', { ascending: true }), 'bet markets'),
+  ]);
   const marketIds = marketRows.map((market) => String(market.id));
 
   const [optionRows, betRows] = await Promise.all([
@@ -177,6 +181,7 @@ export async function getBettingBundle(supabase: SupabaseClient) {
   ]);
 
   return {
+    rounds: roundRows.map(mapRound),
     betMarkets: marketRows.map(mapBetMarket),
     betOptions: optionRows.map(mapBetOption),
     bets: betRows.map(mapBet),

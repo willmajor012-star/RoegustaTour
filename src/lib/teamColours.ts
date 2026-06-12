@@ -1,4 +1,4 @@
-const TEAM_COLOUR_FALLBACKS = ['#0F2F24', '#6E2635'];
+const TEAM_COLOUR_FALLBACKS = ['#0F2F24', '#7A1F2B'];
 const CSS_COLOUR_PATTERN = /^(#[0-9a-f]{3,8}|rgb\(|hsl\(|var\()/i;
 
 export function normalizeTeamColour(colour: string | undefined, index = 0) {
