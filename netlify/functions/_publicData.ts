@@ -166,9 +166,12 @@ export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
 
 export async function getBettingBundle(supabase: SupabaseClient) {
   const tour = await getCurrentTour(supabase);
-  if (!tour) return { betMarkets: [], betOptions: [], bets: [] };
+  if (!tour) return { rounds: [], betMarkets: [], betOptions: [], bets: [] };
 
-  const marketRows = await runQuery(table(supabase, 'bet_markets').select('*').eq('tour_id', tour.id).order('created_at', { ascending: true }), 'bet markets');
+  const [roundRows, marketRows] = await Promise.all([
+    runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'bet rounds'),
+    runQuery(table(supabase, 'bet_markets').select('*').eq('tour_id', tour.id).order('created_at', { ascending: true }), 'bet markets'),
+  ]);
   const marketIds = marketRows.map((market) => String(market.id));
 
   const [optionRows, betRows] = await Promise.all([
@@ -177,6 +180,7 @@ export async function getBettingBundle(supabase: SupabaseClient) {
   ]);
 
   return {
+    rounds: roundRows.map(mapRound),
     betMarkets: marketRows.map(mapBetMarket),
     betOptions: optionRows.map(mapBetOption),
     bets: betRows.map(mapBet),
