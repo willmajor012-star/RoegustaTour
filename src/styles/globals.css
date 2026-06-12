@@ -29,6 +29,8 @@ main { padding: 14px; }
 .page-stack { gap: 14px; }
 .card, .stat-card { border-color: rgba(184, 154, 93, .32); padding: 16px; }
 .page-title, .premium-title { background: rgba(255, 250, 240, .94); border: 1px solid rgba(184,154,93,.32); border-radius: 22px; box-shadow: var(--shadow); padding: 16px; }
+.page-stack:not(.admin-page) > .page-title { position: sticky; top: 0; z-index: 40; backdrop-filter: blur(14px); }
+.page-stack:not(.admin-page) > .page-title h2 { font-size: clamp(1.35rem, 6vw, 1.85rem); line-height: 1.05; }
 .page-title h2, .premium-title h2, .card h2, .card h3 { color: var(--rt-green-900); }
 .page-title p, .premium-title p { color: var(--rt-ink-muted, #6f6a5d); }
 
@@ -730,3 +732,17 @@ main { padding: 14px; }
     min-width: 0;
   }
 }
+.golf-status-card,.round-info-card,.tee-sheet-card,.round-summary-card{display:grid;gap:10px}.golf-round-selector{grid-template-columns:1fr}.golf-info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.golf-info-grid span,.tee-sheet-row{border:1px solid rgba(184,154,93,.28);border-radius:16px;background:rgba(255,250,240,.58);padding:10px}.golf-info-grid strong{display:block;color:var(--rt-green-900);margin-top:3px}.tee-sheet-list{display:grid;gap:8px}.tee-sheet-row{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:10px}.tee-sheet-row strong{color:var(--rt-green-900)}.tee-sheet-row span{font-size:.75rem;font-weight:900;color:var(--rt-gold);text-transform:uppercase;letter-spacing:.08em}.tee-sheet-row p{margin:0;color:var(--rt-ink-muted,#6f6a5d)}
+@media (max-width:560px){.golf-info-grid{grid-template-columns:1fr}.tee-sheet-row{grid-template-columns:1fr}.tee-sheet-row p{font-weight:800;color:var(--rt-green-900)}}
+
+/* Roegusta brand board alignment: team colours are identity; gold is accent/winner; grey is neutral only. */
+:root{--rt-green:#0F2F24;--rt-green-dark:#071F18;--rt-green-mid:#183D2E;--rt-moss:#2E5A43;--rt-card:#FFF8EA;--rt-off-white:#FCFAF4;--rt-parchment:#EFE2C5;--rt-gold:#D4A017;--rt-gold-dark:#B8891D;--rt-gold-pale:#E7C76A;--rt-burgundy:#7A1F2B;--rt-burgundy-dark:#4B1018;--rt-red-muted:#9A3A3F;--rt-text:#101A15;--rt-text-body:#26352D;--rt-text-muted:#6F776F;--rt-border:#D8C8A3;--rt-green-900:#0F2F24;--rt-green-700:#183D2E;--rt-green-100:#E7EFE8;--rt-cream:#F7EEDC;--rt-stone:#D8C8A3;--rt-charcoal:#101A15}
+.card,.stat-card,.page-title,.premium-title{background:rgba(255,248,234,.94);border-color:rgba(216,200,163,.74);color:var(--rt-text-body)}
+.match-side{background:linear-gradient(135deg,color-mix(in srgb,var(--team-colour,var(--rt-green)) 92%,#000 8%),color-mix(in srgb,var(--team-colour,var(--rt-green)) 72%,#fff 28%));border:1px solid color-mix(in srgb,var(--team-colour,var(--rt-green)) 70%,var(--rt-gold) 30%);box-shadow:inset 0 0 0 1px rgba(255,248,234,.13);color:var(--rt-cream)}
+.match-side,.match-side.right{border-left-width:1px;border-right-width:1px}.match-side strong{color:var(--rt-cream)}.match-side span{color:rgba(247,238,220,.78)}
+.match-side.winner{background:linear-gradient(135deg,rgba(231,199,106,.18),rgba(212,160,23,.12)),linear-gradient(135deg,color-mix(in srgb,var(--team-colour,var(--rt-green)) 92%,#000 8%),color-mix(in srgb,var(--team-colour,var(--rt-green)) 72%,#fff 28%));border:2px solid var(--rt-gold);box-shadow:0 0 0 2px rgba(231,199,106,.24),0 10px 22px rgba(16,26,21,.14),inset 0 0 0 1px rgba(255,248,234,.18)}
+.match-side.halved{background:linear-gradient(135deg,var(--rt-card),var(--rt-parchment));border:1px solid var(--rt-gold);color:var(--rt-text-body)}.match-side.halved strong{color:var(--rt-green)}.match-side.halved span{color:var(--rt-text-muted)}
+.result-chip,.result-chip.complete{background:var(--rt-green-dark);border:1px solid var(--rt-gold);color:var(--rt-gold-pale);box-shadow:0 8px 18px rgba(7,31,24,.18)}
+.score-team-block{background:linear-gradient(135deg,color-mix(in srgb,var(--team-colour,var(--rt-green)) 90%,#000 10%),color-mix(in srgb,var(--team-colour,var(--rt-green)) 72%,#fff 28%));border:1px solid color-mix(in srgb,var(--team-colour,var(--rt-green)) 62%,var(--rt-gold) 38%);color:var(--rt-cream)}
+.team-display-card{background:linear-gradient(180deg,var(--rt-card),rgba(247,238,220,.82));border-top-color:var(--team-colour,var(--rt-green));box-shadow:var(--premium-shadow)}.team-display-card h3,.team-display-card strong{color:var(--rt-green)}
+.selected-tour-hero .tour-detail-score span{background:linear-gradient(135deg,color-mix(in srgb,var(--team-colour,var(--rt-green)) 90%,#000 10%),color-mix(in srgb,var(--team-colour,var(--rt-green)) 72%,#fff 28%));border-color:color-mix(in srgb,var(--team-colour,var(--rt-green)) 62%,var(--rt-gold) 38%)}

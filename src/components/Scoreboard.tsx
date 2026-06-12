@@ -5,7 +5,7 @@ import { normalizeTeamColourPair } from '../lib/teamColours';
 
 const fallbackRows: TeamScoreRow[] = [
   { teamId: 'team-1-tbc', teamName: 'Team 1 TBC', colour: '#062B22', points: 0, pointsByRound: {} },
-  { teamId: 'team-2-tbc', teamName: 'Team 2 TBC', colour: '#7A1E1E', points: 0, pointsByRound: {} },
+  { teamId: 'team-2-tbc', teamName: 'Team 2 TBC', colour: '#7A1F2B', points: 0, pointsByRound: {} },
 ];
 
 type Props = { scores: TeamScoreRow[]; href?: string; rounds?: unknown[]; hideCentreScore?: boolean };
@@ -27,7 +27,7 @@ export function Scoreboard({ scores, href, hideCentreScore = false }: Props) {
         <span>Score</span>
         <strong>{formatPoints(left.points)}–{formatPoints(right.points)}</strong>
       </div>}
-      <TeamBlock score={right} side="right" fallbackColour="#7A1E1E" />
+      <TeamBlock score={right} side="right" fallbackColour="#7A1F2B" />
     </section>
   );
 
