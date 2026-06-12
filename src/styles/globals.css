@@ -851,3 +851,153 @@ main { padding: 14px; }
   color: var(--rt-text-muted);
   font-weight: 800;
 }
+
+.bet-summary-card,
+.bet-admin-summary {
+  display: grid;
+  gap: 14px;
+}
+
+.bet-summary-table td,
+.bet-summary-table th {
+  vertical-align: top;
+}
+
+.bet-summary-table td:last-child {
+  min-width: 170px;
+}
+
+.admin-mini-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-mini-actions .form-error {
+  flex-basis: 100%;
+  text-align: right;
+  margin: 0;
+}
+
+.bet-option-builder {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(184, 154, 93, .3);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(255,250,240,.88), rgba(231,239,232,.5));
+  padding: 14px;
+}
+
+.bet-option-builder-heading {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+}
+
+.bet-option-builder-heading h4 {
+  margin: 0;
+  color: var(--rt-green-900);
+  font-size: 1.15rem;
+}
+
+.bet-option-builder-heading small,
+.bet-option-card-header small {
+  color: var(--rt-ink-muted, #6f6a5d);
+  font-weight: 800;
+}
+
+.bet-option-card-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.bet-option-editor-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(184, 154, 93, .34);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .62);
+  padding: 12px;
+  box-shadow: 0 10px 24px rgba(15, 47, 36, .08);
+}
+
+.bet-option-card-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.bet-option-card-header strong,
+.bet-option-card-header small {
+  display: block;
+}
+
+.bet-option-number {
+  display: grid;
+  place-items: center;
+  min-width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: var(--rt-green-900);
+  color: var(--rt-cream);
+  border: 1px solid var(--rt-gold);
+  font-weight: 950;
+}
+
+.bet-option-card-header button {
+  border: 1px solid rgba(110, 38, 53, .34);
+  border-radius: 999px;
+  background: rgba(110, 38, 53, .08);
+  color: var(--rt-burgundy);
+  padding: 8px 10px;
+  font-weight: 900;
+}
+
+.bet-option-card-header button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.bet-option-card-fields {
+  display: grid;
+  gap: 10px;
+}
+
+.bet-option-card-fields label {
+  display: grid;
+  gap: 7px;
+  font-weight: 800;
+  color: var(--rt-green-900);
+}
+
+@media (min-width: 760px) {
+  .bet-option-builder-heading {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .bet-option-card-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bet-option-wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.admin-mini-actions button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--rt-green-900);
+  color: var(--rt-cream);
+  padding: 10px 14px;
+  font-weight: 900;
+}
+
+.admin-mini-actions button:last-of-type {
+  border: 1px solid rgba(110, 38, 53, .34);
+  background: rgba(110, 38, 53, .08);
+  color: var(--rt-burgundy);
+}

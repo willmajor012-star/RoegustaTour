@@ -181,5 +181,6 @@ export const deleteRound = (payload: { id: string; tourId: string }) => postAdmi
 export const saveMatch = (payload: SaveMatchPayload) => postAdminJson<{ ok: true; match: Match; matchParticipants: MatchParticipant[] }>('/.netlify/functions/admin-save-match', payload);
 export const deleteMatch = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedMatchId: string }>('/.netlify/functions/admin-delete-match', payload);
 export const saveBetMarket = (payload: SaveBetMarketPayload) => postAdminJson<{ ok: true; betMarket: BetMarket; betOptions: BetOption[] }>('/.netlify/functions/admin-save-bet-market', payload);
+export const deleteBetMarket = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedBetMarketId: string }>('/.netlify/functions/admin-delete-bet-market', payload);
 export const updateBet = (payload: UpdateBetPayload) => postAdminJson<{ ok: true; bet: Bet }>('/.netlify/functions/admin-update-bet', payload);
 export const deleteBet = (payload: { id: string }) => postAdminJson<{ ok: true; deletedBetId: string }>('/.netlify/functions/admin-delete-bet', payload);

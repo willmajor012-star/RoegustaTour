@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BetMarketCard } from '../components/BetMarketCard';
 import { fetchPublicBetMarkets, savePublicBet, type PublicBetMarketsResponse } from '../lib/publicApi';
 import { usePublicData } from '../lib/usePublicData';
-import { formatStakeCurrency } from '../lib/betting';
+import { buildBetPuntoBettorSummaries, buildBetPuntoMarketSummaries, formatPenceCurrency, formatStakeCurrency } from '../lib/betting';
 import type { Bet } from '../lib/types';
 
 const emptyBettingData: Omit<PublicBetMarketsResponse, 'source'> = { rounds: [], players: [], tourPlayers: [], betMarkets: [], betOptions: [], bets: [] };
@@ -17,6 +17,12 @@ export function Betting() {
   const activeBets = bets.filter((bet) => bet.status === 'active');
   const attendingPlayerIds = new Set(activeData.tourPlayers.filter((tourPlayer) => tourPlayer.attending).map((tourPlayer) => tourPlayer.playerId));
   const bettorOptions = activeData.players.filter((player) => attendingPlayerIds.has(player.id));
+  const mandatoryBettorNames = bettorOptions.map((player) => player.displayName);
+  const bettorSummaries = useMemo(() => buildBetPuntoBettorSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames), [activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames]);
+  const marketSummaries = useMemo(() => buildBetPuntoMarketSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames), [activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames]);
+  const stablefordMarketSummaries = marketSummaries.filter((summary) => summary.market.marketType === 'player_performance' && summary.market.title.toLowerCase().includes('stableford'));
+  const settledDuePence = bettorSummaries.reduce((total, summary) => total + summary.settledPayoutPence, 0);
+  const totalStakePence = bettorSummaries.reduce((total, summary) => total + summary.totalStakePence, 0);
   const myBets = useMemo(() => {
     const normalizedName = bettorName.trim().toLowerCase();
     if (!normalizedName) return [];
@@ -62,6 +68,30 @@ export function Betting() {
           {bettorOptions.map((player) => <option key={player.id} value={player.displayName} />)}
         </datalist>
       </label>
+
+      <section className="card bet-summary-card">
+        <div className="section-heading"><div><p className="eyebrow">Organiser summary</p><h3>Tour Bet Punto ledger</h3></div><strong>{formatPenceCurrency(totalStakePence)} staked</strong></div>
+        <div className="stat-grid">
+          <div className="stat-card"><span>Mandatory players</span><strong>{mandatoryBettorNames.length}</strong><small>Attending tour players expected to back each Stableford winner market.</small></div>
+          <div className="stat-card"><span>Total picks</span><strong>{activeBets.length}</strong><small>Active Bet Punto entries across the tour.</small></div>
+          <div className="stat-card"><span>Settled payouts</span><strong>{formatPenceCurrency(settledDuePence)}</strong><small>Calculated from settled markets and manual payout overrides.</small></div>
+        </div>
+        <div className="table-wrap">
+          <table className="bet-summary-table">
+            <thead><tr><th>Player</th><th>Picks</th><th>Staked</th><th>Settled payout</th><th>Net</th><th>W/L/P</th><th>Missing stableford</th></tr></thead>
+            <tbody>{bettorSummaries.length === 0 ? <tr><td colSpan={7}>No player or bet summary yet.</td></tr> : bettorSummaries.map((summary) => <tr key={summary.bettorName}><td>{summary.bettorName}</td><td>{summary.totalBets}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{formatPenceCurrency(summary.settledPayoutPence)}</td><td>{formatPenceCurrency(summary.netPence)}</td><td>{summary.won}/{summary.lost}/{summary.push}</td><td>{summary.missingStablefordPicks}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </section>
+      <section className="card bet-summary-card">
+        <div className="section-heading"><div><p className="eyebrow">Mandatory daily bet</p><h3>Stableford pick coverage</h3></div><strong>{stablefordMarketSummaries.length} market{stablefordMarketSummaries.length === 1 ? '' : 's'}</strong></div>
+        <div className="table-wrap">
+          <table className="bet-summary-table">
+            <thead><tr><th>Market</th><th>Status</th><th>Picks</th><th>Pot</th><th>Missing players</th></tr></thead>
+            <tbody>{stablefordMarketSummaries.length === 0 ? <tr><td colSpan={5}>No Stableford winner markets have been created yet.</td></tr> : stablefordMarketSummaries.map((summary) => <tr key={summary.market.id}><td>{summary.market.title}</td><td>{summary.market.status}</td><td>{summary.totalBets}/{mandatoryBettorNames.length}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{summary.missingBettorNames.length === 0 ? 'Complete' : summary.missingBettorNames.join(', ')}</td></tr>)}</tbody>
+          </table>
+        </div>
+      </section>
       <section className="card bet-tracker-card">
         <div className="section-heading"><div><p className="eyebrow">Your tracker</p><h3>{bettorName.trim() ? bettorName.trim() : 'Choose your name'}</h3></div><strong>{myBets.length} pick{myBets.length === 1 ? '' : 's'}</strong></div>
         {!bettorName.trim() ? <p>Select your name to see your Bet Punto picks across live, closed and settled markets.</p> : myBets.length === 0 ? <p>No picks logged for this name yet.</p> : <div className="bet-tracker-list">{myBets.map((bet) => {
