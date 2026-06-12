@@ -95,6 +95,11 @@ function playerLabel(player?: Player): string {
   return player.nickname ? `${player.displayName} (${player.nickname})` : player.displayName;
 }
 
+function betPuntoMandatoryBettorName(player: Player): string {
+  // Public Bet Punto submissions use displayName from the datalist, so mandatory summaries must key on the same value rather than the nickname label.
+  return player.displayName;
+}
+
 export function Admin() {
   const [storedSession, setStoredSession] = useState<StoredAdminSession | null>(null);
   const [actorLabel, setActorLabel] = useState(() => getStoredAdminSession()?.session.actorLabel ?? '');
@@ -188,7 +193,7 @@ export function Admin() {
   const selectedBetMarket = (adminData?.betMarkets ?? []).find((market) => market.id === betMarketForm.id);
   const selectedBetMarketBets = selectedBetMarket ? (adminData?.bets ?? []).filter((bet) => bet.marketId === selectedBetMarket.id) : [];
   const selectedBetMarketOptions = selectedBetMarket ? (adminData?.betOptions ?? []).filter((option) => option.marketId === selectedBetMarket.id) : [];
-  const mandatoryBettorNames = activePlayers.filter((player) => attendingPlayerIds.has(player.id)).map((player) => player.displayName);
+  const mandatoryBettorNames = activePlayers.filter((player) => attendingPlayerIds.has(player.id)).map(betPuntoMandatoryBettorName);
   const betPuntoBettorSummaries = useMemo(() => buildBetPuntoBettorSummaries(adminData?.betMarkets ?? [], adminData?.betOptions ?? [], adminData?.bets ?? [], mandatoryBettorNames), [adminData?.betMarkets, adminData?.betOptions, adminData?.bets, mandatoryBettorNames]);
   const betPuntoMarketSummaries = useMemo(() => buildBetPuntoMarketSummaries(adminData?.betMarkets ?? [], adminData?.betOptions ?? [], adminData?.bets ?? [], mandatoryBettorNames), [adminData?.betMarkets, adminData?.betOptions, adminData?.bets, mandatoryBettorNames]);
   const betPuntoStablefordSummaries = betPuntoMarketSummaries.filter((summary) => summary.market.marketType === 'player_performance' && summary.market.title.toLowerCase().includes('stableford'));
