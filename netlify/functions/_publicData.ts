@@ -168,14 +168,17 @@ export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
 
 export async function getBettingBundle(supabase: SupabaseClient) {
   const tour = await getCurrentTour(supabase);
-  if (!tour) return { rounds: [], betMarkets: [], betOptions: [], bets: [] };
+  if (!tour) return { rounds: [], players: [], tourPlayers: [], betMarkets: [], betOptions: [], bets: [] };
 
-  const [roundRows, marketRows] = await Promise.all([
+  const [roundRows, playerRows, tourPlayerRows, marketRows] = await Promise.all([
     runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'bet rounds'),
+    runQuery(table(supabase, 'players').select('*').eq('active', true).order('display_name', { ascending: true }), 'bet players'),
+    runQuery(table(supabase, 'tour_players').select('*').eq('tour_id', tour.id), 'bet tour players'),
     runQuery(table(supabase, 'bet_markets').select('*').eq('tour_id', tour.id).order('created_at', { ascending: true }), 'bet markets'),
   ]);
-  const marketIds = marketRows.map((market) => String(market.id));
-  const marketRoundIds = new Set(marketRows.map((market) => String(market.round_id ?? '')).filter(Boolean));
+  const visibleMarketRows = marketRows.filter((market) => String(market.status) !== 'void');
+  const marketIds = visibleMarketRows.map((market) => String(market.id));
+  const marketRoundIds = new Set(visibleMarketRows.map((market) => String(market.round_id ?? '')).filter(Boolean));
 
   const [optionRows, betRows] = await Promise.all([
     marketIds.length > 0 ? runQuery(table(supabase, 'bet_options').select('*').in('market_id', marketIds).order('sort_order', { ascending: true }), 'bet options') : Promise.resolve([]),
@@ -184,7 +187,9 @@ export async function getBettingBundle(supabase: SupabaseClient) {
 
   return {
     rounds: roundRows.filter((round) => round.status !== 'draft' || marketRoundIds.has(String(round.id))).map(mapRound),
-    betMarkets: marketRows.map(mapBetMarket),
+    players: playerRows.map(mapPlayer),
+    tourPlayers: tourPlayerRows.map(mapTourPlayer),
+    betMarkets: visibleMarketRows.map(mapBetMarket),
     betOptions: optionRows.map(mapBetOption),
     bets: betRows.map(mapBet),
   };

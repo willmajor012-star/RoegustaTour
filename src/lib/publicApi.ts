@@ -1,5 +1,5 @@
 import type { AdvancedStatsData, MvpLeaderboardRow, PlayerAdvancedSummary, TourSummary } from './advancedStats';
-import type { Bet, BetMarket, BetOption, Match, MatchParticipant, Player, Round, TeamScoreRow, Tour, TourTeam, TourTeamMember } from './types';
+import type { Bet, BetMarket, BetOption, Match, MatchParticipant, Player, Round, TeamScoreRow, Tour, TourPlayer, TourTeam, TourTeamMember } from './types';
 
 export type PublicDataSource = 'supabase';
 export type PublicResponse<T> = T & { source: PublicDataSource };
@@ -35,6 +35,8 @@ export type PublicPlayersResponse = PublicResponse<{
 
 export type PublicBetMarketsResponse = PublicResponse<{
   rounds: Round[];
+  players: Player[];
+  tourPlayers: TourPlayer[];
   betMarkets: BetMarket[];
   betOptions: BetOption[];
   bets: Bet[];

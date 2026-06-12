@@ -9,12 +9,13 @@ type Props = { match: Match; participants: MatchParticipant[]; players: Player[]
 const SHORT_RESULT_PATTERN = /^(?:\d+\s*&\s*\d+|\d+\s*UP|AS|TBC|\d+(?:\.5)?\s*pt?s?|\d+(?:\.5)?\s*[–-]\s*\d+(?:\.5)?)$/i;
 const EMBEDDED_RESULT_PATTERN = /\b(\d+\s*&\s*\d+|\d+\s*UP|AS)\b/i;
 
+function hasPointScore(match: Match) {
+  return typeof match.pointsSideA === 'number' && typeof match.pointsSideB === 'number';
+}
+
 function pointsResultLabel(match: Match) {
-  const sideA = match.pointsSideA ?? 0;
-  const sideB = match.pointsSideB ?? 0;
-  if (match.winningSide === 'halved') return 'AS';
-  if (match.pointsAvailable === 1 && ((sideA === 1 && sideB === 0) || (sideB === 1 && sideA === 0))) return '1 pt';
-  return `${formatPoints(sideA)}–${formatPoints(sideB)}`;
+  if (!hasPointScore(match)) return '';
+  return `${formatPoints(match.pointsSideA ?? 0)}–${formatPoints(match.pointsSideB ?? 0)}`;
 }
 
 function resultLabel(match: Match) {
@@ -27,7 +28,14 @@ function resultLabel(match: Match) {
   const embeddedResult = resultText?.match(EMBEDDED_RESULT_PATTERN)?.[1];
   if (embeddedResult) return embeddedResult.replace(/\s+/g, '').toUpperCase();
   if (match.status === 'complete' && match.winningSide && match.winningSide !== 'void') return pointsResultLabel(match);
-  return 'TBC';
+  return '';
+}
+
+function sideState(match: Match, side: 'A' | 'B') {
+  if (match.winningSide === 'halved') return 'halved';
+  if (match.winningSide === side) return 'winner';
+  if (match.status === 'complete' && (match.winningSide === 'A' || match.winningSide === 'B')) return 'loser';
+  return undefined;
 }
 
 export function MatchCard({ match, participants, players, teams }: Props) {
@@ -37,20 +45,21 @@ export function MatchCard({ match, participants, players, teams }: Props) {
   const sideAPlayers = participants.filter((participant) => participant.side === 'A').map((participant) => playerFor(participant.playerId)).filter((player): player is Player => Boolean(player));
   const sideBPlayers = participants.filter((participant) => participant.side === 'B').map((participant) => playerFor(participant.playerId)).filter((player): player is Player => Boolean(player));
   const tee = normalizeTeeTime(match.teeTime);
+  const result = resultLabel(match);
 
   return (
     <article className={`match-card result-${match.winningSide ?? match.status}`}>
       <div className="match-card-topline"><span>Match {match.matchNumber}</span><span>{formatMatchFormat(match.format)}</span>{tee && <span>Tee {tee}</span>}</div>
       <div className="match-ledger-row">
-        <MatchSide label={match.sideALabel ?? teamName(match.sideATeamId, 'Team 1')} players={sideAPlayers} colour={normalizeTeamColour(teamFor(match.sideATeamId)?.colour, 0)} state={match.winningSide === 'A' ? 'winner' : match.winningSide === 'halved' ? 'halved' : undefined} />
-        <div className={`result-chip ${match.status === 'complete' ? 'complete' : ''}`}>{resultLabel(match)}</div>
-        <MatchSide label={match.sideBLabel ?? teamName(match.sideBTeamId, 'Team 2')} players={sideBPlayers} colour={normalizeTeamColour(teamFor(match.sideBTeamId)?.colour, 1)} state={match.winningSide === 'B' ? 'winner' : match.winningSide === 'halved' ? 'halved' : undefined} align="right" />
+        <MatchSide label={match.sideALabel ?? teamName(match.sideATeamId, 'Team 1')} players={sideAPlayers} colour={normalizeTeamColour(teamFor(match.sideATeamId)?.colour, 0)} state={sideState(match, 'A')} />
+        <div className={`result-chip ${match.status === 'complete' ? 'complete' : ''}`} aria-label={result ? `Match score ${result}` : 'Match score unavailable'}>{result}</div>
+        <MatchSide label={match.sideBLabel ?? teamName(match.sideBTeamId, 'Team 2')} players={sideBPlayers} colour={normalizeTeamColour(teamFor(match.sideBTeamId)?.colour, 1)} state={sideState(match, 'B')} align="right" />
       </div>
     </article>
   );
 }
 
-function MatchSide({ label, players, colour, state, align }: { label: string; players: Player[]; colour: string; state?: 'winner' | 'halved'; align?: 'right' }) {
+function MatchSide({ label, players, colour, state, align }: { label: string; players: Player[]; colour: string; state?: 'winner' | 'loser' | 'halved'; align?: 'right' }) {
   const names = players.map((player) => player.displayName).join(' / ');
   return <div className={`match-side ${align === 'right' ? 'right' : ''} ${state ?? ''}`} style={{ '--team-colour': colour } as CSSProperties}>
     <strong>{names || label || 'Players TBC'}</strong>
