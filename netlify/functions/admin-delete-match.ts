@@ -7,11 +7,12 @@ export const handler: (event: FunctionEvent) => Promise<FunctionResponse> = (eve
   if (!id) return badRequest('Match ID is required.');
   if (!tourId) return badRequest('Tour ID is required.');
 
-  const matches = await runRows<{ id: string; tour_id: string; status: string }>(supabase.from('matches').select('id, tour_id, status').eq('id', id).limit(1), 'find match to delete');
+  const matches = await runRows<{ id: string; tour_id: string; status: string; published?: boolean }>(supabase.from('matches').select('id, tour_id, status, published').eq('id', id).limit(1), 'find match to delete');
   if (matches.length === 0) return badRequest('Match does not exist.');
   const match = matches[0];
   if (match.tour_id !== tourId) return badRequest('Match does not belong to this tour.');
   if (match.status === 'complete') return badRequest('Complete matches cannot be deleted. Change the status away from complete only if you intentionally want to remove generated results first.');
+  if (match.published === true) return badRequest('Published matches cannot be deleted through the draft match safe-delete flow. Unpublish the match first if it is safe to remove.');
 
   const [results, markets] = await Promise.all([
     runRows(supabase.from('player_match_results').select('id').eq('match_id', id).limit(1), 'player results for match delete'),

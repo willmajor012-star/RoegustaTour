@@ -29,6 +29,8 @@ main { padding: 14px; }
 .page-stack { gap: 14px; }
 .card, .stat-card { border-color: rgba(184, 154, 93, .32); padding: 16px; }
 .page-title, .premium-title { background: rgba(255, 250, 240, .94); border: 1px solid rgba(184,154,93,.32); border-radius: 22px; box-shadow: var(--shadow); padding: 16px; }
+.page-stack:not(.admin-page) > .page-title { position: sticky; top: 0; z-index: 40; backdrop-filter: blur(14px); }
+.page-stack:not(.admin-page) > .page-title h2 { font-size: clamp(1.35rem, 6vw, 1.85rem); line-height: 1.05; }
 .page-title h2, .premium-title h2, .card h2, .card h3 { color: var(--rt-green-900); }
 .page-title p, .premium-title p { color: var(--rt-ink-muted, #6f6a5d); }
 
