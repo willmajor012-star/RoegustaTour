@@ -53,10 +53,9 @@ export async function getPublicMatchBundle(supabase: SupabaseClient) {
   )).map(mapMatch);
 
   const publicMatchIds = publicMatches.map((match) => match.id);
-  const publicRoundIds = [...new Set(publicMatches.map((match) => match.roundId))];
 
   const [roundRows, participantRows, playerRows, teamRows] = await Promise.all([
-    publicRoundIds.length > 0 ? runQuery(table(supabase, 'rounds').select('*').in('id', publicRoundIds).order('round_number', { ascending: true }), 'public rounds') : Promise.resolve([]),
+    runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'public rounds'),
     publicMatchIds.length > 0 ? runQuery(table(supabase, 'match_participants').select('*').in('match_id', publicMatchIds), 'public match participants') : Promise.resolve([]),
     runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'public players'),
     runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'public tour teams'),

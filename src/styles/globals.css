@@ -732,3 +732,5 @@ main { padding: 14px; }
     min-width: 0;
   }
 }
+.golf-status-card,.round-info-card,.tee-sheet-card,.round-summary-card{display:grid;gap:10px}.golf-round-selector{grid-template-columns:1fr}.golf-info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.golf-info-grid span,.tee-sheet-row{border:1px solid rgba(184,154,93,.28);border-radius:16px;background:rgba(255,250,240,.58);padding:10px}.golf-info-grid strong{display:block;color:var(--rt-green-900);margin-top:3px}.tee-sheet-list{display:grid;gap:8px}.tee-sheet-row{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:10px}.tee-sheet-row strong{color:var(--rt-green-900)}.tee-sheet-row span{font-size:.75rem;font-weight:900;color:var(--rt-gold);text-transform:uppercase;letter-spacing:.08em}.tee-sheet-row p{margin:0;color:var(--rt-ink-muted,#6f6a5d)}
+@media (max-width:560px){.golf-info-grid{grid-template-columns:1fr}.tee-sheet-row{grid-template-columns:1fr}.tee-sheet-row p{font-weight:800;color:var(--rt-green-900)}}
