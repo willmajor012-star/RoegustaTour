@@ -4,7 +4,7 @@ import { fetchPublicBetMarkets, savePublicBet, type PublicBetMarketsResponse } f
 import { usePublicData } from '../lib/usePublicData';
 import type { Bet } from '../lib/types';
 
-const emptyBettingData: Omit<PublicBetMarketsResponse, 'source'> = { betMarkets: [], betOptions: [], bets: [] };
+const emptyBettingData: Omit<PublicBetMarketsResponse, 'source'> = { rounds: [], betMarkets: [], betOptions: [], bets: [] };
 
 export function Betting() {
   const [bettorName, setBettorName] = useState('');
@@ -57,7 +57,7 @@ export function Betting() {
         return <section className="market-section" key={status}>
           <div className="section-heading"><div><p className="eyebrow">Bet Punto</p><h2>{status[0].toUpperCase() + status.slice(1)} markets</h2></div></div>
           {markets.map((market) => (
-            <BetMarketCard key={market.id} market={market} options={activeData.betOptions.filter((option) => option.marketId === market.id)} bets={bets} bettorName={bettorName} onSubmit={submit} submitMessage={submitMessages[market.id]} />
+            <BetMarketCard key={market.id} market={market} round={activeData.rounds.find((round) => round.id === market.roundId)} options={activeData.betOptions.filter((option) => option.marketId === market.id)} bets={bets} bettorName={bettorName} onSubmit={submit} submitMessage={submitMessages[market.id]} />
           ))}
         </section>;
       })}
