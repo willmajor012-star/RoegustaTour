@@ -174,7 +174,7 @@ export function Admin() {
   const selectedBetMarket = (adminData?.betMarkets ?? []).find((market) => market.id === betMarketForm.id);
   const selectedBetMarketBets = selectedBetMarket ? (adminData?.bets ?? []).filter((bet) => bet.marketId === selectedBetMarket.id) : [];
   const selectedBetMarketOptions = selectedBetMarket ? (adminData?.betOptions ?? []).filter((option) => option.marketId === selectedBetMarket.id) : [];
-  const mandatoryBettorNames = activePlayers.filter((player) => attendingPlayerIds.has(player.id)).map((player) => playerLabel(player));
+  const mandatoryBettorNames = activePlayers.filter((player) => attendingPlayerIds.has(player.id)).map((player) => player.displayName);
   const betPuntoBettorSummaries = useMemo(() => buildBetPuntoBettorSummaries(adminData?.betMarkets ?? [], adminData?.betOptions ?? [], adminData?.bets ?? [], mandatoryBettorNames), [adminData?.betMarkets, adminData?.betOptions, adminData?.bets, mandatoryBettorNames]);
   const betPuntoMarketSummaries = useMemo(() => buildBetPuntoMarketSummaries(adminData?.betMarkets ?? [], adminData?.betOptions ?? [], adminData?.bets ?? [], mandatoryBettorNames), [adminData?.betMarkets, adminData?.betOptions, adminData?.bets, mandatoryBettorNames]);
   const betPuntoStablefordSummaries = betPuntoMarketSummaries.filter((summary) => summary.market.marketType === 'player_performance' && summary.market.title.toLowerCase().includes('stableford'));
