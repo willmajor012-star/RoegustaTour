@@ -33,6 +33,7 @@ export type PublicPlayersResponse = PublicResponse<{
 }>;
 
 export type PublicBetMarketsResponse = PublicResponse<{
+  rounds: Round[];
   betMarkets: BetMarket[];
   betOptions: BetOption[];
   bets: Bet[];
