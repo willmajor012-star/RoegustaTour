@@ -229,16 +229,22 @@ export async function getBettingBundle(supabase: SupabaseClient) {
   ]);
   const visibleOptions = optionRows.filter((option) => {
     const teamId = typeof option.linked_team_id === 'string' ? option.linked_team_id : '';
-    return !teamId || publicTeamIds.has(teamId);
+    const playerId = typeof option.linked_player_id === 'string' ? option.linked_player_id : '';
+    if (teamId && !publicTeamIds.has(teamId)) return false;
+    if (playerId && !publicPlayerIds.has(playerId)) return false;
+    return true;
   });
+  const visibleOptionIds = new Set(visibleOptions.map((option) => String(option.id)));
+  const visibleMarketIds = new Set(visibleOptions.map((option) => String(option.market_id)));
+  const visibleMarketsWithOptions = visibleMarketRows.filter((market) => visibleMarketIds.has(String(market.id)));
 
   return {
     rounds,
     players: playerRows.map(mapPlayer),
     tourPlayers: tourPlayerRows.map(mapTourPlayer).filter((tourPlayer) => publicPlayerIds.has(tourPlayer.playerId)),
-    betMarkets: visibleMarketRows.map(mapBetMarket),
+    betMarkets: visibleMarketsWithOptions.map(mapBetMarket),
     betOptions: visibleOptions.map(mapBetOption),
-    bets: betRows.map(mapBet),
+    bets: betRows.filter((bet) => visibleOptionIds.has(String(bet.option_id))).map(mapBet),
   };
 }
 
