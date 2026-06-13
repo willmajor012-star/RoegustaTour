@@ -1,6 +1,8 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { badRequest, optionalNumber, optionalString, runRows, runSingle, withAdminSupabase } from './_adminSupabase';
 import { mapBetMarket, mapBetOption } from './_mappers';
+import { settleBetMarketRows } from './_betSettlement';
+import { writeAuditLog } from './_audit';
 import type { BetMarket, BetOption } from '../../src/lib/types';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
@@ -21,59 +23,6 @@ type OptionInput = {
   sortOrder: number;
 };
 
-
-function stakePence(row: Record<string, unknown>) {
-  if (typeof row.stake_amount_pence === 'number' && Number.isFinite(row.stake_amount_pence)) return row.stake_amount_pence;
-  if (typeof row.stake_text === 'string') {
-    const parsed = Number(row.stake_text.trim().replace(/^£/, ''));
-    return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 100) : 0;
-  }
-  return 0;
-}
-
-function splitPot(totalPotPence: number, winningBets: Record<string, unknown>[]) {
-  const winningStakeTotal = winningBets.reduce((total, bet) => total + stakePence(bet), 0);
-  if (totalPotPence <= 0 || winningStakeTotal <= 0) return new Map<string, number>();
-  const rows = winningBets.map((bet) => {
-    const id = String(bet.id);
-    const raw = (totalPotPence * stakePence(bet)) / winningStakeTotal;
-    return { id, payout: Math.floor(raw), remainder: raw - Math.floor(raw) };
-  });
-  let remaining = totalPotPence - rows.reduce((total, row) => total + row.payout, 0);
-  rows.sort((a, b) => b.remainder - a.remainder || a.id.localeCompare(b.id));
-  for (const row of rows) {
-    if (remaining <= 0) break;
-    row.payout += 1;
-    remaining -= 1;
-  }
-  return new Map(rows.map((row) => [row.id, row.payout]));
-}
-
-async function updateSettledBetOutcomes(supabase: Parameters<Parameters<typeof withAdminSupabase>[2]>[0], marketId: string, marketScope: BetMarket['marketScope'], resultOptionId: string | null) {
-  if (!resultOptionId) return;
-  const [bets, options] = await Promise.all([
-    runRows<Record<string, unknown>>(supabase.from('bets').select('*').eq('market_id', marketId).eq('status', 'active'), 'settlement bets'),
-    runRows<Record<string, unknown>>(supabase.from('bet_options').select('*').eq('market_id', marketId), 'settlement options'),
-  ]);
-  const activeStakeBets = bets.filter((bet) => stakePence(bet) > 0 && bet.outcome_status !== 'void');
-  const totalPot = activeStakeBets.reduce((total, bet) => total + stakePence(bet), 0);
-  const winningBets = activeStakeBets.filter((bet) => String(bet.option_id) === resultOptionId);
-  const winningOption = options.find((option) => String(option.id) === resultOptionId);
-  const oddsDecimal = typeof winningOption?.odds_decimal === 'number' ? winningOption.odds_decimal : typeof winningOption?.odds_decimal === 'string' ? Number(winningOption.odds_decimal) : null;
-  const potPayouts = marketScope === 'general_pot' ? splitPot(totalPot, winningBets) : new Map<string, number>();
-
-  for (const bet of activeStakeBets) {
-    const isWinner = String(bet.option_id) === resultOptionId;
-    const payout = !isWinner ? 0 : marketScope === 'general_pot' ? (potPayouts.get(String(bet.id)) ?? 0) : (oddsDecimal && Number.isFinite(oddsDecimal) ? Math.round(stakePence(bet) * oddsDecimal) : null);
-    const updated = await supabase.from('bets').update({
-      outcome_status: isWinner ? 'won' : 'lost',
-      payout_amount_pence: payout,
-      payout_status: payout && payout > 0 ? 'unpaid' : 'not_applicable',
-    }).eq('id', String(bet.id));
-    if (updated.error) throw new Error(`update settled bet outcome: ${updated.error.message}`);
-  }
-}
-
 function parseOptions(value: unknown): OptionInput[] | null {
   if (!Array.isArray(value)) return null;
   return value.map((entry, index) => {
@@ -90,7 +39,7 @@ function parseOptions(value: unknown): OptionInput[] | null {
   });
 }
 
-export const handler: Handler = (event) => withAdminSupabase(event, 'POST', async (supabase, body) => {
+export const handler: Handler = (event) => withAdminSupabase(event, 'POST', async (supabase, body, session) => {
   const id = optionalString(body.id);
   const tourId = optionalString(body.tourId);
   const roundId = optionalString(body.roundId);
@@ -186,8 +135,12 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   }
   const updatedMarket = await runSingle<Record<string, unknown>>(supabase.from('bet_markets').update({ result_option_id: resultOptionId }).eq('id', marketId).select('*').single(), 'save bet result option');
   const optionRows = await runRows<Record<string, unknown>>(supabase.from('bet_options').select('*').eq('market_id', marketId).order('sort_order', { ascending: true }), 'saved bet options');
-  if (status === 'settled') await updateSettledBetOutcomes(supabase, marketId, marketScope, resultOptionId);
+  if (status === 'settled' && resultOptionId) {
+    const settlementSummary = await settleBetMarketRows(supabase, marketId, marketScope, resultOptionId);
+    await writeAuditLog(supabase, session, 'bet_market.settled_via_save', 'bet_market', marketId, { tourId, resultOptionId, settlementSummary });
+  }
   if (status === 'void') {
+    await writeAuditLog(supabase, session, 'bet_market.voided', 'bet_market', marketId, { tourId });
     const voided = await supabase.from('bets').update({ outcome_status: 'void', payout_amount_pence: null, payout_status: 'not_applicable' }).eq('market_id', marketId).eq('status', 'active');
     if (voided.error) throw new Error(`void market bets: ${voided.error.message}`);
   }

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from './_supabase';
-import { mapBet, mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapTour, mapTourHandbookSection, mapTourItineraryItem, mapTourPlayer, mapTourTeam, mapTourTeamDayKit, mapTourTeamMember, mapTourTeamResult } from './_mappers';
+import { mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapTour, mapTourHandbookSection, mapTourItineraryItem, mapTourPlayer, mapTourTeam, mapTourTeamDayKit, mapTourTeamMember, mapTourTeamResult } from './_mappers';
 import type { Match, Round, Tour, TourTeam, TourTeamMember } from '../../src/lib/types';
 
 type Row = Record<string, unknown>;
@@ -66,6 +66,24 @@ export function filterPublicTeams<TTeam extends TourTeam>(teams: TTeam[], tour?:
 export function filterPublicTeamMembers<TMember extends TourTeamMember>(members: TMember[], publicTeams: Pick<TourTeam, 'id'>[]): TMember[] {
   const publicTeamIds = new Set(publicTeams.map((team) => team.id));
   return members.filter((member) => publicTeamIds.has(member.teamId));
+}
+
+
+function mapPublicBetRow(row: Row) {
+  return {
+    id: String(row.id),
+    marketId: String(row.market_id),
+    optionId: String(row.option_id),
+    bettorName: String(row.bettor_name),
+    stakeText: typeof row.stake_text === 'string' ? row.stake_text : undefined,
+    stakeAmountPence: typeof row.stake_amount_pence === 'number' ? row.stake_amount_pence : Number(row.stake_amount_pence) || undefined,
+    payoutAmountPence: typeof row.payout_amount_pence === 'number' ? row.payout_amount_pence : undefined,
+    outcomeStatus: typeof row.outcome_status === 'string' ? row.outcome_status : 'pending',
+    payoutStatus: typeof row.payout_status === 'string' ? row.payout_status : 'not_applicable',
+    comment: typeof row.comment === 'string' ? row.comment : undefined,
+    createdAt: String(row.created_at),
+    status: typeof row.status === 'string' ? row.status : 'active',
+  };
 }
 
 function rowsById<T extends { id: string }>(rows: T[]): Map<string, T> {
@@ -244,7 +262,7 @@ export async function getBettingBundle(supabase: SupabaseClient) {
     tourPlayers: tourPlayerRows.map(mapTourPlayer).filter((tourPlayer) => publicPlayerIds.has(tourPlayer.playerId)),
     betMarkets: visibleMarketsWithOptions.map(mapBetMarket),
     betOptions: visibleOptions.map(mapBetOption),
-    bets: betRows.filter((bet) => visibleOptionIds.has(String(bet.option_id))).map(mapBet),
+    bets: betRows.filter((bet) => visibleOptionIds.has(String(bet.option_id))).map(mapPublicBetRow),
   };
 }
 
