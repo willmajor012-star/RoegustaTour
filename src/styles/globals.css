@@ -1024,3 +1024,4 @@ main { padding: 14px; }
   color: var(--rt-green-900);
 }
 .admin-inline-actions{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
+.inline-edit-card{margin-top:12px;border-top:1px solid var(--rt-stone);padding-top:12px}.compact-admin-list{max-height:520px;overflow:auto}.unsaved-card{outline:2px solid var(--rt-gold);background:var(--rt-green-100)}.team-assignment-board{display:grid;gap:12px}.assignment-column{border:1px solid var(--rt-stone);border-radius:18px;padding:12px;background:#fff}.assignment-chip{display:inline-grid;gap:6px;border:1px solid var(--rt-stone);border-radius:14px;padding:8px;background:var(--rt-cream)}.assignment-chip select{min-width:140px}@media (min-width:760px){.team-assignment-board{grid-template-columns:repeat(3,minmax(0,1fr))}}

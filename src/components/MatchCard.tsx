@@ -1,6 +1,6 @@
 import type { Match, MatchParticipant, Player, TourTeam } from '../lib/types';
 import { formatMatchFormat, formatPoints } from '../lib/formatting';
-import { normalizeTeeTime } from '../lib/display';
+import { formatTeeTimeDisplay } from '../lib/display';
 import { normalizeTeamColour } from '../lib/teamColours';
 import type { CSSProperties } from 'react';
 
@@ -44,7 +44,7 @@ export function MatchCard({ match, participants, players, teams }: Props) {
   const teamName = (teamId: string, fallback: string) => teamFor(teamId)?.name ?? fallback;
   const sideAPlayers = participants.filter((participant) => participant.side === 'A').map((participant) => playerFor(participant.playerId)).filter((player): player is Player => Boolean(player));
   const sideBPlayers = participants.filter((participant) => participant.side === 'B').map((participant) => playerFor(participant.playerId)).filter((player): player is Player => Boolean(player));
-  const tee = normalizeTeeTime(match.teeTime);
+  const tee = match.teeTime?.trim() ? formatTeeTimeDisplay(match.teeTime) : undefined;
   const result = resultLabel(match);
 
   return (

@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { calculateIndicativePayouts, calculateMarketPotPence, formatPenceCurrency, formatStakeCurrency, parseStakeAmount, stakeAmountToPence } from '../lib/betting';
 import type { Bet, BetMarket, BetOption, Round } from '../lib/types';
+import { formatTeeTimeDisplay } from '../lib/display';
 
 type Props = {
   market: BetMarket;
@@ -11,6 +12,13 @@ type Props = {
   onSubmit?: (marketId: string, optionId: string, stakeAmount: number, stakeAmountPence: number, comment: string) => Promise<void> | void;
   submitMessage?: string;
 };
+
+function marketStatusLabel(status: BetMarket['status']) {
+  if (status === 'open') return 'Open';
+  if (status === 'closed') return 'Closed';
+  if (status === 'settled') return 'Settled';
+  return 'Unavailable';
+}
 
 export function BetMarketCard({ market, round, options, bets, bettorName, onSubmit, submitMessage }: Props) {
   const [selectedOptionId, setSelectedOptionId] = useState(options[0]?.id ?? '');
@@ -47,7 +55,7 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
 
   return (
     <article className="bet-card card">
-      <div className="card-meta"><span>{market.marketType.replace('_', ' ')}</span>{round && <span>Round {round.roundNumber}{round.roundDate ? ` · ${round.roundDate}` : ''}</span>}<span>{market.marketScope === 'general_pot' ? 'General pot' : 'Special/manual'}</span><span>{market.status}</span></div>
+      <div className="card-meta"><span>{market.marketType.replace('_', ' ')}</span>{round && <span>Round {round.roundNumber}{round.roundDate ? ` · ${round.roundDate}` : ''}{round.teeTime ? ` · ${formatTeeTimeDisplay(round.teeTime)}` : ''}</span>}<span>{market.marketScope === 'general_pot' ? 'General pot' : 'Special/manual'}</span><span>{marketStatusLabel(market.status)}</span></div>
       <div className="bet-card-title"><h3>{market.title}</h3><span>{formatPenceCurrency(potPence)} pot</span></div>
       {market.description && <p>{market.description}</p>}
       {market.resultText && <p className="settled">Result: {market.resultText}</p>}

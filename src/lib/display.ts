@@ -53,6 +53,29 @@ export function normalizeTeeTime(value?: string | null) {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
+
+export function formatTeeTimeDisplay(value?: string | null, fallback = 'Tee time TBC') {
+  const text = value?.trim();
+  if (!text) return fallback;
+  if (/^tbc$/i.test(text)) return 'TBC';
+  return normalizeTeeTime(text) ?? text;
+}
+
+export function compareTeeTimeValues(left?: string | null, right?: string | null) {
+  const leftTime = normalizeTeeTime(left);
+  const rightTime = normalizeTeeTime(right);
+  if (leftTime && rightTime) return leftTime.localeCompare(rightTime);
+  if (leftTime) return -1;
+  if (rightTime) return 1;
+  return 0;
+}
+
+export function publicWorkflowStatusLabel(status?: string) {
+  if (status === 'active') return 'Live';
+  if (status === 'complete' || status === 'archived') return 'Final';
+  return undefined;
+}
+
 export function getDateOnlyScheduledDate(date?: string, time = '00:00') {
   if (!date) return undefined;
   const value = new Date(`${date}T${time}`);

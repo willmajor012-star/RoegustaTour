@@ -628,8 +628,8 @@ Risks:
 
 ## Remediation Status — public visibility/current tour PR
 
-- **QA-001 fixed in this PR:** public tour resolution now uses an explicit `tours.is_current_public` flag and public round filtering requires `rounds.published` for current-tour round visibility.
-- **QA-002 fixed in this PR:** team/roster publication now uses `tour_teams.published`, and public team-member data is filtered to published teams only.
+- **QA-001 fixed/materially reduced in this PR:** public tour resolution now uses an explicit `tours.is_current_public` flag and public round filtering requires `rounds.published` for current-tour round visibility.
+- **QA-002 fixed/materially reduced in this PR:** team/roster publication now uses `tour_teams.published`, and public team-member data is filtered to published teams only.
 - **QA-009 fixed in this PR:** the schema adds a partial unique index that permits only one `is_current_public = true` tour, with admin controls to set that tour deliberately.
 - **QA-011 fixed/materially reduced in this PR:** advanced stats now filters tours, rounds, teams, rosters, matches, and results through shared public-safe helpers so draft/current planning context is not broadly returned.
-- **Still deferred:** result entry, deeper Bet Punto settlement/safety work, broader admin operator UX, audit logging implementation, and automated test coverage remain for later PRs in the sequence above.
+- **Bet Punto scope:** this PR only filters public-safe Bet Punto round/match/team context where implemented; settlement, duplicate submissions, hard deletes, public ledger privacy, broader admin operator UX, audit logging implementation, and automated test coverage remain deferred for later PRs.
