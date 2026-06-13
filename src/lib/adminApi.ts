@@ -126,6 +126,23 @@ export type SaveBetMarketPayload = {
   options: SaveBetOptionPayload[];
 };
 
+export type SubmitResultPayload = {
+  tourId: string;
+  matchId: string;
+  pointsSideA: number;
+  pointsSideB: number;
+  resultText: string;
+  published?: boolean;
+  correctionReason?: string | null;
+};
+
+export type SettleBetMarketPayload = {
+  marketId: string;
+  resultOptionId: string;
+  settlementNote?: string | null;
+  correction?: boolean;
+};
+
 export type UpdateBetPayload = {
   id: string;
   status: Bet['status'];
@@ -171,16 +188,21 @@ function postAdminJson<T>(path: string, payload: unknown): Promise<T> {
 export const fetchAdminData = (tourId?: string) => fetchAdminJson<AdminDataResponse>(`/.netlify/functions/admin-data${tourId ? `?tourId=${encodeURIComponent(tourId)}` : ''}`, { method: 'GET' });
 export const savePlayer = (payload: SavePlayerPayload) => postAdminJson<{ ok: true; player: Player }>('/.netlify/functions/admin-save-player', payload);
 export const saveTour = (payload: SaveTourPayload) => postAdminJson<{ ok: true; tour: Tour }>('/.netlify/functions/admin-save-tour', payload);
+export const setCurrentPublicTour = (payload: { tourId: string }) => postAdminJson<{ ok: true; tour: Tour }>('/.netlify/functions/admin-set-current-public-tour', payload);
 export const deleteTour = (payload: { id: string }) => postAdminJson<{ ok: true; deletedTourId: string }>('/.netlify/functions/admin-delete-tour', payload);
 export const saveTourPlayer = (payload: SaveTourPlayerPayload) => postAdminJson<{ ok: true; tourPlayer: TourPlayer; tourTeamMembers?: TourTeamMember[] }>('/.netlify/functions/admin-save-tour-player', payload);
 export const saveTourTeam = (payload: SaveTourTeamPayload) => postAdminJson<{ ok: true; tourTeam: TourTeam }>('/.netlify/functions/admin-save-team', payload);
+export const updateTeamPublished = (payload: { tourId: string; teamId: string; published: boolean }) => postAdminJson<{ ok: true; tourTeam: TourTeam }>('/.netlify/functions/admin-update-team-published', payload);
 export const deleteTeam = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedTeamId: string }>('/.netlify/functions/admin-delete-team', payload);
 export const saveTourTeamMembers = (payload: SaveTourTeamMembersPayload) => postAdminJson<{ ok: true; tourTeamMembers: TourTeamMember[] }>('/.netlify/functions/admin-save-team-members', payload);
 export const saveRound = (payload: SaveRoundPayload) => postAdminJson<{ ok: true; round: Round }>('/.netlify/functions/admin-save-round', payload);
+export const updateRoundPublished = (payload: { tourId: string; roundId: string; published: boolean }) => postAdminJson<{ ok: true; round: Round }>('/.netlify/functions/admin-update-round-published', payload);
 export const deleteRound = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedRoundId: string }>('/.netlify/functions/admin-delete-round', payload);
 export const saveMatch = (payload: SaveMatchPayload) => postAdminJson<{ ok: true; match: Match; matchParticipants: MatchParticipant[] }>('/.netlify/functions/admin-save-match', payload);
+export const submitResult = (payload: SubmitResultPayload) => postAdminJson<{ ok: true; match: Match }>('/.netlify/functions/admin-submit-result', payload);
 export const deleteMatch = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedMatchId: string }>('/.netlify/functions/admin-delete-match', payload);
 export const saveBetMarket = (payload: SaveBetMarketPayload) => postAdminJson<{ ok: true; betMarket: BetMarket; betOptions: BetOption[] }>('/.netlify/functions/admin-save-bet-market', payload);
+export const settleBetMarket = (payload: SettleBetMarketPayload) => postAdminJson<{ ok: true; betMarket: BetMarket; bets: Bet[] }>('/.netlify/functions/admin-settle-bet-market', payload);
 export const deleteBetMarket = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedBetMarketId: string }>('/.netlify/functions/admin-delete-bet-market', payload);
 export const updateBet = (payload: UpdateBetPayload) => postAdminJson<{ ok: true; bet: Bet }>('/.netlify/functions/admin-update-bet', payload);
 export const deleteBet = (payload: { id: string }) => postAdminJson<{ ok: true; deletedBetId: string }>('/.netlify/functions/admin-delete-bet', payload);

@@ -1,5 +1,4 @@
 import { createServerSupabaseClient } from './_supabase';
-import { mapBet } from './_mappers';
 
 type FunctionEvent = { httpMethod: string; body: string | null; headers?: Record<string, string | undefined> };
 type FunctionResponse = { statusCode: number; body: string };
@@ -15,6 +14,27 @@ function jsonResponse(statusCode: number, payload: unknown): FunctionResponse {
 
 function optionalString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
+}
+
+function mapPublicBet(row: Row) {
+  return {
+    id: String(row.id),
+    marketId: String(row.market_id),
+    optionId: String(row.option_id),
+    bettorName: String(row.bettor_name),
+    stakeText: typeof row.stake_text === 'string' ? row.stake_text : undefined,
+    stakeAmountPence: typeof row.stake_amount_pence === 'number' ? row.stake_amount_pence : Number(row.stake_amount_pence) || undefined,
+    payoutAmountPence: typeof row.payout_amount_pence === 'number' ? row.payout_amount_pence : undefined,
+    outcomeStatus: typeof row.outcome_status === 'string' ? row.outcome_status : 'pending',
+    payoutStatus: typeof row.payout_status === 'string' ? row.payout_status : 'not_applicable',
+    comment: typeof row.comment === 'string' ? row.comment : undefined,
+    createdAt: String(row.created_at),
+    status: typeof row.status === 'string' ? row.status : 'active',
+  };
+}
+
+function normalizedName(value: string) {
+  return value.trim().toLowerCase();
 }
 
 function parseBody(event: FunctionEvent) {
@@ -68,6 +88,13 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
     const options = await runRows<{ id: string; market_id: string }>(supabase.from('bet_options').select('id, market_id').eq('id', optionId).eq('market_id', marketId).limit(1), 'find bet option');
     if (options.length === 0) return jsonResponse(400, { ok: false, message: 'Option does not belong to this market.' });
 
+    const deviceId = event.headers?.['x-nf-client-connection-ip'] ?? null;
+    const activeBets = await runRows<{ bettor_name: string; device_id: string | null }>(supabase.from('bets').select('bettor_name, device_id').eq('market_id', marketId).eq('status', 'active'), 'find active market bets');
+    const normalizedBettor = normalizedName(bettorName);
+    if (activeBets.some((bet) => normalizedName(bet.bettor_name) === normalizedBettor || (deviceId && bet.device_id === deviceId))) {
+      return jsonResponse(409, { ok: false, message: 'You already have an active pick in this market.' });
+    }
+
     const insertRow = {
       market_id: marketId,
       option_id: optionId,
@@ -78,10 +105,10 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
       status: 'active',
       outcome_status: 'pending',
       payout_status: 'not_applicable',
-      device_id: event.headers?.['x-nf-client-connection-ip'] ?? null,
+      device_id: deviceId,
     };
     const saved = await runSingle<Row>(supabase.from('bets').insert(insertRow).select('*').single(), 'save public bet');
-    return jsonResponse(200, { ok: true, bet: mapBet(saved) });
+    return jsonResponse(200, { ok: true, bet: mapPublicBet(saved) });
   } catch (error) {
     console.error('Public bet save failed:', error);
     return jsonResponse(500, { ok: false, message: 'Bet Punto pick could not be saved.' });

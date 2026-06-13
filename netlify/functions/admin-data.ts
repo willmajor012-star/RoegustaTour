@@ -1,7 +1,6 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { withAdminSupabase, runRows } from './_adminSupabase';
 import { mapBet, mapBetMarket, mapBetOption, mapMatch, mapMatchParticipant, mapPlayer, mapRound, mapTour, mapTourPlayer, mapTourTeam, mapTourTeamMember, mapTourTeamResult } from './_mappers';
-import { selectDefaultTour } from './_tourResolution';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -9,7 +8,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
   const requestedTourId = event.queryStringParameters?.tourId ?? null;
   const tourRows = await runRows(supabase.from('tours').select('*').order('year', { ascending: false }), 'admin tours');
   const tours = tourRows.map(mapTour);
-  const currentTour = selectDefaultTour(tours);
+  const currentTour = tours.find((tour) => tour.isCurrentPublic) ?? tours.find((tour) => tour.status === 'active') ?? tours.find((tour) => tour.status === 'complete') ?? tours[0];
   const selectedTour = (requestedTourId ? tours.find((tour) => tour.id === requestedTourId) : undefined) ?? currentTour;
 
   const playerRows = await runRows(supabase.from('players').select('*').order('display_name', { ascending: true }), 'admin players');

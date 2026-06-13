@@ -21,8 +21,8 @@ function currentTour(data: Omit<PublicAdvancedStatsResponse, 'source'>) {
 
 function statusLabel(tour: Tour) {
   if (tour.status === 'planned') return 'Upcoming';
-  if (tour.status === 'active') return 'Current';
-  return 'Completed';
+  if (tour.status === 'active') return 'Live';
+  return 'Final';
 }
 
 function isCompletedTour(tour: Tour) {

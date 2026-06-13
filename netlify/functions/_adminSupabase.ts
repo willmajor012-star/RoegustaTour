@@ -57,5 +57,3 @@ export function optionalNumber(value: unknown): number | null {
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
-
-// TODO: insert audit_log rows for admin writes if/when the live schema exposes an audit_log table/helper.

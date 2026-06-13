@@ -1,19 +1,28 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { badRequest, optionalString, runRows, withAdminSupabase } from './_adminSupabase';
+import { writeAuditLog } from './_audit';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
+const historyDeleteMessage = 'Markets with Bet Punto history cannot be deleted. Close or void the market instead.';
 
-export const handler: Handler = (event) => withAdminSupabase(event, 'POST', async (supabase, body) => {
+export const handler: Handler = (event) => withAdminSupabase(event, 'POST', async (supabase, body, session) => {
   const id = optionalString(body.id);
   const tourId = optionalString(body.tourId);
   if (!id) return badRequest('Bet market ID is required.');
   if (!tourId) return badRequest('Tour ID is required.');
 
-  const existing = await runRows<{ id: string }>(supabase.from('bet_markets').select('id').eq('id', id).eq('tour_id', tourId).limit(1), 'find bet market to delete');
+  const existing = await runRows<{ id: string; status: string }>(supabase.from('bet_markets').select('id, status').eq('id', id).eq('tour_id', tourId).limit(1), 'find bet market to delete');
   if (existing.length === 0) return badRequest('Bet market does not exist for this tour.');
+
+  const bets = await runRows<{ id: string }>(supabase.from('bets').select('id').eq('market_id', id).limit(1), 'find market bets before delete');
+  if (bets.length > 0 || ['open', 'closed', 'settled'].includes(existing[0].status)) {
+    await writeAuditLog(supabase, session, 'bet_market.delete_blocked', 'bet_market', id, { tourId, status: existing[0].status, hasBets: bets.length > 0 });
+    return badRequest(historyDeleteMessage);
+  }
 
   const deleted = await supabase.from('bet_markets').delete().eq('id', id).eq('tour_id', tourId);
   if (deleted.error) throw new Error(`delete bet market: ${deleted.error.message}`);
+  await writeAuditLog(supabase, session, 'bet_market.deleted_unused', 'bet_market', id, { tourId, status: existing[0].status });
 
   return jsonResponse(200, { ok: true, deletedBetMarketId: id });
 });

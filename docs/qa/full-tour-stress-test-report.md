@@ -625,3 +625,28 @@ Risks:
 4. **Admin operator UX PR:** improve team/match builder ergonomics without redesign, keep selected round/section stable.
 5. **QA automation PR:** add lint/test scripts, unit tests for scoring/betting/filter rules, and optional Playwright smoke tests.
 6. **Load and live rehearsal PR/runbook:** run read-only load script against Netlify preview and a full write rehearsal against a disposable Supabase project.
+
+## Remediation Status — public visibility/current tour PR
+
+- **QA-001 fixed/materially reduced in this PR:** public tour resolution now uses an explicit `tours.is_current_public` flag and public round filtering requires `rounds.published` for current-tour round visibility.
+- **QA-002 fixed/materially reduced in this PR:** team/roster publication now uses `tour_teams.published`, and public team-member data is filtered to published teams only.
+- **QA-009 fixed in this PR:** the schema adds a partial unique index that permits only one `is_current_public = true` tour, with admin controls to set that tour deliberately.
+- **QA-011 fixed/materially reduced in this PR:** advanced stats now filters tours, rounds, teams, rosters, matches, and results through shared public-safe helpers so draft/current planning context is not broadly returned.
+- **Public planned/draft status leakage fixed/materially reduced in this PR:** public Golf/Tours/Info/Bet Punto contexts use friendly public labels/details instead of raw `planned`/`draft` workflow text where these pages render status-like context.
+- **Per-match tee-time support fixed in this PR:** `matches.tee_time` already exists and is wired through admin/public display; the admin now has per-match entry plus a sequential tee-time helper for draft/planned matches.
+- **Admin setup UX improved in this PR:** bulk attendance save, bulk team assignment, and inline player-library editing reduce player-by-player saves and top-of-page scrolling during tour setup.
+- **Bet Punto schema/runtime market creation issue addressed in this PR:** `market_scope` exists in migrations/schema and admin save returns a migration guidance message if the live PostgREST schema cache is still out of date.
+- **Bet Punto scope:** this PR only filters public-safe Bet Punto round/match/team context and handles the immediate `market_scope` schema/runtime issue; full settlement, duplicate submissions, hard deletes/history safety, full public ledger privacy, audit logging implementation, and automated test coverage remain deferred for later PRs.
+
+## Remediation Status — live-readiness result, Bet Punto safety, audit, and QA tooling PR
+
+- **QA-003 fixed in this PR:** Bet Punto market hard-delete is blocked for any market with betting history or non-draft/live historical status; organisers are directed to close or void the market instead of destroying records.
+- **QA-004 fixed in this PR:** individual Bet Punto bet hard-delete is blocked after submission, and admin flows keep voiding as the history-preserving path.
+- **QA-005 fixed/materially reduced in this PR:** a dedicated result-entry endpoint and admin section now submit/correct match results, regenerate `player_match_results`, recalculate `tour_team_results`, mark matches complete, and write audit entries.
+- **QA-006 fixed in this PR:** `admin-settle-bet-market` is implemented as a dedicated settlement endpoint that validates market/options, updates outcomes/payouts, supports correction mode, and writes audit entries.
+- **QA-007 fixed/materially reduced in this PR:** public bet submission now blocks duplicate active picks per market using bettor identity/device checks and returns a friendly duplicate-pick error. A database unique index is still deferred because historic duplicate cleanup needs a separate data-safe migration plan.
+- **QA-008 fixed in this PR:** public Bet Punto payloads are mapped through public-safe fields only and no longer expose device IDs, payout notes, or raw ledger/admin metadata.
+- **QA-010 materially reduced, not fully fixed in this PR:** critical result-entry and Bet Punto settlement flows now centralise validation, recalculation, outcome updates, and audit writes, but they still run through Netlify/Supabase write sequences rather than a single Postgres RPC transaction. A future database RPC can make these paths fully atomic.
+- **QA-014 fixed/materially reduced in this PR:** a shared audit helper writes audit rows for result submission/correction, Bet Punto settlement/void, bet void/update, and blocked destructive delete attempts. Broader low-risk admin setup writes can be added to audit in a later audit-coverage pass.
+- **QA-015 fixed in this PR:** `lint` and `test` npm scripts are present, with fast deterministic tests covering result winner derivation, Bet Punto pot splitting/duplicate logic, and public Bet Punto payload redaction.
+- **Readiness note:** the overall “not live-tour ready without fixes” call should only be softened after a manual write rehearsal confirms result entry, settlement, duplicate blocking, public payload redaction, and audit rows against a disposable Supabase project or preview environment.

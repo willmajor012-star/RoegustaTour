@@ -16,6 +16,7 @@ export type Tour = {
   endDate?: string;
   status: 'planned' | 'active' | 'complete' | 'archived';
   description?: string;
+  isCurrentPublic?: boolean;
 };
 
 export type TourPlayer = {
@@ -34,6 +35,7 @@ export type TourTeam = {
   colour?: string;
   captainPlayerId?: string;
   sortOrder: number;
+  published?: boolean;
 };
 
 export type TourTeamMember = {
@@ -64,6 +66,7 @@ export type Round = {
   formatLabel?: string;
   notes?: string;
   status: 'draft' | 'planned' | 'active' | 'complete';
+  published?: boolean;
 };
 
 export type MatchFormat = 'singles' | 'better_ball' | 'foursomes' | 'scramble' | 'custom';

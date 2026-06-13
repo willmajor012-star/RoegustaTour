@@ -20,10 +20,12 @@ create table tours (
   end_date date,
   status text not null check (status in ('planned','active','complete','archived')),
   description text,
+  is_current_public boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 create unique index tours_year_idx on tours(year);
+create unique index tours_single_current_public_idx on tours(is_current_public) where is_current_public = true;
 
 create table tour_players (
   id uuid primary key default gen_random_uuid(),
@@ -43,10 +45,12 @@ create table tour_teams (
   colour text,
   captain_player_id uuid references players(id) on delete set null,
   sort_order integer not null default 0,
+  published boolean not null default false,
   created_at timestamptz not null default now(),
   unique (tour_id, name)
 );
 create index tour_teams_tour_idx on tour_teams(tour_id);
+create index tour_teams_public_idx on tour_teams(tour_id, published);
 
 create table tour_team_members (
   id uuid primary key default gen_random_uuid(),
@@ -126,11 +130,13 @@ create table rounds (
   format_label text,
   notes text,
   status text not null check (status in ('draft','planned','active','complete')),
+  published boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (tour_id, round_number)
 );
 create index rounds_tour_idx on rounds(tour_id);
+create index rounds_public_idx on rounds(tour_id, published, status);
 
 create table matches (
   id uuid primary key default gen_random_uuid(),

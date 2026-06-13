@@ -5,6 +5,14 @@ import { usePublicData } from '../lib/usePublicData';
 import { buildBetPuntoBettorSummaries, buildBetPuntoMarketSummaries, formatPenceCurrency, formatStakeCurrency } from '../lib/betting';
 import type { Bet } from '../lib/types';
 
+
+function marketStatusLabel(status?: string) {
+  if (status === 'open') return 'Open';
+  if (status === 'closed') return 'Closed';
+  if (status === 'settled') return 'Settled';
+  return 'Unavailable';
+}
+
 const emptyBettingData: Omit<PublicBetMarketsResponse, 'source'> = { rounds: [], players: [], tourPlayers: [], betMarkets: [], betOptions: [], bets: [] };
 
 export function Betting() {
@@ -88,7 +96,7 @@ export function Betting() {
         <div className="table-wrap">
           <table className="bet-summary-table">
             <thead><tr><th>Market</th><th>Status</th><th>Picks</th><th>Pot</th><th>Missing players</th></tr></thead>
-            <tbody>{stablefordMarketSummaries.length === 0 ? <tr><td colSpan={5}>No Stableford winner markets have been created yet.</td></tr> : stablefordMarketSummaries.map((summary) => <tr key={summary.market.id}><td>{summary.market.title}</td><td>{summary.market.status}</td><td>{summary.totalBets}/{mandatoryBettorNames.length}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{summary.missingBettorNames.length === 0 ? 'Complete' : summary.missingBettorNames.join(', ')}</td></tr>)}</tbody>
+            <tbody>{stablefordMarketSummaries.length === 0 ? <tr><td colSpan={5}>No Stableford winner markets have been created yet.</td></tr> : stablefordMarketSummaries.map((summary) => <tr key={summary.market.id}><td>{summary.market.title}</td><td>{marketStatusLabel(summary.market.status)}</td><td>{summary.totalBets}/{mandatoryBettorNames.length}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{summary.missingBettorNames.length === 0 ? 'Complete' : summary.missingBettorNames.join(', ')}</td></tr>)}</tbody>
           </table>
         </div>
       </section>
@@ -98,7 +106,7 @@ export function Betting() {
           const market = activeData.betMarkets.find((candidate) => candidate.id === bet.marketId);
           const option = activeData.betOptions.find((candidate) => candidate.id === bet.optionId);
           const round = market?.roundId ? activeData.rounds.find((candidate) => candidate.id === market.roundId) : undefined;
-          return <article key={bet.id}><strong>{market?.title ?? 'Bet Punto market'}</strong><span>{option?.label ?? 'Option'} · {formatStakeCurrency(bet)} · {market?.status ?? 'status TBC'}{round ? ` · Round ${round.roundNumber}` : ''}</span>{bet.comment ? <small>{bet.comment}</small> : null}</article>;
+          return <article key={bet.id}><strong>{market?.title ?? 'Bet Punto market'}</strong><span>{option?.label ?? 'Option'} · {formatStakeCurrency(bet)} · {marketStatusLabel(market?.status)}{round ? ` · Round ${round.roundNumber}` : ''}</span>{bet.comment ? <small>{bet.comment}</small> : null}</article>;
         })}</div>}
       </section>
       {!loading && !error && activeData.betMarkets.length === 0 && <p className="card">Bet Punto markets will appear once they are added.</p>}
@@ -106,7 +114,7 @@ export function Betting() {
         const markets = activeData.betMarkets.filter((market) => market.status === status);
         if (markets.length === 0) return null;
         return <section className="market-section" key={status}>
-          <div className="section-heading"><div><p className="eyebrow">Bet Punto</p><h2>{status[0].toUpperCase() + status.slice(1)} markets</h2></div></div>
+          <div className="section-heading"><div><p className="eyebrow">Bet Punto</p><h2>{marketStatusLabel(status)} markets</h2></div></div>
           {markets.map((market) => (
             <BetMarketCard key={market.id} market={market} round={activeData.rounds.find((round) => round.id === market.roundId)} options={activeData.betOptions.filter((option) => option.marketId === market.id)} bets={bets} bettorName={bettorName} onSubmit={submit} submitMessage={submitMessages[market.id]} />
           ))}

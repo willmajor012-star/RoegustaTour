@@ -91,8 +91,18 @@ async function hit(endpoint, index) {
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${baseUrl}${endpoint}`, { signal: controller.signal, headers: { 'x-qa-load-smoke': 'true' } });
+    const contentType = response.headers.get('content-type') || '';
     const text = await response.text();
-    return { endpoint, index, ok: response.ok, status: response.status, ms: performance.now() - started, bytes: Buffer.byteLength(text) };
+    const isHtmlFallback = contentType.toLowerCase().includes('text/html') || /^\s*<!doctype html/i.test(text) || /^\s*<html[\s>]/i.test(text);
+    let jsonValid = false;
+    try {
+      JSON.parse(text);
+      jsonValid = true;
+    } catch {
+      jsonValid = false;
+    }
+    const ok = response.ok && !isHtmlFallback && contentType.toLowerCase().includes('application/json') && jsonValid;
+    return { endpoint, index, ok, status: response.status, ms: performance.now() - started, bytes: Buffer.byteLength(text), contentType, jsonValid, htmlFallback: isHtmlFallback };
   } catch (error) {
     return { endpoint, index, ok: false, status: 0, ms: performance.now() - started, bytes: 0, error: error instanceof Error ? error.message : String(error) };
   } finally {
