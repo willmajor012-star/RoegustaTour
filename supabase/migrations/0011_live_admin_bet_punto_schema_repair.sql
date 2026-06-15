@@ -38,8 +38,9 @@ begin
   if to_regclass('public.bets') is not null then
     alter table public.bets
       add column if not exists outcome_status text not null default 'pending',
+      add column if not exists stake_amount_pence integer null,
       add column if not exists payout_amount_pence integer null,
-      add column if not exists payout_status text not null default 'pending',
+      add column if not exists payout_status text not null default 'not_applicable',
       add column if not exists payout_notes text null,
       add column if not exists device_id text null;
   end if;
@@ -58,9 +59,21 @@ begin
     alter table public.bets add constraint bets_outcome_status_check
       check (outcome_status in ('pending', 'won', 'lost', 'push', 'void'));
 
+    update public.bets
+    set payout_status = case payout_status
+      when 'pending' then 'not_applicable'
+      when 'due' then 'unpaid'
+      else payout_status
+    end
+    where payout_status in ('pending', 'due');
+
+    alter table public.bets drop constraint if exists bets_stake_amount_pence_check;
+    alter table public.bets add constraint bets_stake_amount_pence_check
+      check (stake_amount_pence is null or stake_amount_pence > 0);
+
     alter table public.bets drop constraint if exists bets_payout_status_check;
     alter table public.bets add constraint bets_payout_status_check
-      check (payout_status in ('pending', 'not_applicable', 'due', 'paid'));
+      check (payout_status in ('unpaid', 'paid', 'not_applicable'));
   end if;
 end $$;
 
