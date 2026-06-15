@@ -17,6 +17,7 @@ function marketStatusLabel(status: BetMarket['status']) {
   if (status === 'open') return 'Open';
   if (status === 'closed') return 'Closed';
   if (status === 'settled') return 'Settled';
+  if (status === 'void') return 'Void';
   return 'Unavailable';
 }
 

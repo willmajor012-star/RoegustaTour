@@ -2,6 +2,7 @@ import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_admi
 import { badRequest, optionalNumber, optionalString, runRows, runSingle, withAdminSupabase } from './_adminSupabase';
 import { mapBetMarket, mapBetOption } from './_mappers';
 import { settleBetMarketRows } from './_betSettlement';
+import { normalizeMarketTitle } from '../../src/lib/betPuntoRules';
 import { writeAuditLog } from './_audit';
 import type { BetMarket, BetOption } from '../../src/lib/types';
 
@@ -11,7 +12,7 @@ const marketTypes: BetMarket['marketType'][] = ['match_winner', 'player_performa
 const marketScopes: BetMarket['marketScope'][] = ['general_pot', 'special'];
 const statuses: BetMarket['status'][] = ['open', 'closed', 'settled', 'void'];
 const sides: NonNullable<BetOption['linkedMatchSide']>[] = ['A', 'B', 'halved'];
-const marketScopeSchemaMessage = 'Bet Punto market scope is not available in the live schema yet. Run the latest Supabase migrations, then refresh the admin page.';
+const betPuntoSchemaMessage = 'Bet Punto settlement columns are not available in the live schema yet. Run Supabase migrations 0004_bet_punto_tracking.sql and 0005_bet_market_scope.sql, then refresh the admin page.';
 
 type OptionInput = {
   id?: string;
@@ -63,6 +64,16 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (status === 'settled' && !resultOptionId) return badRequest('Settled markets require a result option.');
   if (resultOptionId && !options.some((option) => option.id === resultOptionId)) return badRequest('Result option must be one of this market\'s saved options.');
 
+  const duplicateRows = await runRows<{ id: string; title: string; market_scope: string; round_id: string | null; match_id: string | null; status: string }>(
+    supabase.from('bet_markets').select('id, title, market_scope, round_id, match_id, status').eq('tour_id', tourId).eq('status', 'open').eq('market_scope', marketScope),
+    'find duplicate open Bet Punto markets',
+  );
+  const duplicate = duplicateRows.find((market) => market.id !== id
+    && normalizeMarketTitle(market.title) === normalizeMarketTitle(title)
+    && (market.round_id || null) === (roundId || null)
+    && (market.match_id || null) === (matchId || null));
+  if (duplicate) return badRequest('An identical open Bet Punto market already exists for this tour, scope, title, round and match. Close, settle or edit the existing market first.');
+
   const tours = await runRows(supabase.from('tours').select('id').eq('id', tourId).limit(1), 'find bet market tour');
   if (tours.length === 0) return badRequest('Tour must exist.');
   if (roundId) {
@@ -97,52 +108,62 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     await runSingle<Record<string, unknown>>(query, 'save bet market');
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
-    if (message.includes('market_scope') && message.toLowerCase().includes('schema cache')) return badRequest(marketScopeSchemaMessage);
+    if (/market_scope|result_option_id|result_text|schema cache/i.test(message)) return badRequest(betPuntoSchemaMessage);
     throw error;
   }
 
-  const existingOptions = await runRows<{ id: string }>(supabase.from('bet_options').select('id').eq('market_id', marketId), 'existing bet options');
-  const nextIds = new Set(options.map((option) => option.id).filter(Boolean));
-  const deleteIds = existingOptions.map((option) => option.id).filter((optionId) => !nextIds.has(optionId));
-  if (deleteIds.length > 0) {
-    const optionBets = await runRows<{ option_id: string }>(supabase.from('bets').select('option_id').in('option_id', deleteIds).limit(1), 'find bets for removed options');
-    if (optionBets.length > 0) return badRequest('Options with logged bets cannot be removed. Rename or close the market instead.');
-    const deleted = await supabase.from('bet_options').delete().in('id', deleteIds);
-    if (deleted.error) throw new Error(`delete bet options: ${deleted.error.message}`);
-  }
+  let updatedMarket: Record<string, unknown>;
+  let optionRows: Record<string, unknown>[];
+  try {
+    const existingOptions = await runRows<{ id: string }>(supabase.from('bet_options').select('id').eq('market_id', marketId), 'existing bet options');
+    const nextIds = new Set(options.map((option) => option.id).filter(Boolean));
+    const deleteIds = existingOptions.map((option) => option.id).filter((optionId) => !nextIds.has(optionId));
+    if (deleteIds.length > 0) {
+      const optionBets = await runRows<{ option_id: string }>(supabase.from('bets').select('option_id').in('option_id', deleteIds).limit(1), 'find bets for removed options');
+      if (optionBets.length > 0) return badRequest('Options with logged bets cannot be removed. Rename or close the market instead.');
+      const deleted = await supabase.from('bet_options').delete().in('id', deleteIds);
+      if (deleted.error) throw new Error(`delete bet options: ${deleted.error.message}`);
+    }
 
-  for (const option of options) {
-    const optionRow = {
-      id: option.id ?? crypto.randomUUID(),
-      market_id: marketId,
-      label: option.label.trim(),
-      linked_player_id: option.linkedPlayerId,
-      linked_team_id: option.linkedTeamId,
-      linked_match_side: option.linkedMatchSide,
-      odds_decimal: option.oddsDecimal,
-      sort_order: option.sortOrder,
-    };
-    const saved = option.id
-      ? await supabase.from('bet_options').update(optionRow).eq('id', option.id)
-      : await supabase.from('bet_options').insert(optionRow);
-    if (saved.error) throw new Error(`save bet option: ${saved.error.message}`);
-  }
+    for (const option of options) {
+      const optionRow = {
+        id: option.id ?? crypto.randomUUID(),
+        market_id: marketId,
+        label: option.label.trim(),
+        linked_player_id: option.linkedPlayerId,
+        linked_team_id: option.linkedTeamId,
+        linked_match_side: option.linkedMatchSide,
+        odds_decimal: option.oddsDecimal,
+        sort_order: option.sortOrder,
+      };
+      const saved = option.id
+        ? await supabase.from('bet_options').update(optionRow).eq('id', option.id)
+        : await supabase.from('bet_options').insert(optionRow);
+      if (saved.error) throw new Error(`save bet option: ${saved.error.message}`);
+    }
 
-  if (status === 'settled' && !resultOptionId) return badRequest('Settled markets require a result option.');
-  if (resultOptionId) {
-    const resultOptions = await runRows<{ id: string }>(supabase.from('bet_options').select('id').eq('id', resultOptionId).eq('market_id', marketId).limit(1), 'find result option');
-    if (resultOptions.length === 0) return badRequest('Result option must belong to this market.');
-  }
-  const updatedMarket = await runSingle<Record<string, unknown>>(supabase.from('bet_markets').update({ result_option_id: resultOptionId }).eq('id', marketId).select('*').single(), 'save bet result option');
-  const optionRows = await runRows<Record<string, unknown>>(supabase.from('bet_options').select('*').eq('market_id', marketId).order('sort_order', { ascending: true }), 'saved bet options');
-  if (status === 'settled' && resultOptionId) {
-    const settlementSummary = await settleBetMarketRows(supabase, marketId, marketScope, resultOptionId);
-    await writeAuditLog(supabase, session, 'bet_market.settled_via_save', 'bet_market', marketId, { tourId, resultOptionId, settlementSummary });
-  }
-  if (status === 'void') {
-    await writeAuditLog(supabase, session, 'bet_market.voided', 'bet_market', marketId, { tourId });
-    const voided = await supabase.from('bets').update({ outcome_status: 'void', payout_amount_pence: null, payout_status: 'not_applicable' }).eq('market_id', marketId).eq('status', 'active');
-    if (voided.error) throw new Error(`void market bets: ${voided.error.message}`);
+    if (status === 'settled' && !resultOptionId) return badRequest('Settled markets require a result option.');
+    if (resultOptionId) {
+      const resultOptions = await runRows<{ id: string }>(supabase.from('bet_options').select('id').eq('id', resultOptionId).eq('market_id', marketId).limit(1), 'find result option');
+      if (resultOptions.length === 0) return badRequest('Result option must belong to this market.');
+    }
+    updatedMarket = await runSingle<Record<string, unknown>>(supabase.from('bet_markets').update({ result_option_id: resultOptionId }).eq('id', marketId).select('*').single(), 'save bet result option');
+    optionRows = await runRows<Record<string, unknown>>(supabase.from('bet_options').select('*').eq('market_id', marketId).order('sort_order', { ascending: true }), 'saved bet options');
+    if (status === 'settled' && resultOptionId) {
+      const settlementSummary = await settleBetMarketRows(supabase, marketId, marketScope, resultOptionId);
+      await writeAuditLog(supabase, session, 'bet_market.settled_via_save', 'bet_market', marketId, { tourId, resultOptionId, settlementSummary });
+    }
+    if (status === 'void') {
+      await writeAuditLog(supabase, session, 'bet_market.voided', 'bet_market', marketId, { tourId });
+      const voided = await supabase.from('bets').update({ outcome_status: 'void', payout_amount_pence: null, payout_status: 'not_applicable' }).eq('market_id', marketId).eq('status', 'active');
+      if (voided.error) throw new Error(`void market bets: ${voided.error.message}`);
+    }
+  } catch (error) {
+    if (!id) {
+      await supabase.from('bet_options').delete().eq('market_id', marketId);
+      await supabase.from('bet_markets').delete().eq('id', marketId);
+    }
+    throw error;
   }
 
   return jsonResponse(200, { ok: true, betMarket: mapBetMarket(updatedMarket), betOptions: optionRows.map(mapBetOption) });
