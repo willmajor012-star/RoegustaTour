@@ -1025,3 +1025,85 @@ main { padding: 14px; }
 }
 .admin-inline-actions{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
 .inline-edit-card{margin-top:12px;border-top:1px solid var(--rt-stone);padding-top:12px}.compact-admin-list{max-height:520px;overflow:auto}.unsaved-card{outline:2px solid var(--rt-gold);background:var(--rt-green-100)}.team-assignment-board{display:grid;gap:12px}.assignment-column{border:1px solid var(--rt-stone);border-radius:18px;padding:12px;background:#fff}.assignment-chip{display:inline-grid;gap:6px;border:1px solid var(--rt-stone);border-radius:14px;padding:8px;background:var(--rt-cream)}.assignment-chip select{min-width:140px}@media (min-width:760px){.team-assignment-board{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Admin action button system: keep raw admin controls on-brand even when actions are rendered inline. */
+.admin-page button:not(.pill):not(.match-player-pill) {
+  min-height: 44px;
+  border: 1px solid rgba(15,47,36,.22);
+  border-radius: 999px;
+  background: #fffaf0;
+  color: var(--rt-green-900);
+  padding: 10px 16px;
+  font-weight: 900;
+  line-height: 1.1;
+  box-shadow: 0 6px 16px rgba(15,47,36,.08);
+  transition: background .16s ease, color .16s ease, border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.admin-page button:not(.pill):not(.match-player-pill):hover:not(:disabled) {
+  border-color: var(--rt-gold);
+  background: #fff4d9;
+  transform: translateY(-1px);
+}
+.admin-page button:not(.pill):not(.match-player-pill):focus-visible {
+  outline: 3px solid rgba(184,154,93,.38);
+  outline-offset: 2px;
+}
+.admin-page button:not(.pill):not(.match-player-pill):disabled {
+  border-color: rgba(184,154,93,.24);
+  background: rgba(245,241,232,.75);
+  color: rgba(23,23,19,.45);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+.admin-page .admin-save-row button,
+.admin-page .admin-login-form button {
+  border-color: var(--rt-green-900);
+  background: var(--rt-green-900);
+  color: var(--rt-cream);
+}
+.admin-page .admin-save-row button:hover:not(:disabled),
+.admin-page .admin-login-form button:hover:not(:disabled) {
+  background: var(--rt-green-700);
+  color: var(--rt-cream);
+}
+.admin-page .admin-secondary-button {
+  border-color: var(--rt-burgundy);
+  background: var(--rt-burgundy);
+  color: var(--rt-cream);
+}
+.admin-page .admin-danger-button,
+.admin-page .admin-mini-actions button:last-of-type,
+.admin-page .admin-mini-card > button:last-of-type:not(:first-of-type),
+.admin-page .bet-option-card-header button {
+  border-color: rgba(122,30,30,.28);
+  background: #fff6f3;
+  color: var(--rt-burgundy);
+}
+.admin-page .admin-danger-button:hover:not(:disabled),
+.admin-page .admin-mini-actions button:last-of-type:hover:not(:disabled),
+.admin-page .admin-mini-card > button:last-of-type:not(:first-of-type):hover:not(:disabled),
+.admin-page .bet-option-card-header button:hover:not(:disabled) {
+  border-color: var(--rt-burgundy);
+  background: var(--rt-burgundy);
+  color: var(--rt-cream);
+}
+.admin-page .chip-list button.pill,
+.admin-page .admin-section-nav button {
+  min-height: 40px;
+  font-weight: 900;
+}
+.admin-page .admin-form-grid > button,
+.admin-page .inline-edit-card > button {
+  justify-self: start;
+}
+.admin-page .admin-danger-button:disabled,
+.admin-page .admin-mini-actions button:last-of-type:disabled,
+.admin-page .admin-mini-card > button:last-of-type:not(:first-of-type):disabled,
+.admin-page .bet-option-card-header button:disabled {
+  border-color: rgba(184,154,93,.24);
+  background: rgba(245,241,232,.75);
+  color: rgba(23,23,19,.45);
+  box-shadow: none;
+  cursor: not-allowed;
+}

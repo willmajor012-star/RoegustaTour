@@ -2,7 +2,7 @@ import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_admi
 import { badRequest, optionalNumber, optionalString, runRows, runSingle, withAdminSupabase } from './_adminSupabase';
 import { mapMatch, mapPlayerMatchResult, mapTourTeamResult } from './_mappers';
 import { writeAuditLog } from './_audit';
-import { deriveWinningSide, playerResultForSide, validateResultPoints } from './_resultHelpers';
+import { deriveWinningSide, playerResultForSide, validateMatchplayResultText, validateResultPoints } from './_resultHelpers';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 type MatchRow = {
@@ -60,6 +60,10 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (!matchId) return badRequest('Match ID is required.');
   if (!clearResult && (pointsSideA === null || pointsSideB === null)) return badRequest('Both result point values are required.');
   if (!clearResult && !resultText) return badRequest('Result text is required.');
+  if (!clearResult && resultText) {
+    const resultTextError = validateMatchplayResultText(resultText);
+    if (resultTextError) return badRequest(resultTextError);
+  }
 
   const match = await runSingle<MatchRow>(supabase.from('matches').select('*').eq('id', matchId).single(), 'find result match');
   if (match.tour_id !== tourId) return badRequest('Match does not belong to this tour.');
