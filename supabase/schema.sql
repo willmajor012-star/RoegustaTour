@@ -260,6 +260,8 @@ create table bets (
 );
 create index bets_market_idx on bets(market_id);
 create index bets_device_idx on bets(device_id);
+create unique index bets_one_active_bettor_per_market_idx on bets (market_id, lower(btrim(bettor_name))) where status = 'active';
+create unique index bets_one_active_device_per_market_idx on bets (market_id, device_id) where status = 'active' and device_id is not null;
 
 create table audit_log (
   id uuid primary key default gen_random_uuid(),
