@@ -48,6 +48,9 @@ export function MatchCard({ match, participants, players, teams }: Props) {
         <MatchSide label={sideLabel(match.sideATeamId, match.sideALabel)} players={sideAPlayers} colour={normalizeTeamColour(teamFor(match.sideATeamId)?.colour, 0)} state={sideState(match, 'A')} />
         <div className={`result-chip ${match.status === 'complete' ? 'complete' : ''}`} aria-label={result ? `Match score ${result}` : 'Match score unavailable'}>{result}</div>
         <MatchSide label={sideLabel(match.sideBTeamId, match.sideBLabel)} players={sideBPlayers} colour={normalizeTeamColour(teamFor(match.sideBTeamId)?.colour, 1)} state={sideState(match, 'B')} align="right" />
+        <MatchSide label={teamName(match.sideATeamId, match.sideALabel || 'Team unavailable')} players={sideAPlayers} colour={normalizeTeamColour(teamFor(match.sideATeamId)?.colour, 0)} state={sideState(match, 'A')} />
+        <div className={`result-chip ${match.status === 'complete' ? 'complete' : ''}`} aria-label={result ? `Match score ${result}` : 'Match score unavailable'}>{result}</div>
+        <MatchSide label={teamName(match.sideBTeamId, match.sideBLabel || 'Team unavailable')} players={sideBPlayers} colour={normalizeTeamColour(teamFor(match.sideBTeamId)?.colour, 1)} state={sideState(match, 'B')} align="right" />
       </div>
     </article>
   );

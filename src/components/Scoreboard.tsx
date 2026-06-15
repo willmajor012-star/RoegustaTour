@@ -7,8 +7,8 @@ import { normalizeTeamColourPair } from '../lib/teamColours';
 type Props = { scores: TeamScoreRow[]; href?: string; rounds?: unknown[]; hideCentreScore?: boolean };
 
 function safeRows(scores: TeamScoreRow[]) {
-  const left = scores[0] ?? { teamId: 'score-left-unavailable', teamName: 'Team TBC', colour: '#062B22', points: 0, pointsByRound: {} };
-  const right = scores[1] ?? { teamId: 'score-right-unavailable', teamName: 'Team TBC', colour: '#7A1F2B', points: 0, pointsByRound: {} };
+  const left = scores[0] ?? { teamId: 'score-left-unavailable', teamName: 'Team unavailable', colour: '#062B22', points: 0, pointsByRound: {} };
+  const right = scores[1] ?? { teamId: 'score-right-unavailable', teamName: 'Team unavailable', colour: '#7A1F2B', points: 0, pointsByRound: {} };
   const [leftColour, rightColour] = normalizeTeamColourPair(left.colour, right.colour);
   return [{ ...left, colour: leftColour }, { ...right, colour: rightColour }];
 }
@@ -34,7 +34,7 @@ function TeamBlock({ score, side, fallbackColour }: { score: TeamScoreRow; side:
   return (
     <div className={`score-team-block ${side}`} style={{ '--team-colour': score.colour || fallbackColour } as CSSProperties}>
       <span className="team-dot" />
-      <strong>{score.teamName || 'Team TBC'}</strong>
+      <strong>{score.teamName || 'Team unavailable'}</strong>
       <b>{formatPoints(score.points)}</b>
       <small>pts</small>
     </div>
