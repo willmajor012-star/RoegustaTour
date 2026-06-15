@@ -15,6 +15,16 @@ function isMissingCurrentPublicColumn(error) {
   return /is_current_public|schema cache|column/i.test(error?.message ?? '');
 }
 
+function isPublicTour(tour) {
+  if (!tour) return false;
+  return tour.isCurrentPublic === true || tour.status === 'complete' || tour.status === 'archived';
+}
+
+function includedAdvancedStatTourIds(tours) {
+  const currentTour = selectDefaultTour(tours);
+  return tours.filter((tour) => isPublicTour(tour) || tour.id === currentTour?.id).map((tour) => tour.id);
+}
+
 function setCurrentPublicFlow(tours, selectedId, options = {}) {
   const warnings = [];
   let missingMigration = false;
@@ -61,6 +71,15 @@ describe('public current tour resolution', () => {
       { id: '2025', name: '2025', year: 2025, status: 'complete' },
     ]);
     assert.equal(selected.id, '2025');
+  });
+
+  it('keeps non-current planned tours out of public advanced stats', () => {
+    const included = includedAdvancedStatTourIds([
+      { id: 'current', name: 'Current', year: 2026, status: 'active' },
+      { id: 'draft-next', name: 'Draft next', year: 2027, status: 'planned' },
+      { id: 'history', name: 'History', year: 2025, status: 'complete' },
+    ]);
+    assert.deepEqual(included.sort(), ['current', 'history']);
   });
 
   it('detects the missing is_current_public schema cache case', () => {

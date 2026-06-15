@@ -38,7 +38,7 @@ export async function withLiveData<T extends object>(read: (supabase: SupabaseCl
 
 export function isPublicTour(tour?: Pick<Tour, 'status' | 'isCurrentPublic'>): boolean {
   if (!tour) return false;
-  return tour.isCurrentPublic === true || tour.status === 'active' || tour.status === 'planned' || tour.status === 'complete' || tour.status === 'archived';
+  return tour.isCurrentPublic === true || tour.status === 'complete' || tour.status === 'archived';
 }
 
 export function isPublicRound(round: Pick<Round, 'status' | 'published'>, tour?: Pick<Tour, 'status' | 'isCurrentPublic'>): boolean {
