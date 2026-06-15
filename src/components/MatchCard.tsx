@@ -35,7 +35,7 @@ function sideState(match: Match, side: 'A' | 'B') {
 export function MatchCard({ match, participants, players, teams }: Props) {
   const playerFor = (playerId: string) => players.find((player) => player.id === playerId);
   const teamFor = (teamId: string) => teams.find((team) => team.id === teamId);
-  const teamName = (teamId: string, fallback: string) => teamFor(teamId)?.name ?? fallback;
+  const sideLabel = (teamId: string, customLabel?: string) => customLabel?.trim() || teamFor(teamId)?.name || 'Team TBC';
   const sideAPlayers = participants.filter((participant) => participant.side === 'A').map((participant) => playerFor(participant.playerId)).filter((player): player is Player => Boolean(player));
   const sideBPlayers = participants.filter((participant) => participant.side === 'B').map((participant) => playerFor(participant.playerId)).filter((player): player is Player => Boolean(player));
   const tee = match.teeTime?.trim() ? formatTeeTimeDisplay(match.teeTime) : undefined;
@@ -45,6 +45,9 @@ export function MatchCard({ match, participants, players, teams }: Props) {
     <article className={`match-card result-${match.winningSide ?? match.status}`}>
       <div className="match-card-topline"><span>Match {match.matchNumber}</span><span>{formatMatchFormat(match.format)}</span>{tee && <span>Tee {tee}</span>}</div>
       <div className="match-ledger-row">
+        <MatchSide label={sideLabel(match.sideATeamId, match.sideALabel)} players={sideAPlayers} colour={normalizeTeamColour(teamFor(match.sideATeamId)?.colour, 0)} state={sideState(match, 'A')} />
+        <div className={`result-chip ${match.status === 'complete' ? 'complete' : ''}`} aria-label={result ? `Match score ${result}` : 'Match score unavailable'}>{result}</div>
+        <MatchSide label={sideLabel(match.sideBTeamId, match.sideBLabel)} players={sideBPlayers} colour={normalizeTeamColour(teamFor(match.sideBTeamId)?.colour, 1)} state={sideState(match, 'B')} align="right" />
         <MatchSide label={teamName(match.sideATeamId, match.sideALabel || 'Team unavailable')} players={sideAPlayers} colour={normalizeTeamColour(teamFor(match.sideATeamId)?.colour, 0)} state={sideState(match, 'A')} />
         <div className={`result-chip ${match.status === 'complete' ? 'complete' : ''}`} aria-label={result ? `Match score ${result}` : 'Match score unavailable'}>{result}</div>
         <MatchSide label={teamName(match.sideBTeamId, match.sideBLabel || 'Team unavailable')} players={sideBPlayers} colour={normalizeTeamColour(teamFor(match.sideBTeamId)?.colour, 1)} state={sideState(match, 'B')} align="right" />
