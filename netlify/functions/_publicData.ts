@@ -84,10 +84,11 @@ function publicRowsOrLegacyCurrent<TRow extends { published?: boolean }>(rows: T
 }
 
 function publicTeamsOrLegacyCurrent<TTeam extends TourTeam>(teams: TTeam[], tour?: Tour): TTeam[] {
-  if (!tour || !isPublicTour(tour)) return [];
+  if (!tour) return [];
   if (tour.status === 'complete' || tour.status === 'archived') return teams;
   const visibleTeams = publicRowsOrLegacyCurrent(teams, tour);
-  if (shouldUseLegacyCurrentTourVisibility(tour) && !hasPublishedFlag(teams)) return visibleTeams;
+  if (shouldUseLegacyCurrentTourVisibility(tour)) return visibleTeams;
+  if (!isPublicTour(tour)) return [];
   return visibleTeams.filter((team) => isPublicTeamRoster(tour, team));
 }
 
