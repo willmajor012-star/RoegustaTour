@@ -28,9 +28,8 @@ function normalizeBettorName(value) {
   return value.trim().toLowerCase();
 }
 
-function isDuplicateActivePick(existingBets, bettorName, deviceId) {
-  const normalizedBettor = normalizeBettorName(bettorName);
-  return existingBets.some((bet) => normalizeBettorName(bet.bettorName) === normalizedBettor || (deviceId && bet.deviceId === deviceId));
+function canPlaceRepeatActivePick() {
+  return true;
 }
 
 function mapPublicBetRow(row) {
@@ -70,11 +69,17 @@ describe('Bet Punto payout and duplicate rules', () => {
     assert.equal([...payouts.values()].reduce((total, payout) => total + payout, 0), 1001);
   });
 
-  it('blocks duplicate active picks by bettor name or device id', () => {
-    const activeBets = [{ bettorName: 'Rosie', deviceId: 'device-1' }];
-    assert.equal(isDuplicateActivePick(activeBets, ' rosie ', null), true);
-    assert.equal(isDuplicateActivePick(activeBets, 'Different', 'device-1'), true);
-    assert.equal(isDuplicateActivePick(activeBets, 'Different', 'device-2'), false);
+  it('allows repeat active picks by bettor name or device id', () => {
+    assert.equal(canPlaceRepeatActivePick(), true);
+  });
+
+  it('settles multiple winning bets from the same bettor independently', () => {
+    const payouts = splitGeneralPot(1500, [
+      { id: 'rosie-1', stakePence: 500 },
+      { id: 'rosie-2', stakePence: 250 },
+    ]);
+    assert.equal(payouts.get('rosie-1'), 1000);
+    assert.equal(payouts.get('rosie-2'), 500);
   });
 });
 

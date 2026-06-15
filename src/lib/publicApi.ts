@@ -82,7 +82,9 @@ export type TourTeamDayKit = {
 
 
 export type SavePublicBetPayload = {
-  marketId: string;
+  betId?: string;
+  action?: 'create' | 'edit' | 'void';
+  marketId?: string;
   optionId: string;
   bettorName: string;
   stakeAmountPence: number;
@@ -129,3 +131,5 @@ export const fetchPublicAdvancedStats = () => fetchPublicJson<PublicAdvancedStat
 export const fetchPublicTourInfo = () => fetchPublicJson<PublicTourInfoResponse>('/.netlify/functions/public-tour-info');
 
 export const savePublicBet = (payload: SavePublicBetPayload) => postPublicJson<{ ok: true; bet: Bet }>('/.netlify/functions/public-save-bet', payload);
+export const editPublicBet = savePublicBet;
+export const voidPublicBet = savePublicBet;

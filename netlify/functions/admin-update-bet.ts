@@ -16,6 +16,8 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const outcomeStatus = optionalString(body.outcomeStatus) as Bet['outcomeStatus'] | null;
   const payoutStatus = optionalString(body.payoutStatus) as Bet['payoutStatus'] | null;
   const payoutAmountPence = optionalNumber(body.payoutAmountPence);
+  const adminNotes = optionalString(body.adminNotes);
+  const voidReason = optionalString(body.voidReason);
 
   if (!id) return badRequest('Bet ID is required.');
   if (!status || !statuses.includes(status)) return badRequest('Bet status is invalid.');
@@ -32,6 +34,9 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     payout_status: payoutStatus,
     payout_amount_pence: payoutAmountPence,
     payout_notes: optionalString(body.payoutNotes),
+    admin_notes: adminNotes,
+    void_reason: status === 'void' ? (voidReason ?? adminNotes ?? 'Voided by admin') : null,
+    updated_at: new Date().toISOString(),
   }).eq('id', id).select('*').single(), 'update bet');
 
   await writeAuditLog(supabase, session, status === 'void' ? 'bet.voided' : 'bet.updated', 'bet', id, { previous: existing[0], next: { status, outcomeStatus, payoutStatus, payoutAmountPence, payoutNotes: optionalString(body.payoutNotes) } });

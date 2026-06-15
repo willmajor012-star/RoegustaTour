@@ -148,6 +148,19 @@ export type SettleBetMarketPayload = {
   correction?: boolean;
 };
 
+export type SaveBetPayload = {
+  id?: string;
+  marketId?: string;
+  optionId: string;
+  bettorName: string;
+  bettorPlayerId?: string | null;
+  stakeAmountPence: number;
+  comment?: string | null;
+  adminNotes?: string | null;
+  voidReason?: string | null;
+  status?: Bet['status'];
+};
+
 export type UpdateBetPayload = {
   id: string;
   status: Bet['status'];
@@ -210,6 +223,7 @@ export const deleteMatch = (payload: { id: string; tourId: string }) => postAdmi
 export const saveBetMarket = (payload: SaveBetMarketPayload) => postAdminJson<{ ok: true; betMarket: BetMarket; betOptions: BetOption[] }>('/.netlify/functions/admin-save-bet-market', payload);
 export const settleBetMarket = (payload: SettleBetMarketPayload) => postAdminJson<{ ok: true; betMarket: BetMarket; bets: Bet[] }>('/.netlify/functions/admin-settle-bet-market', payload);
 export const deleteBetMarket = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedBetMarketId: string }>('/.netlify/functions/admin-delete-bet-market', payload);
+export const saveBet = (payload: SaveBetPayload) => postAdminJson<{ ok: true; bet: Bet }>('/.netlify/functions/admin-save-bet', payload);
 export const updateBet = (payload: UpdateBetPayload) => postAdminJson<{ ok: true; bet: Bet }>('/.netlify/functions/admin-update-bet', payload);
 export const deleteBet = (payload: { id: string }) => postAdminJson<{ ok: true; deletedBetId: string }>('/.netlify/functions/admin-delete-bet', payload);
 export const saveHandbookSection = (payload: SaveHandbookSectionPayload) => postAdminJson<{ ok: true; handbookSection: TourHandbookSection }>('/.netlify/functions/admin-save-handbook-section', payload);

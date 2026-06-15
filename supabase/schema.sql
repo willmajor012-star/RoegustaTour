@@ -254,14 +254,19 @@ create table bets (
   payout_status text not null check (payout_status in ('unpaid','paid','not_applicable')) default 'not_applicable',
   payout_notes text,
   comment text,
+  bettor_player_id uuid references players(id) on delete set null,
+  admin_entered boolean not null default false,
+  admin_notes text,
+  void_reason text,
   device_id text,
   status text not null check (status in ('active','void')) default 'active',
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 create index bets_market_idx on bets(market_id);
 create index bets_device_idx on bets(device_id);
-create unique index bets_one_active_bettor_per_market_idx on bets (market_id, lower(btrim(bettor_name))) where status = 'active';
-create unique index bets_one_active_device_per_market_idx on bets (market_id, device_id) where status = 'active' and device_id is not null;
+create index bets_bettor_player_idx on bets(bettor_player_id);
+create index bets_market_bettor_idx on bets(market_id, lower(btrim(bettor_name)));
 
 create table audit_log (
   id uuid primary key default gen_random_uuid(),

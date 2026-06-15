@@ -229,7 +229,12 @@ export function mapBet(row: Row): Bet {
     payoutStatus: (asString(row.payout_status) ?? 'not_applicable') as Bet['payoutStatus'],
     payoutNotes: asString(row.payout_notes),
     comment: asString(row.comment),
+    bettorPlayerId: asString(row.bettor_player_id),
+    adminEntered: Boolean(row.admin_entered),
+    adminNotes: asString(row.admin_notes),
+    voidReason: asString(row.void_reason),
     createdAt: requiredString(row, 'created_at'),
+    updatedAt: asString(row.updated_at),
     deviceId: asString(row.device_id),
     status: requiredString(row, 'status') as Bet['status'],
   };
