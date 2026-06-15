@@ -142,6 +142,10 @@ describe('Bet Punto market lifecycle rules', () => {
   function deletableMarketBetCount(marketId, bets) {
     return bets.filter((bet) => bet.marketId === marketId).length;
   }
+  function visibleMarkets(markets, options, context) {
+    const visibleStatuses = ['open', 'closed', 'settled'];
+    return markets.filter((market) => visibleStatuses.includes(market.status) && !visibilityWarning(market, options, context));
+  }
 
   it('allows same-title open markets for different rounds', () => {
     const existing = { id: 'm1', tourId: 't1', marketScope: 'general_pot', title: 'Stableford winner', roundId: 'r1', matchId: null, status: 'open' };
@@ -161,13 +165,11 @@ describe('Bet Punto market lifecycle rules', () => {
     assert.equal(deletableMarketBetCount('m1', [{ id: 'b1', marketId: 'm1' }]), 1);
   });
 
-  it('keeps open, closed, settled, and void markets visible when references and options are valid', () => {
+  it('keeps only open, closed, and settled markets visible when references and options are valid', () => {
     const context = { roundIds: new Set(['r1']), matchIds: new Set(['match1']), playerIds: new Set(['p1']), teamIds: new Set(['team1']) };
-    for (const status of ['open', 'closed', 'settled', 'void']) {
-      const market = { id: `m-${status}`, status, roundId: 'r1', matchId: null };
-      const options = [{ id: `o-${status}`, marketId: market.id, linkedPlayerId: 'p1' }];
-      assert.equal(visibilityWarning(market, options, context), null);
-    }
+    const markets = ['open', 'closed', 'settled', 'void'].map((status) => ({ id: `m-${status}`, status, roundId: 'r1', matchId: null }));
+    const options = markets.map((market) => ({ id: `o-${market.status}`, marketId: market.id, linkedPlayerId: 'p1' }));
+    assert.deepEqual(visibleMarkets(markets, options, context).map((market) => market.status), ['open', 'closed', 'settled']);
   });
 
   it('warns when a public market is missing valid options or linked data', () => {

@@ -54,7 +54,7 @@ export function visibleBetMarkets(
     teamIds: Set<string>;
   },
 ) {
-  const visibleStatuses: BetMarket['status'][] = ['open', 'closed', 'settled', 'void'];
+  const visibleStatuses: BetMarket['status'][] = ['open', 'closed', 'settled'];
   return markets.filter((market) => visibleStatuses.includes(market.status) && !betMarketVisibilityWarning(market, options, context));
 }
 
