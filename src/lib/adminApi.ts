@@ -1,5 +1,6 @@
 import { clearStoredAdminSession, getAdminAuthorizationHeaders } from './adminSession';
 import type { Bet, BetMarket, BetOption, Match, MatchFormat, MatchParticipant, Player, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from './types';
+import type { TourHandbookSection } from './publicApi';
 
 export type AdminDataResponse = {
   ok: true;
@@ -18,6 +19,7 @@ export type AdminDataResponse = {
   betMarkets: BetMarket[];
   betOptions: BetOption[];
   bets: Bet[];
+  handbookSections: TourHandbookSection[];
 };
 
 export type SavePlayerPayload = {
@@ -137,6 +139,8 @@ export type SubmitResultPayload = {
   clearResult?: boolean;
 };
 
+export type SaveHandbookSectionPayload = { id?: string; tourId: string; sectionKey: string; title: string; body?: string | null; sortOrder: number };
+
 export type SettleBetMarketPayload = {
   marketId: string;
   resultOptionId: string;
@@ -208,3 +212,5 @@ export const settleBetMarket = (payload: SettleBetMarketPayload) => postAdminJso
 export const deleteBetMarket = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedBetMarketId: string }>('/.netlify/functions/admin-delete-bet-market', payload);
 export const updateBet = (payload: UpdateBetPayload) => postAdminJson<{ ok: true; bet: Bet }>('/.netlify/functions/admin-update-bet', payload);
 export const deleteBet = (payload: { id: string }) => postAdminJson<{ ok: true; deletedBetId: string }>('/.netlify/functions/admin-delete-bet', payload);
+export const saveHandbookSection = (payload: SaveHandbookSectionPayload) => postAdminJson<{ ok: true; handbookSection: TourHandbookSection }>('/.netlify/functions/admin-save-handbook-section', payload);
+export const deleteHandbookSection = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedHandbookSectionId: string }>('/.netlify/functions/admin-delete-handbook-section', payload);

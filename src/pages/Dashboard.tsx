@@ -3,10 +3,11 @@ import { MatchCard } from '../components/MatchCard';
 import { Scoreboard } from '../components/Scoreboard';
 import { formatPoints, formatShortDate } from '../lib/formatting';
 import { fetchPublicMatches, fetchPublicScore, fetchPublicSummary, type PublicMatchesResponse, type PublicScoreResponse, type PublicSummaryResponse } from '../lib/publicApi';
-import type { Match, TeamScoreRow, TourTeam } from '../lib/types';
+import type { Match, Round, TeamScoreRow, TourTeam } from '../lib/types';
 import { formatRoundDisplayName, formatTourDisplayName, getDateOnlyScheduledDate, getScheduledDate, getScheduleSortTime, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
 import { usePublicData } from '../lib/usePublicData';
 import { normalizeTeamColour } from '../lib/teamColours';
+import { awardedPoints, pointsRequiredToWinOutright, totalAvailablePoints } from '../lib/matchplay';
 
 type DashboardData = {
   summary: Omit<PublicSummaryResponse, 'source'>;
@@ -44,11 +45,29 @@ function countdownParts(startDate?: string, endDate?: string, status?: string) {
   };
 }
 
+
+function latestCompletedRound(rounds: Round[], matches: Match[]) {
+  return rounds
+    .map((round) => {
+      const roundMatches = matches.filter((match) => match.roundId === round.id && match.status !== 'void');
+      const complete = roundMatches.length > 0 && roundMatches.every((match) => match.status === 'complete');
+      return complete ? { round, matches: roundMatches } : undefined;
+    })
+    .filter((item): item is { round: Round; matches: Match[] } => Boolean(item))
+    .sort((a, b) => (getScheduledDate(b.round.roundDate, b.round.teeTime)?.getTime() ?? 0) - (getScheduledDate(a.round.roundDate, a.round.teeTime)?.getTime() ?? 0) || b.round.roundNumber - a.round.roundNumber)[0];
+}
+
+function roundScore(matches: Match[]) {
+  const sideA = matches.reduce((sum, match) => sum + (match.pointsSideA ?? 0), 0);
+  const sideB = matches.reduce((sum, match) => sum + (match.pointsSideB ?? 0), 0);
+  return `${formatPoints(sideA)}–${formatPoints(sideB)}`;
+}
+
 function teamScoreRows(scores: TeamScoreRow[], teams: TourTeam[]): TeamScoreRow[] {
   const rows = scores.length > 0 ? scores : teams.slice(0, 2).map((team, index) => ({ teamId: team.id, teamName: team.name, colour: normalizeTeamColour(team.colour, index), points: 0, pointsByRound: {} }));
   return [
-    rows[0] ?? { teamId: 'team-1-tbc', teamName: 'Team 1 TBC', colour: '#062B22', points: 0, pointsByRound: {} },
-    rows[1] ?? { teamId: 'team-2-tbc', teamName: 'Team 2 TBC', colour: '#7A1E1E', points: 0, pointsByRound: {} },
+    rows[0] ?? { teamId: 'score-left-unavailable', teamName: 'Team unavailable', colour: '#062B22', points: 0, pointsByRound: {} },
+    rows[1] ?? { teamId: 'score-right-unavailable', teamName: 'Team unavailable', colour: '#7A1E1E', points: 0, pointsByRound: {} },
   ];
 }
 
@@ -61,15 +80,16 @@ export function Dashboard() {
   const roundById = useMemo(() => new Map(rounds.map((round) => [round.id, round])), [rounds]);
   const visibleMatches = activeData.matches.matches.filter(isPublicVisibleMatch);
   const teamRows = teamScoreRows(activeData.score.scores, activeData.score.teams.length > 0 ? activeData.score.teams : activeData.matches.tourTeams);
-  const totalPointsAvailable = visibleMatches.reduce((sum, match) => sum + match.pointsAvailable, 0);
-  const remainingPoints = visibleMatches.filter((match) => match.status !== 'complete').reduce((sum, match) => sum + match.pointsAvailable, 0);
-  const pointsToWinOutright = totalPointsAvailable > 0 ? totalPointsAvailable / 2 + 0.5 : undefined;
+  const totalPointsAvailable = totalAvailablePoints(visibleMatches);
+  const remainingPoints = totalPointsAvailable - awardedPoints(visibleMatches);
+  const pointsToWinOutright = pointsRequiredToWinOutright(totalPointsAvailable);
   const scheduled = visibleMatches
     .filter((match) => match.status !== 'complete')
     .map((match) => ({ match, round: roundById.get(match.roundId) }))
     .sort((a, b) => getScheduleSortTime(a.round?.roundDate, a.match.teeTime ?? a.round?.teeTime) - getScheduleSortTime(b.round?.roundDate, b.match.teeTime ?? b.round?.teeTime) || a.match.matchNumber - b.match.matchNumber);
   const nextTee = scheduled[0];
-  const latestResult = [...visibleMatches].filter((match) => match.status === 'complete').sort((a, b) => (getScheduledDate(roundById.get(b.roundId)?.roundDate, b.teeTime)?.getTime() ?? 0) - (getScheduledDate(roundById.get(a.roundId)?.roundDate, a.teeTime)?.getTime() ?? 0) || b.matchNumber - a.matchNumber)[0] ?? activeData.summary.recentResults[0];
+  const latestRound = latestCompletedRound(rounds, visibleMatches);
+  const latestResult = latestRound ? undefined : ([...visibleMatches].filter((match) => match.status === 'complete').sort((a, b) => (getScheduledDate(roundById.get(b.roundId)?.roundDate, b.teeTime)?.getTime() ?? 0) - (getScheduledDate(roundById.get(a.roundId)?.roundDate, a.teeTime)?.getTime() ?? 0) || b.matchNumber - a.matchNumber)[0] ?? activeData.summary.recentResults[0]);
   const countdown = countdownParts(tour?.startDate, tour?.endDate, tour?.status);
   useEffect(() => {
     const interval = window.setInterval(() => setTick((value) => value + 1), 1000);
@@ -113,7 +133,7 @@ export function Dashboard() {
 
     <a className="card tappable-card latest-result-card" href="/matches">
       <div className="section-heading"><div><p className="eyebrow">Latest result</p><h2>Latest result</h2></div><span className="card-chevron" aria-hidden="true">›</span></div>
-      {!latestResult ? <p>No results yet</p> : <MatchCard match={latestResult} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === latestResult.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />}
+      {latestRound ? <div className="latest-round-results"><p><strong>{formatRoundDisplayName(latestRound.round)}</strong>{latestRound.round.roundDate ? ` · ${formatShortDate(latestRound.round.roundDate)}` : ''} · {roundScore(latestRound.matches)}</p>{latestRound.matches.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />)}</div> : !latestResult ? <p>No results yet</p> : <MatchCard match={latestResult} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === latestResult.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />}
     </a>
 
   </div>;

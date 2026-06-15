@@ -1,4 +1,5 @@
 import type { Match, MatchParticipant, PlayerMatchResult, Round, TeamScoreRow, TourTeam } from './types';
+import { deriveMatchPoints } from './matchplay';
 
 export function derivePlayerMatchResultsFromMatch(match: Match, participants: MatchParticipant[]): PlayerMatchResult[] {
   if (match.status === 'void' || match.winningSide === 'void') {
@@ -20,8 +21,11 @@ export function derivePlayerMatchResultsFromMatch(match: Match, participants: Ma
 
   return participants.map((participant) => {
     const isSideA = participant.side === 'A';
-    const pointsFor = isSideA ? match.pointsSideA ?? 0 : match.pointsSideB ?? 0;
-    const pointsAgainst = isSideA ? match.pointsSideB ?? 0 : match.pointsSideA ?? 0;
+    const derived = deriveMatchPoints(match.winningSide, match.pointsAvailable);
+    const sideAPoints = match.pointsSideA ?? derived.pointsSideA;
+    const sideBPoints = match.pointsSideB ?? derived.pointsSideB;
+    const pointsFor = isSideA ? sideAPoints : sideBPoints;
+    const pointsAgainst = isSideA ? sideBPoints : sideAPoints;
     let result: PlayerMatchResult['result'] = 'draw';
 
     if (match.winningSide === 'A') result = isSideA ? 'win' : 'loss';
@@ -60,15 +64,16 @@ export function calculateTeamScoreByTour(tourId: string, teams: TourTeam[], roun
   matches
     .filter((match) => match.tourId === tourId && match.status === 'complete')
     .forEach((match) => {
+      const derived = deriveMatchPoints(match.winningSide, match.pointsAvailable);
       const sideA = scoreByTeam.get(match.sideATeamId);
       const sideB = scoreByTeam.get(match.sideBTeamId);
       if (sideA) {
-        const points = match.pointsSideA ?? 0;
+        const points = match.pointsSideA ?? derived.pointsSideA;
         sideA.points += points;
         sideA.pointsByRound[match.roundId] = (sideA.pointsByRound[match.roundId] ?? 0) + points;
       }
       if (sideB) {
-        const points = match.pointsSideB ?? 0;
+        const points = match.pointsSideB ?? derived.pointsSideB;
         sideB.points += points;
         sideB.pointsByRound[match.roundId] = (sideB.pointsByRound[match.roundId] ?? 0) + points;
       }
