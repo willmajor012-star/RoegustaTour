@@ -54,20 +54,23 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const resultText = optionalString(body.resultText);
   const correctionReason = optionalString(body.correctionReason);
   const published = typeof body.published === 'boolean' ? body.published : undefined;
+  const clearResult = body.clearResult === true;
 
   if (!tourId) return badRequest('Tour ID is required.');
   if (!matchId) return badRequest('Match ID is required.');
-  if (pointsSideA === null || pointsSideB === null) return badRequest('Both result point values are required.');
-  if (!resultText) return badRequest('Result text is required.');
+  if (!clearResult && (pointsSideA === null || pointsSideB === null)) return badRequest('Both result point values are required.');
+  if (!clearResult && !resultText) return badRequest('Result text is required.');
 
   const match = await runSingle<MatchRow>(supabase.from('matches').select('*').eq('id', matchId).single(), 'find result match');
   if (match.tour_id !== tourId) return badRequest('Match does not belong to this tour.');
   const pointsAvailable = asNumber(match.points_available);
-  const pointError = validateResultPoints(pointsSideA, pointsSideB, pointsAvailable);
-  if (pointError) return badRequest(pointError);
+  if (!clearResult) {
+    const pointError = validateResultPoints(pointsSideA!, pointsSideB!, pointsAvailable);
+    if (pointError) return badRequest(pointError);
+  }
 
   const participants = await runRows<ParticipantRow>(supabase.from('match_participants').select('player_id, team_id, side').eq('match_id', matchId), 'result match participants');
-  if (participants.length === 0) return badRequest('Match must have participants before a result can be submitted.');
+  if (!clearResult && participants.length === 0) return badRequest('Match must have participants before a result can be submitted.');
 
   const previous = {
     status: match.status,
@@ -77,18 +80,24 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     resultText: match.result_text,
     published: match.published,
   };
-  const winningSide = deriveWinningSide(pointsSideA, pointsSideB);
+  const winningSide = clearResult ? null : deriveWinningSide(pointsSideA!, pointsSideB!);
   const updatedMatch = await runSingle<Record<string, unknown>>(supabase.from('matches').update({
-    points_side_a: pointsSideA,
-    points_side_b: pointsSideB,
+    points_side_a: clearResult ? null : pointsSideA,
+    points_side_b: clearResult ? null : pointsSideB,
     winning_side: winningSide,
-    result_text: resultText,
-    status: 'complete',
+    result_text: clearResult ? null : resultText,
+    status: clearResult ? 'planned' : 'complete',
     ...(published === undefined ? {} : { published }),
   }).eq('id', matchId).select('*').single(), 'submit result match update');
 
   const removed = await supabase.from('player_match_results').delete().eq('match_id', matchId);
   if (removed.error) throw new Error(`remove old player match results: ${removed.error.message}`);
+
+  if (clearResult) {
+    const teamResultRows = await recalculateTeamResults(supabase, tourId);
+    await writeAuditLog(supabase, session, 'result.cleared', 'match', matchId, { tourId, matchId, previous, correctionReason });
+    return jsonResponse(200, { ok: true, match: mapMatch(updatedMatch), playerMatchResults: [], tourTeamResults: teamResultRows.map(mapTourTeamResult) });
+  }
 
   const resultRows = participants.map((participant) => ({
     id: crypto.randomUUID(),
@@ -98,9 +107,9 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     player_id: participant.player_id,
     team_id: participant.team_id,
     format: match.format,
-    result: playerResultForSide(participant.side, winningSide),
-    points_for: participant.side === 'A' ? pointsSideA : pointsSideB,
-    points_against: participant.side === 'A' ? pointsSideB : pointsSideA,
+    result: playerResultForSide(participant.side, winningSide!),
+    points_for: participant.side === 'A' ? pointsSideA! : pointsSideB!,
+    points_against: participant.side === 'A' ? pointsSideB! : pointsSideA!,
   }));
   const inserted = await supabase.from('player_match_results').insert(resultRows);
   if (inserted.error) throw new Error(`insert player match results: ${inserted.error.message}`);

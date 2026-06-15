@@ -28,8 +28,9 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const sideBTeamId = optionalString(body.sideBTeamId);
   const matchNumber = typeof body.matchNumber === 'number' ? body.matchNumber : Number(body.matchNumber);
   const format = optionalString(body.format) as MatchFormat | null;
-  const status = optionalString(body.status) as Match['status'] | null;
-  const pointsAvailable = optionalNumber(body.pointsAvailable);
+  const requestedStatus = optionalString(body.status) as Match['status'] | null;
+  const status = requestedStatus === 'void' ? 'void' : 'planned';
+  const pointsAvailable = 1;
   const pointsSideA = optionalNumber(body.pointsSideA);
   const pointsSideB = optionalNumber(body.pointsSideB);
   const sideAPlayerIds = playerIdsFrom(body.sideAPlayerIds);
@@ -41,17 +42,12 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (sideATeamId === sideBTeamId) return badRequest('Match sides must use different teams.');
   if (!Number.isInteger(matchNumber) || matchNumber < 1 || matchNumber > 999) return badRequest('Match number is invalid.');
   if (!format || !allowedFormats.includes(format)) return badRequest('Match format is invalid.');
-  if (!status || !allowedStatuses.includes(status)) return badRequest('Match status is invalid.');
-  if (pointsAvailable === null || pointsAvailable <= 0) return badRequest('Points available must be greater than zero.');
+  if (requestedStatus && !allowedStatuses.includes(requestedStatus)) return badRequest('Match status is invalid.');
   if (!sideAPlayerIds || !sideBPlayerIds) return badRequest('Player IDs must be arrays.');
   if ((pointsSideA !== null && pointsSideA < 0) || (pointsSideB !== null && pointsSideB < 0)) return badRequest('Result points must be zero or greater.');
-  if (status === 'complete') {
-    if (pointsSideA === null || pointsSideB === null) return badRequest('Complete matches require Side A and Side B points.');
-    if (Math.abs(pointsSideA + pointsSideB - pointsAvailable) > 0.001) return badRequest('Complete match points must add up to the points available.');
-  }
 
   const allPlayerIds = [...sideAPlayerIds, ...sideBPlayerIds];
-  if (status === 'complete' && allPlayerIds.length === 0) return badRequest('Complete matches require at least one participant.');
+
   if (new Set(allPlayerIds).size !== allPlayerIds.length) return badRequest('A player can only appear once in a match.');
   const maxPlayersPerSide = maxPlayersForFormat(format);
   if (sideAPlayerIds.length > maxPlayersPerSide || sideBPlayerIds.length > maxPlayersPerSide) {
@@ -77,6 +73,10 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (duplicateMatches.some((match) => match.id !== id)) return badRequest(duplicateMatchNumberMessage);
 
   if (allPlayerIds.length > 0) {
+    const booked = await runRows<{ player_id: string; match_id: string }>(supabase.from('match_participants').select('player_id, match_id').eq('round_id', roundId).in('player_id', allPlayerIds), 'check round player bookings').catch(async () => runRows<{ player_id: string; match_id: string }>(supabase.from('match_participants').select('player_id, match_id, matches!inner(round_id)').eq('matches.round_id', roundId).in('player_id', allPlayerIds), 'check round player bookings'));
+    const doubleBooked = booked.find((row) => row.match_id !== id);
+    if (doubleBooked) return badRequest('A selected player is already assigned to another match in this round. Remove them from the other match before saving.');
+
     const [players, attendingPlayers, memberRows] = await Promise.all([
       runRows<PlayerRow>(supabase.from('players').select('id, active').in('id', allPlayerIds), 'find match players'),
       runRows<TourPlayerRow>(supabase.from('tour_players').select('player_id, attending').eq('tour_id', tourId).eq('attending', true).in('player_id', allPlayerIds), 'find match attending players'),
@@ -109,13 +109,13 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     status,
     side_a_team_id: sideATeamId,
     side_b_team_id: sideBTeamId,
-    side_a_label: optionalString(body.sideALabel),
+    side_a_label: null,
     side_b_label: optionalString(body.sideBLabel),
     points_available: pointsAvailable,
-    points_side_a: status === 'complete' ? pointsSideA : null,
-    points_side_b: status === 'complete' ? pointsSideB : null,
-    winning_side: status === 'complete' || status === 'void' ? winningSide : null,
-    result_text: optionalString(body.resultText),
+    points_side_a: null,
+    points_side_b: null,
+    winning_side: status === 'void' ? winningSide : null,
+    result_text: null,
     tee_time: optionalString(body.teeTime),
     published: typeof body.published === 'boolean' ? body.published : false,
     notes: optionalString(body.notes),
@@ -149,28 +149,6 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const staleResultsRemoved = await supabase.from('player_match_results').delete().eq('match_id', matchId);
   if (staleResultsRemoved.error) throw new Error(`remove stale player match results: ${staleResultsRemoved.error.message}`);
 
-  if (status === 'complete') {
-    const resultRows = participantRows.map((participant) => {
-      const side = participant.side as 'A' | 'B';
-      const result = winningSide === 'halved' ? 'draw' : winningSide === side ? 'win' : 'loss';
-      return {
-        id: crypto.randomUUID(),
-        tour_id: tourId,
-        round_id: roundId,
-        match_id: matchId,
-        player_id: participant.player_id,
-        team_id: participant.team_id,
-        format,
-        result,
-        points_for: side === 'A' ? pointsSideA : pointsSideB,
-        points_against: side === 'A' ? pointsSideB : pointsSideA,
-      };
-    });
-    if (resultRows.length > 0) {
-      const insertedResults = await supabase.from('player_match_results').insert(resultRows);
-      if (insertedResults.error) throw new Error(`insert player match results: ${insertedResults.error.message}`);
-    }
-  }
 
   const participants = await runRows(supabase.from('match_participants').select('*').eq('match_id', matchId), 'match participants after save');
   const refreshedMatch = await runSingle<Record<string, unknown>>(supabase.from('matches').select('*').eq('id', matchId).single(), 'match after save');

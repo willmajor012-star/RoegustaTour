@@ -10,6 +10,13 @@ export function badRequest(message: string): FunctionResponse {
   return jsonResponse(400, { ok: false, message });
 }
 
+function friendlySchemaMessage(message: string): string {
+  if (/schema cache|column .*published|published .*column|is_current_public|Could not find .* column/i.test(message)) {
+    return "The live database is missing the latest publication columns or Supabase has not reloaded its schema cache. Apply the latest Supabase migrations, then run NOTIFY pgrst, 'reload schema'.";
+  }
+  return message;
+}
+
 export function methodNotAllowed(): FunctionResponse {
   return jsonResponse(405, { ok: false, message: 'Method not allowed.' });
 }
@@ -31,7 +38,7 @@ export async function withAdminSupabase(
     return await action(supabase, body, session);
   } catch (error) {
     console.error('Admin Supabase request failed:', error);
-    return jsonResponse(500, { ok: false, message: error instanceof Error ? error.message : 'Admin request could not be completed.' });
+    return jsonResponse(500, { ok: false, message: error instanceof Error ? friendlySchemaMessage(error.message) : 'Admin request could not be completed.' });
   }
 }
 
