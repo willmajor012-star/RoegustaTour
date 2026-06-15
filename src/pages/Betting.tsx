@@ -10,6 +10,7 @@ function marketStatusLabel(status?: string) {
   if (status === 'open') return 'Open';
   if (status === 'closed') return 'Closed';
   if (status === 'settled') return 'Settled';
+  if (status === 'void') return 'Void';
   return 'Unavailable';
 }
 
@@ -110,7 +111,7 @@ export function Betting() {
         })}</div>}
       </section>
       {!loading && !error && activeData.betMarkets.length === 0 && <p className="card">Bet Punto markets will appear once they are added.</p>}
-      {(['open', 'closed', 'settled'] as const).map((status) => {
+      {(['open', 'closed', 'settled', 'void'] as const).map((status) => {
         const markets = activeData.betMarkets.filter((market) => market.status === status);
         if (markets.length === 0) return null;
         return <section className="market-section" key={status}>

@@ -115,3 +115,65 @@ describe('public Bet Punto mapper', () => {
     assert.equal('payoutNotes' in mapped, false);
   });
 });
+
+describe('Bet Punto market lifecycle rules', () => {
+  function normalizeMarketTitle(title) {
+    return title.trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+  function isExactDuplicateOpenMarket(candidate, existing, excludeMarketId = null) {
+    if (excludeMarketId && existing.id === excludeMarketId) return false;
+    return existing.status === 'open'
+      && existing.tourId === candidate.tourId
+      && existing.marketScope === candidate.marketScope
+      && normalizeMarketTitle(existing.title) === normalizeMarketTitle(candidate.title)
+      && (existing.roundId || null) === (candidate.roundId || null)
+      && (existing.matchId || null) === (candidate.matchId || null);
+  }
+  function visibilityWarning(market, options, context) {
+    const marketOptions = options.filter((option) => option.marketId === market.id);
+    if (market.roundId && !context.roundIds.has(market.roundId)) return 'round';
+    if (market.matchId && !context.matchIds.has(market.matchId)) return 'match';
+    if (marketOptions.length === 0) return 'options';
+    const invalidOption = marketOptions.find((option) => (option.linkedPlayerId && !context.playerIds.has(option.linkedPlayerId)) || (option.linkedTeamId && !context.teamIds.has(option.linkedTeamId)));
+    if (invalidOption?.linkedPlayerId) return 'player';
+    if (invalidOption?.linkedTeamId) return 'team';
+    return null;
+  }
+  function deletableMarketBetCount(marketId, bets) {
+    return bets.filter((bet) => bet.marketId === marketId).length;
+  }
+
+  it('allows same-title open markets for different rounds', () => {
+    const existing = { id: 'm1', tourId: 't1', marketScope: 'general_pot', title: 'Stableford winner', roundId: 'r1', matchId: null, status: 'open' };
+    const candidate = { tourId: 't1', marketScope: 'general_pot', title: ' stableford   winner ', roundId: 'r2', matchId: null };
+    assert.equal(isExactDuplicateOpenMarket(candidate, existing), false);
+  });
+
+  it('blocks exact duplicate open markets only', () => {
+    const existing = { id: 'm1', tourId: 't1', marketScope: 'general_pot', title: 'Stableford winner', roundId: 'r1', matchId: null, status: 'open' };
+    const candidate = { tourId: 't1', marketScope: 'general_pot', title: ' stableford   winner ', roundId: 'r1', matchId: null };
+    assert.equal(isExactDuplicateOpenMarket(candidate, existing), true);
+    assert.equal(isExactDuplicateOpenMarket(candidate, { ...existing, status: 'closed' }), false);
+  });
+
+  it('uses actual bet rows, not options, to decide hard-delete eligibility', () => {
+    assert.equal(deletableMarketBetCount('m1', []), 0);
+    assert.equal(deletableMarketBetCount('m1', [{ id: 'b1', marketId: 'm1' }]), 1);
+  });
+
+  it('keeps open, closed, settled, and void markets visible when references and options are valid', () => {
+    const context = { roundIds: new Set(['r1']), matchIds: new Set(['match1']), playerIds: new Set(['p1']), teamIds: new Set(['team1']) };
+    for (const status of ['open', 'closed', 'settled', 'void']) {
+      const market = { id: `m-${status}`, status, roundId: 'r1', matchId: null };
+      const options = [{ id: `o-${status}`, marketId: market.id, linkedPlayerId: 'p1' }];
+      assert.equal(visibilityWarning(market, options, context), null);
+    }
+  });
+
+  it('warns when a public market is missing valid options or linked data', () => {
+    const context = { roundIds: new Set(['r1']), matchIds: new Set(), playerIds: new Set(['p1']), teamIds: new Set() };
+    assert.equal(visibilityWarning({ id: 'm1', status: 'open', roundId: 'r2' }, [{ id: 'o1', marketId: 'm1' }], context), 'round');
+    assert.equal(visibilityWarning({ id: 'm2', status: 'open', roundId: 'r1' }, [], context), 'options');
+    assert.equal(visibilityWarning({ id: 'm3', status: 'open', roundId: 'r1' }, [{ id: 'o3', marketId: 'm3', linkedPlayerId: 'missing' }], context), 'player');
+  });
+});

@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from './_supabase';
 import { mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapTour, mapTourHandbookSection, mapTourItineraryItem, mapTourPlayer, mapTourTeam, mapTourTeamDayKit, mapTourTeamMember, mapTourTeamResult } from './_mappers';
 import type { Match, Round, Tour, TourTeam, TourTeamMember } from '../../src/lib/types';
+import { betMarketVisibilityWarning, publicBetPuntoMatchIds, publicBetPuntoPlayerIds, publicBetPuntoRoundIds, publicBetPuntoTeamIds } from '../../src/lib/betPuntoRules';
 import { selectDefaultTour } from './_tourResolution';
 
 type Row = Record<string, unknown>;
@@ -86,7 +87,10 @@ function publicRowsOrLegacyCurrent<TRow extends { published?: boolean }>(rows: T
 
 function publicTeamsOrLegacyCurrent<TTeam extends TourTeam>(teams: TTeam[], tour?: Tour): TTeam[] {
   if (!tour) return [];
-  if (tour.isCurrentPublic === true) return teams;
+  if (tour.isCurrentPublic === true) {
+    const publishedTeams = teams.filter((team) => team.published === true);
+    return publishedTeams.length > 0 ? publishedTeams : teams;
+  }
   const visibleTeams = publicRowsOrLegacyCurrent(teams, tour);
   if (tour.status === 'complete' || tour.status === 'archived') return teams;
   if (shouldUseLegacyCurrentTourVisibility(tour)) return visibleTeams;
@@ -275,43 +279,35 @@ export async function getBettingBundle(supabase: SupabaseClient) {
     runQuery(table(supabase, 'matches').select('*').eq('tour_id', tour.id), 'bet public matches'),
   ]);
   const rounds = publicRoundsOrLegacyCurrent(roundRows.map(mapRound), tour);
-  const publicRoundIds = new Set(rounds.map((round) => round.id));
   const roundById = rowsById(rounds);
+  const publicMatches = publicMatchesOrLegacyCurrent(matchRows.map(mapMatch), roundById, tour);
   const publicTeams = publicTeamsOrLegacyCurrent(teamRows.map(mapTourTeam), tour);
-  const publicTeamIds = new Set(publicTeams.map((team) => team.id));
-  const publicPlayerIds = new Set(filterPublicTeamMembers(memberRows.map(mapTourTeamMember), publicTeams).map((member) => member.playerId));
-  const publicMatchIds = new Set(publicMatchesOrLegacyCurrent(matchRows.map(mapMatch), roundById, tour).map((match) => match.id));
-  const visibleMarketRows = marketRows.filter((market) => {
-    if (String(market.status) === 'void') return false;
-    const roundId = typeof market.round_id === 'string' ? market.round_id : '';
-    const matchId = typeof market.match_id === 'string' ? market.match_id : '';
-    if (roundId && !publicRoundIds.has(roundId)) return false;
-    if (matchId && !publicMatchIds.has(matchId)) return false;
-    return true;
-  });
-  const marketIds = visibleMarketRows.map((market) => String(market.id));
+  const players = playerRows.map(mapPlayer);
+  const tourPlayers = tourPlayerRows.map(mapTourPlayer);
+  const teamMembers = memberRows.map(mapTourTeamMember);
+  const publicRoundIds = publicBetPuntoRoundIds(rounds);
+  const publicMatchIds = publicBetPuntoMatchIds(publicMatches);
+  const publicPlayerIds = publicBetPuntoPlayerIds(players, tourPlayers);
+  const publicTeamIds = publicBetPuntoTeamIds(publicTeams, teamMembers);
+  const candidateMarketIds = marketRows.map((market) => String(market.id));
 
   const [optionRows, betRows] = await Promise.all([
-    marketIds.length > 0 ? runQuery(table(supabase, 'bet_options').select('*').in('market_id', marketIds).order('sort_order', { ascending: true }), 'bet options') : Promise.resolve([]),
-    marketIds.length > 0 ? runQuery(table(supabase, 'bets').select('*').in('market_id', marketIds).order('created_at', { ascending: true }), 'bets') : Promise.resolve([]),
+    candidateMarketIds.length > 0 ? runQuery(table(supabase, 'bet_options').select('*').in('market_id', candidateMarketIds).order('sort_order', { ascending: true }), 'bet options') : Promise.resolve([]),
+    candidateMarketIds.length > 0 ? runQuery(table(supabase, 'bets').select('*').in('market_id', candidateMarketIds).order('created_at', { ascending: true }), 'bets') : Promise.resolve([]),
   ]);
-  const visibleOptions = optionRows.filter((option) => {
-    const teamId = typeof option.linked_team_id === 'string' ? option.linked_team_id : '';
-    const playerId = typeof option.linked_player_id === 'string' ? option.linked_player_id : '';
-    if (teamId && !publicTeamIds.has(teamId)) return false;
-    if (playerId && !publicPlayerIds.has(playerId)) return false;
-    return true;
-  });
-  const visibleOptionIds = new Set(visibleOptions.map((option) => String(option.id)));
-  const visibleMarketIds = new Set(visibleOptions.map((option) => String(option.market_id)));
-  const visibleMarketsWithOptions = visibleMarketRows.filter((market) => visibleMarketIds.has(String(market.id)));
+  const options = optionRows.map(mapBetOption);
+  const visibilityContext = { roundIds: publicRoundIds, matchIds: publicMatchIds, playerIds: publicPlayerIds, teamIds: publicTeamIds };
+  const visibleMarkets = marketRows.map(mapBetMarket).filter((market) => !betMarketVisibilityWarning(market, options, visibilityContext));
+  const visibleMarketIds = new Set(visibleMarkets.map((market) => market.id));
+  const visibleOptions = options.filter((option) => visibleMarketIds.has(option.marketId));
+  const visibleOptionIds = new Set(visibleOptions.map((option) => option.id));
 
   return {
     rounds,
-    players: playerRows.map(mapPlayer),
-    tourPlayers: tourPlayerRows.map(mapTourPlayer).filter((tourPlayer) => publicPlayerIds.has(tourPlayer.playerId)),
-    betMarkets: visibleMarketsWithOptions.map(mapBetMarket),
-    betOptions: visibleOptions.map(mapBetOption),
+    players: players.filter((player) => publicPlayerIds.has(player.id)),
+    tourPlayers: tourPlayers.filter((tourPlayer) => publicPlayerIds.has(tourPlayer.playerId)),
+    betMarkets: visibleMarkets,
+    betOptions: visibleOptions,
     bets: betRows.filter((bet) => visibleOptionIds.has(String(bet.option_id))).map(mapPublicBetRow),
   };
 }
