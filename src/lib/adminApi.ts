@@ -134,6 +134,7 @@ export type SubmitResultPayload = {
   resultText: string;
   published?: boolean;
   correctionReason?: string | null;
+  clearResult?: boolean;
 };
 
 export type SettleBetMarketPayload = {
@@ -199,6 +200,7 @@ export const saveRound = (payload: SaveRoundPayload) => postAdminJson<{ ok: true
 export const updateRoundPublished = (payload: { tourId: string; roundId: string; published: boolean }) => postAdminJson<{ ok: true; round: Round }>('/.netlify/functions/admin-update-round-published', payload);
 export const deleteRound = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedRoundId: string }>('/.netlify/functions/admin-delete-round', payload);
 export const saveMatch = (payload: SaveMatchPayload) => postAdminJson<{ ok: true; match: Match; matchParticipants: MatchParticipant[] }>('/.netlify/functions/admin-save-match', payload);
+export const updateMatchPublished = (payload: { tourId: string; matchId: string; published: boolean }) => postAdminJson<{ ok: true; match: Match }>('/.netlify/functions/admin-update-match-published', payload);
 export const submitResult = (payload: SubmitResultPayload) => postAdminJson<{ ok: true; match: Match }>('/.netlify/functions/admin-submit-result', payload);
 export const deleteMatch = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedMatchId: string }>('/.netlify/functions/admin-delete-match', payload);
 export const saveBetMarket = (payload: SaveBetMarketPayload) => postAdminJson<{ ok: true; betMarket: BetMarket; betOptions: BetOption[] }>('/.netlify/functions/admin-save-bet-market', payload);
