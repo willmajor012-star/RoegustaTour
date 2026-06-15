@@ -51,8 +51,9 @@ export function isPublicMatch(match: Pick<Match, 'published' | 'status'>, round?
 }
 
 export function isPublicTeamRoster(tour: Pick<Tour, 'status' | 'isCurrentPublic'> | undefined, team: Pick<TourTeam, 'published'>): boolean {
-  if (!tour) return false;
-  return team.published === true && isPublicTour(tour);
+  if (!tour || !isPublicTour(tour)) return false;
+  if (tour.isCurrentPublic === true) return team.published === true;
+  return tour.status === 'complete' || tour.status === 'archived' || team.published === true;
 }
 
 export function filterPublicRounds<TRound extends Round>(rounds: TRound[], tour?: Tour): TRound[] {
@@ -83,9 +84,11 @@ function publicRowsOrLegacyCurrent<TRow extends { published?: boolean }>(rows: T
 }
 
 function publicTeamsOrLegacyCurrent<TTeam extends TourTeam>(teams: TTeam[], tour?: Tour): TTeam[] {
+  if (!tour || !isPublicTour(tour)) return [];
+  if (tour.status === 'complete' || tour.status === 'archived') return teams;
   const visibleTeams = publicRowsOrLegacyCurrent(teams, tour);
   if (shouldUseLegacyCurrentTourVisibility(tour) && !hasPublishedFlag(teams)) return visibleTeams;
-  return visibleTeams.filter((team) => isPublicTeamRoster(tour, { ...team, published: true }));
+  return visibleTeams.filter((team) => isPublicTeamRoster(tour, team));
 }
 
 function publicRoundsOrLegacyCurrent<TRound extends Round>(rounds: TRound[], tour?: Tour): TRound[] {
