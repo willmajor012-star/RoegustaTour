@@ -278,7 +278,7 @@ export function Admin() {
       playerIds: publicBetPuntoPlayerIds(data.players, data.tourPlayers),
       teamIds: publicBetPuntoTeamIds(data.tourTeams, data.tourTeamMembers),
     };
-    return data.betMarkets.map((market) => betMarketVisibilityWarning(market, data.betOptions, context)).filter((warning): warning is NonNullable<typeof warning> => Boolean(warning));
+    return data.betMarkets.filter((market) => market.status !== 'void').map((market) => betMarketVisibilityWarning(market, data.betOptions, context)).filter((warning): warning is NonNullable<typeof warning> => Boolean(warning));
   }, [adminData]);
 
   const setSaveState = (key: string, state: SaveState) => setStates((current) => ({ ...current, [key]: state }));

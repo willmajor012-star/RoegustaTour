@@ -12,7 +12,7 @@ export function badRequest(message: string): FunctionResponse {
 
 function friendlySchemaMessage(message: string): string {
   if (/schema cache|column .*published|published .*column|is_current_public|Could not find .* column/i.test(message)) {
-    return "The live database is missing the latest publication columns or Supabase has not reloaded its schema cache. Apply migration 0009_publication_current_public_schema.sql; it reloads the Supabase schema cache automatically.";
+    return "The live database is missing the latest publication columns or Supabase has not reloaded its schema cache. Apply migration 0010_live_admin_bet_punto_schema_repair.sql; it repairs publication and Bet Punto columns and reloads the Supabase schema cache automatically.";
   }
   return message;
 }
