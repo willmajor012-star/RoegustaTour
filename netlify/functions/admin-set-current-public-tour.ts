@@ -53,7 +53,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
       ok: false,
       missingMigration,
       message: missingMigration
-        ? 'The database is missing tours.is_current_public or Supabase has not reloaded its schema cache. Apply migration 0010_live_admin_bet_punto_schema_repair.sql; it repairs publication columns and reloads the Supabase schema cache automatically.'
+        ? 'The database is missing tours.is_current_public or Supabase has not reloaded its schema cache. Apply migration 0011_live_admin_bet_punto_schema_repair.sql; it repairs publication columns and reloads the Supabase schema cache automatically.'
         : `Could not set the selected tour as current public: ${set.message}`,
       warnings,
     });
