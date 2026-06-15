@@ -86,10 +86,7 @@ function publicRowsOrLegacyCurrent<TRow extends { published?: boolean }>(rows: T
 
 function publicTeamsOrLegacyCurrent<TTeam extends TourTeam>(teams: TTeam[], tour?: Tour): TTeam[] {
   if (!tour) return [];
-  if (tour.isCurrentPublic === true) {
-    const publishedTeams = teams.filter((team) => team.published === true);
-    return publishedTeams.length > 0 ? publishedTeams : teams;
-  }
+  if (tour.isCurrentPublic === true) return teams;
   const visibleTeams = publicRowsOrLegacyCurrent(teams, tour);
   if (tour.status === 'complete' || tour.status === 'archived') return teams;
   if (shouldUseLegacyCurrentTourVisibility(tour)) return visibleTeams;
