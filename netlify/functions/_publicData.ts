@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from './_supabase';
 import { mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapTour, mapTourHandbookSection, mapTourItineraryItem, mapTourPlayer, mapTourTeam, mapTourTeamDayKit, mapTourTeamMember, mapTourTeamResult } from './_mappers';
 import type { Match, Round, Tour, TourTeam, TourTeamMember } from '../../src/lib/types';
+import { selectDefaultTour } from './_tourResolution';
 
 type Row = Record<string, unknown>;
 type SupabaseResult<T> = { data: T[] | null; error: { message: string } | null };
@@ -37,7 +38,7 @@ export async function withLiveData<T extends object>(read: (supabase: SupabaseCl
 
 export function isPublicTour(tour?: Pick<Tour, 'status' | 'isCurrentPublic'>): boolean {
   if (!tour) return false;
-  return tour.isCurrentPublic === true || tour.status === 'complete' || tour.status === 'archived';
+  return tour.isCurrentPublic === true || tour.status === 'active' || tour.status === 'planned' || tour.status === 'complete' || tour.status === 'archived';
 }
 
 export function isPublicRound(round: Pick<Round, 'status' | 'published'>, tour?: Pick<Tour, 'status' | 'isCurrentPublic'>): boolean {
@@ -74,7 +75,7 @@ function hasPublishedFlag(rows: Array<{ published?: boolean }>): boolean {
 }
 
 function shouldUseLegacyCurrentTourVisibility(tour?: Pick<Tour, 'status' | 'isCurrentPublic'>): boolean {
-  return tour?.status === 'active';
+  return tour?.status === 'active' || tour?.status === 'planned';
 }
 
 function publicRowsOrLegacyCurrent<TRow extends { published?: boolean }>(rows: TRow[], tour?: Pick<Tour, 'status' | 'isCurrentPublic'>): TRow[] {
@@ -132,13 +133,7 @@ function rowsById<T extends { id: string }>(rows: T[]): Map<string, T> {
 
 export async function getCurrentTour(supabase: SupabaseClient) {
   const tours = (await runQuery(table(supabase, 'tours').select('*').order('year', { ascending: false }).limit(50), 'public tour candidates')).map(mapTour);
-  const explicitTour = tours.find((tour) => tour.isCurrentPublic === true);
-  if (explicitTour) return explicitTour;
-
-  return tours.filter((tour) => tour.status === 'active' || tour.status === 'complete').sort((a, b) => {
-    if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
-    return b.year - a.year;
-  })[0];
+  return selectDefaultTour(tours);
 }
 
 export async function getPublicMatchBundle(supabase: SupabaseClient) {
