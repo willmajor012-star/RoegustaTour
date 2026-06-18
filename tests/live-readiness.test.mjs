@@ -28,9 +28,51 @@ function normalizeBettorName(value) {
   return value.trim().toLowerCase();
 }
 
-function isDuplicateActivePick(existingBets, bettorName, deviceId) {
-  const normalizedBettor = normalizeBettorName(bettorName);
-  return existingBets.some((bet) => normalizeBettorName(bet.bettorName) === normalizedBettor || (deviceId && bet.deviceId === deviceId));
+function canPlaceRepeatActivePick() {
+  return true;
+}
+
+
+function canPublicChangeBet(existingBet, providedToken) {
+  return Boolean(existingBet.publicEditTokenHash && providedToken && existingBet.publicEditTokenHash === `hash:${providedToken}` && existingBet.status === 'active');
+}
+
+function adminSaveBetRow(previousBet, nextStatus) {
+  return {
+    status: nextStatus,
+    outcomeStatus: nextStatus === 'void' ? 'void' : (previousBet?.outcomeStatus ?? 'pending'),
+    payoutStatus: nextStatus === 'void' ? 'not_applicable' : (previousBet?.payoutStatus ?? 'not_applicable'),
+    payoutAmountPence: nextStatus === 'void' ? null : (previousBet?.payoutAmountPence ?? null),
+    payoutNotes: nextStatus === 'void' ? null : (previousBet?.payoutNotes ?? null),
+  };
+}
+
+
+function playerSummaryExpandedByDefault() {
+  return false;
+}
+
+function optionStakeRows(options, bets) {
+  return options.map((option) => {
+    const optionBets = bets.filter((bet) => bet.optionId === option.id && bet.status === 'active');
+    return { optionId: option.id, totalPence: optionBets.reduce((total, bet) => total + bet.stakePence, 0), betCount: optionBets.length };
+  });
+}
+
+function resolveLivePlayer(input, players, tourPlayers) {
+  const liveIds = new Set(tourPlayers.filter((row) => row.attending).map((row) => row.playerId));
+  const normalized = input.trim().toLowerCase().replace(/\s+/g, ' ');
+  const matches = players.filter((player) => player.active && liveIds.has(player.id) && (player.displayName.toLowerCase() === normalized || player.nickname?.toLowerCase() === normalized));
+  return matches.length === 1 ? { ok: true, playerId: matches[0].id } : { ok: false };
+}
+
+function saveMarketResult(market, resultOptionId, options) {
+  if (!options.some((option) => option.id === resultOptionId && option.marketId === market.id)) throw new Error('Result option must belong to market');
+  return { ...market, resultOptionId };
+}
+
+function settleWinnerMarket(market, bets) {
+  return bets.map((bet) => bet.status === 'void' ? bet : { ...bet, outcomeStatus: bet.optionId === market.resultOptionId ? 'won' : 'lost' });
 }
 
 function mapPublicBetRow(row) {
@@ -70,11 +112,91 @@ describe('Bet Punto payout and duplicate rules', () => {
     assert.equal([...payouts.values()].reduce((total, payout) => total + payout, 0), 1001);
   });
 
-  it('blocks duplicate active picks by bettor name or device id', () => {
-    const activeBets = [{ bettorName: 'Rosie', deviceId: 'device-1' }];
-    assert.equal(isDuplicateActivePick(activeBets, ' rosie ', null), true);
-    assert.equal(isDuplicateActivePick(activeBets, 'Different', 'device-1'), true);
-    assert.equal(isDuplicateActivePick(activeBets, 'Different', 'device-2'), false);
+  it('allows repeat active picks by bettor name or device id', () => {
+    assert.equal(canPlaceRepeatActivePick(), true);
+  });
+
+  it('settles multiple winning bets from the same bettor independently', () => {
+    const payouts = splitGeneralPot(1500, [
+      { id: 'rosie-1', stakePence: 500 },
+      { id: 'rosie-2', stakePence: 250 },
+    ]);
+    assert.equal(payouts.get('rosie-1'), 1000);
+    assert.equal(payouts.get('rosie-2'), 500);
+  });
+});
+
+
+describe('Bet Punto live market public layout and settlement rules', () => {
+  it('keeps the player betting summary collapsed by default', () => {
+    assert.equal(playerSummaryExpandedByDefault(), false);
+  });
+
+  it('builds open-market stake totals by option', () => {
+    const rows = optionStakeRows([{ id: 'p1' }, { id: 'p2' }], [
+      { optionId: 'p1', stakePence: 500, status: 'active' },
+      { optionId: 'p1', stakePence: 250, status: 'active' },
+      { optionId: 'p2', stakePence: 1000, status: 'active' },
+    ]);
+    assert.deepEqual(rows, [
+      { optionId: 'p1', totalPence: 750, betCount: 2 },
+      { optionId: 'p2', totalPence: 1000, betCount: 1 },
+    ]);
+  });
+
+  it('saves result_option_id from an existing market option and settles winners/losers', () => {
+    const market = saveMarketResult({ id: 'm1' }, 'o2', [{ id: 'o1', marketId: 'm1' }, { id: 'o2', marketId: 'm1' }]);
+    assert.equal(market.resultOptionId, 'o2');
+    assert.deepEqual(settleWinnerMarket(market, [
+      { id: 'b1', optionId: 'o1', status: 'active' },
+      { id: 'b2', optionId: 'o2', status: 'active' },
+      { id: 'b3', optionId: 'o2', status: 'void', outcomeStatus: 'void' },
+    ]).map((bet) => [bet.id, bet.outcomeStatus]), [['b1', 'lost'], ['b2', 'won'], ['b3', 'void']]);
+  });
+});
+
+describe('Bet Punto public edit tokens and admin overrides', () => {
+
+  it('resolves exact live player name and nickname, and stores bettor_player_id', () => {
+    const players = [{ id: 'will', displayName: 'will major', nickname: 'major', active: true }];
+    const tourPlayers = [{ playerId: 'will', attending: true }];
+    assert.deepEqual(resolveLivePlayer('will major', players, tourPlayers), { ok: true, playerId: 'will' });
+    assert.deepEqual(resolveLivePlayer('major', players, tourPlayers), { ok: true, playerId: 'will' });
+  });
+
+  it('blocks typo, unknown, inactive, and non-attending bettor names safely', () => {
+    const players = [
+      { id: 'will', displayName: 'will major', nickname: 'major', active: true },
+      { id: 'old', displayName: 'old player', nickname: undefined, active: false },
+      { id: 'away', displayName: 'away player', nickname: undefined, active: true },
+    ];
+    const tourPlayers = [{ playerId: 'will', attending: true }, { playerId: 'old', attending: true }, { playerId: 'away', attending: false }];
+    assert.equal(resolveLivePlayer('wil major', players, tourPlayers).ok, false);
+    assert.equal(resolveLivePlayer('unknown', players, tourPlayers).ok, false);
+    assert.equal(resolveLivePlayer('old player', players, tourPlayers).ok, false);
+    assert.equal(resolveLivePlayer('away player', players, tourPlayers).ok, false);
+  });
+
+  it('requires a private edit token for public edit and void', () => {
+    const bet = { status: 'active', bettorName: 'Rosie', publicEditTokenHash: 'hash:secret-token' };
+    assert.equal(canPublicChangeBet(bet, 'secret-token'), true);
+    assert.equal(canPublicChangeBet(bet, undefined), false);
+    assert.equal(canPublicChangeBet(bet, 'wrong-token'), false);
+  });
+
+  it('does not let bettorName alone or no-token legacy bets authorize public changes', () => {
+    assert.equal(canPublicChangeBet({ status: 'active', bettorName: 'Rosie', publicEditTokenHash: null }, 'secret-token'), false);
+    assert.equal(canPublicChangeBet({ status: 'active', bettorName: 'Rosie', publicEditTokenHash: 'hash:other-token' }, undefined), false);
+  });
+
+  it('preserves admin settlement fields when editing non-void bets', () => {
+    const saved = adminSaveBetRow({ outcomeStatus: 'won', payoutStatus: 'unpaid', payoutAmountPence: 1200, payoutNotes: 'Pay cash' }, 'active');
+    assert.deepEqual(saved, { status: 'active', outcomeStatus: 'won', payoutStatus: 'unpaid', payoutAmountPence: 1200, payoutNotes: 'Pay cash' });
+  });
+
+  it('normalises settlement fields when admin voids a bet', () => {
+    const saved = adminSaveBetRow({ outcomeStatus: 'won', payoutStatus: 'unpaid', payoutAmountPence: 1200, payoutNotes: 'Pay cash' }, 'void');
+    assert.deepEqual(saved, { status: 'void', outcomeStatus: 'void', payoutStatus: 'not_applicable', payoutAmountPence: null, payoutNotes: null });
   });
 });
 

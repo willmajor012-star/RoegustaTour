@@ -7,6 +7,7 @@ type Row = Record<string, unknown>;
 
 type SupabaseSingle<T> = PromiseLike<{ data: T | null; error: { message: string } | null }>;
 type SupabaseMany<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
+type LivePlayerRow = { player_id: string; players: { id: string; display_name: string; nickname: string | null; active: boolean } | { id: string; display_name: string; nickname: string | null; active: boolean }[] | null };
 
 function jsonResponse(statusCode: number, payload: unknown): FunctionResponse {
   return { statusCode, body: JSON.stringify(payload) };
@@ -16,12 +17,28 @@ function optionalString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
 }
 
+function generateEditToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+async function hashEditToken(token: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function tokenMatchesHash(token: string, expectedHash: string) {
+  return await hashEditToken(token) === expectedHash;
+}
+
 function mapPublicBet(row: Row) {
   return {
     id: String(row.id),
     marketId: String(row.market_id),
     optionId: String(row.option_id),
     bettorName: String(row.bettor_name),
+    bettorPlayerId: typeof row.bettor_player_id === 'string' ? row.bettor_player_id : undefined,
     stakeText: typeof row.stake_text === 'string' ? row.stake_text : undefined,
     stakeAmountPence: typeof row.stake_amount_pence === 'number' ? row.stake_amount_pence : Number(row.stake_amount_pence) || undefined,
     payoutAmountPence: typeof row.payout_amount_pence === 'number' ? row.payout_amount_pence : undefined,
@@ -31,10 +48,6 @@ function mapPublicBet(row: Row) {
     createdAt: String(row.created_at),
     status: typeof row.status === 'string' ? row.status : 'active',
   };
-}
-
-function normalizedName(value: string) {
-  return value.trim().toLowerCase();
 }
 
 function parseBody(event: FunctionEvent) {
@@ -58,47 +71,97 @@ async function runSingle<T = Row>(query: SupabaseSingle<T>, label: string): Prom
   return data;
 }
 
+function normalizePlayerLookup(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function livePlayer(row: LivePlayerRow) {
+  const player = Array.isArray(row.players) ? row.players[0] : row.players;
+  if (!player || !player.active) return null;
+  return { id: row.player_id, displayName: player.display_name, nickname: player.nickname };
+}
+
+function resolveLiveBettor(livePlayers: ReturnType<typeof livePlayer>[], bettorName: string | null) {
+  const lookup = bettorName ? normalizePlayerLookup(bettorName) : '';
+  if (!lookup) return { ok: false as const, message: 'Choose a live tour player before saving a Bet Punto pick.' };
+  const matches = livePlayers.filter((player) => player && (normalizePlayerLookup(player.displayName) === lookup || (player.nickname && normalizePlayerLookup(player.nickname) === lookup)));
+  if (matches.length === 1 && matches[0]) return { ok: true as const, player: matches[0] };
+  if (matches.length > 1) return { ok: false as const, message: 'Multiple live players match that name. Please choose the intended player from the list.' };
+  return { ok: false as const, message: 'That bettor name does not match a live attending player. Please choose a player from the list.' };
+}
+
 export const handler = async (event: FunctionEvent): Promise<FunctionResponse> => {
   if (event.httpMethod !== 'POST') return jsonResponse(405, { ok: false, message: 'Method not allowed.' });
   const body = parseBody(event);
   if (!body) return jsonResponse(400, { ok: false, message: 'Invalid JSON body.' });
 
+  const betId = optionalString(body.betId);
+  const action = optionalString(body.action) ?? 'create';
   const marketId = optionalString(body.marketId);
   const optionId = optionalString(body.optionId);
   const bettorName = optionalString(body.bettorName);
   const comment = optionalString(body.comment);
+  const editToken = optionalString(body.editToken);
   const stakeAmountPence = typeof body.stakeAmountPence === 'number' ? body.stakeAmountPence : Number(body.stakeAmountPence);
 
-  if (!marketId) return jsonResponse(400, { ok: false, message: 'Market is required.' });
-  if (!optionId) return jsonResponse(400, { ok: false, message: 'Option is required.' });
-  if (!bettorName) return jsonResponse(400, { ok: false, message: 'Bettor name is required.' });
-  if (!Number.isInteger(stakeAmountPence) || stakeAmountPence <= 0) return jsonResponse(400, { ok: false, message: 'Stake must be a positive pounds-and-pence amount.' });
+  if (!['create', 'edit', 'void'].includes(action)) return jsonResponse(400, { ok: false, message: 'Bet action is invalid.' });
+  if (!marketId && action === 'create') return jsonResponse(400, { ok: false, message: 'Market is required.' });
+  if (!betId && action !== 'create') return jsonResponse(400, { ok: false, message: 'Bet is required.' });
+  if (!optionId && action !== 'void') return jsonResponse(400, { ok: false, message: 'Option is required.' });
+  if (action !== 'create' && !editToken) return jsonResponse(403, { ok: false, message: 'This Bet Punto pick cannot be changed without its private edit token.' });
+  if (action === 'create' && !bettorName) return jsonResponse(400, { ok: false, message: 'Bettor name is required.' });
+  if (action !== 'void' && (!Number.isInteger(stakeAmountPence) || stakeAmountPence <= 0)) return jsonResponse(400, { ok: false, message: 'Stake must be a positive pounds-and-pence amount.' });
 
   try {
     const supabase = createServerSupabaseClient();
-    const markets = await runRows<{ id: string; status: string; closes_at: string | null }>(supabase.from('bet_markets').select('id, status, closes_at').eq('id', marketId).limit(1), 'find bet market');
+    const deviceId = event.headers?.['x-nf-client-connection-ip'] ?? null;
+    let effectiveMarketId = marketId;
+    let existingBet: Row | null = null;
+    if (action !== 'create') {
+      const existing = await runRows<Row>(supabase.from('bets').select('*').eq('id', betId).limit(1), 'find public bet');
+      if (existing.length === 0) return jsonResponse(404, { ok: false, message: 'Bet was not found.' });
+      existingBet = existing[0];
+      effectiveMarketId = String(existingBet.market_id);
+      const storedEditTokenHash = optionalString(existingBet.public_edit_token_hash);
+      if (!storedEditTokenHash) return jsonResponse(403, { ok: false, message: 'This Bet Punto pick does not have public edit access. Ask an admin to change it.' });
+      if (!editToken || !(await tokenMatchesHash(editToken, storedEditTokenHash))) return jsonResponse(403, { ok: false, message: 'This Bet Punto pick cannot be changed without its private edit token.' });
+      if (String(existingBet.status) !== 'active') return jsonResponse(400, { ok: false, message: 'Only active Bet Punto picks can be changed.' });
+    }
+    const markets = await runRows<{ id: string; tour_id: string; status: string; closes_at: string | null }>(supabase.from('bet_markets').select('id, tour_id, status, closes_at').eq('id', effectiveMarketId).limit(1), 'find bet market');
     if (markets.length === 0) return jsonResponse(404, { ok: false, message: 'Bet market was not found.' });
-    if (markets[0].status !== 'open') return jsonResponse(400, { ok: false, message: 'This Bet Punto market is not open for new picks.' });
+    if (markets[0].status !== 'open') return jsonResponse(400, { ok: false, message: 'This Bet Punto market is not open for public bet changes.' });
+
+    const livePlayerRows = await runRows<LivePlayerRow>(supabase.from('tour_players').select('player_id, players(id, display_name, nickname, active)').eq('tour_id', markets[0].tour_id).eq('attending', true), 'find live tour bettors');
+    const livePlayers = livePlayerRows.map(livePlayer).filter((player): player is NonNullable<ReturnType<typeof livePlayer>> => Boolean(player));
 
     const marketCloseTime = markets[0].closes_at ? Date.parse(markets[0].closes_at) : null;
     if (marketCloseTime !== null && Number.isFinite(marketCloseTime) && marketCloseTime <= Date.now()) {
       return jsonResponse(400, { ok: false, message: 'This Bet Punto market has closed for new picks.' });
     }
 
-    const options = await runRows<{ id: string; market_id: string }>(supabase.from('bet_options').select('id, market_id').eq('id', optionId).eq('market_id', marketId).limit(1), 'find bet option');
-    if (options.length === 0) return jsonResponse(400, { ok: false, message: 'Option does not belong to this market.' });
-
-    const deviceId = event.headers?.['x-nf-client-connection-ip'] ?? null;
-    const activeBets = await runRows<{ bettor_name: string; device_id: string | null }>(supabase.from('bets').select('bettor_name, device_id').eq('market_id', marketId).eq('status', 'active'), 'find active market bets');
-    const normalizedBettor = normalizedName(bettorName);
-    if (activeBets.some((bet) => normalizedName(bet.bettor_name) === normalizedBettor || (deviceId && bet.device_id === deviceId))) {
-      return jsonResponse(409, { ok: false, message: 'You already have an active pick in this market.' });
+    if (action === 'void') {
+      const saved = await runSingle<Row>(supabase.from('bets').update({ status: 'void', outcome_status: 'void', payout_status: 'not_applicable', payout_amount_pence: null, updated_at: new Date().toISOString(), void_reason: comment?.slice(0, 240) ?? 'Voided by bettor' }).eq('id', betId).select('*').single(), 'void public bet');
+      return jsonResponse(200, { ok: true, bet: mapPublicBet(saved) });
     }
 
+    const options = await runRows<{ id: string; market_id: string; linked_player_id: string | null }>(supabase.from('bet_options').select('id, market_id, linked_player_id').eq('id', optionId).eq('market_id', effectiveMarketId).limit(1), 'find bet option');
+    if (options.length === 0) return jsonResponse(400, { ok: false, message: 'Option does not belong to this market.' });
+    if (options[0].linked_player_id && !livePlayers.some((player) => player.id === options[0].linked_player_id)) return jsonResponse(400, { ok: false, message: 'Bet option must be a live attending tour player.' });
+
+    if (action === 'edit') {
+      const saved = await runSingle<Row>(supabase.from('bets').update({ option_id: optionId, stake_text: `£${(stakeAmountPence / 100).toFixed(stakeAmountPence % 100 === 0 ? 0 : 2)}`, stake_amount_pence: stakeAmountPence, comment: comment?.slice(0, 240) ?? null, updated_at: new Date().toISOString() }).eq('id', betId).select('*').single(), 'edit public bet');
+      return jsonResponse(200, { ok: true, bet: mapPublicBet(saved) });
+    }
+
+    const bettor = resolveLiveBettor(livePlayers, bettorName);
+    if (!bettor.ok) return jsonResponse(400, { ok: false, message: bettor.message });
+
+    const newEditToken = generateEditToken();
     const insertRow = {
-      market_id: marketId,
+      market_id: effectiveMarketId,
       option_id: optionId,
-      bettor_name: bettorName.slice(0, 120),
+      bettor_name: bettor.player.displayName.slice(0, 120),
+      bettor_player_id: bettor.player.id,
       stake_text: `£${(stakeAmountPence / 100).toFixed(stakeAmountPence % 100 === 0 ? 0 : 2)}`,
       stake_amount_pence: stakeAmountPence,
       comment: comment?.slice(0, 240) ?? null,
@@ -106,9 +169,10 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
       outcome_status: 'pending',
       payout_status: 'not_applicable',
       device_id: deviceId,
+      public_edit_token_hash: await hashEditToken(newEditToken),
     };
     const saved = await runSingle<Row>(supabase.from('bets').insert(insertRow).select('*').single(), 'save public bet');
-    return jsonResponse(200, { ok: true, bet: mapPublicBet(saved) });
+    return jsonResponse(200, { ok: true, bet: mapPublicBet(saved), editToken: newEditToken });
   } catch (error) {
     console.error('Public bet save failed:', error);
     return jsonResponse(500, { ok: false, message: 'Bet Punto pick could not be saved.' });

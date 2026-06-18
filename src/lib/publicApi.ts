@@ -82,11 +82,14 @@ export type TourTeamDayKit = {
 
 
 export type SavePublicBetPayload = {
-  marketId: string;
+  betId?: string;
+  action?: 'create' | 'edit' | 'void';
+  marketId?: string;
   optionId: string;
-  bettorName: string;
+  bettorName?: string;
   stakeAmountPence: number;
   comment?: string;
+  editToken?: string;
 };
 
 async function postPublicJson<T>(path: string, payload: unknown): Promise<T> {
@@ -128,4 +131,7 @@ export const fetchPublicBetMarkets = () => fetchPublicJson<PublicBetMarketsRespo
 export const fetchPublicAdvancedStats = () => fetchPublicJson<PublicAdvancedStatsResponse>('/.netlify/functions/public-advanced-stats');
 export const fetchPublicTourInfo = () => fetchPublicJson<PublicTourInfoResponse>('/.netlify/functions/public-tour-info');
 
-export const savePublicBet = (payload: SavePublicBetPayload) => postPublicJson<{ ok: true; bet: Bet }>('/.netlify/functions/public-save-bet', payload);
+export type SavePublicBetResponse = { ok: true; bet: Bet; editToken?: string };
+export const savePublicBet = (payload: SavePublicBetPayload) => postPublicJson<SavePublicBetResponse>('/.netlify/functions/public-save-bet', payload);
+export const editPublicBet = savePublicBet;
+export const voidPublicBet = savePublicBet;

@@ -168,7 +168,12 @@ export type Bet = {
   payoutStatus: 'unpaid' | 'paid' | 'not_applicable';
   payoutNotes?: string;
   comment?: string;
+  bettorPlayerId?: string;
+  adminEntered?: boolean;
+  adminNotes?: string;
+  voidReason?: string;
   createdAt: string;
+  updatedAt?: string;
   deviceId?: string;
   status: 'active' | 'void';
 };
