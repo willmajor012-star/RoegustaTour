@@ -19,7 +19,7 @@ export function betPuntoMarketKindLabel(kind: BetPuntoMarketKind) {
 function teeTimeMinutes(value?: string | null) {
   const trimmed = value?.trim();
   if (!trimmed) return null;
-  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
   if (!match) return null;
   const hour = Number(match[1]);
   const minute = Number(match[2]);
