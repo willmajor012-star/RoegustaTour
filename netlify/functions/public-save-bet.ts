@@ -7,6 +7,7 @@ type Row = Record<string, unknown>;
 
 type SupabaseSingle<T> = PromiseLike<{ data: T | null; error: { message: string } | null }>;
 type SupabaseMany<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
+type LivePlayerRow = { player_id: string; players: { id: string; display_name: string; nickname: string | null; active: boolean } | { id: string; display_name: string; nickname: string | null; active: boolean }[] | null };
 
 function jsonResponse(statusCode: number, payload: unknown): FunctionResponse {
   return { statusCode, body: JSON.stringify(payload) };
@@ -37,6 +38,7 @@ function mapPublicBet(row: Row) {
     marketId: String(row.market_id),
     optionId: String(row.option_id),
     bettorName: String(row.bettor_name),
+    bettorPlayerId: typeof row.bettor_player_id === 'string' ? row.bettor_player_id : undefined,
     stakeText: typeof row.stake_text === 'string' ? row.stake_text : undefined,
     stakeAmountPence: typeof row.stake_amount_pence === 'number' ? row.stake_amount_pence : Number(row.stake_amount_pence) || undefined,
     payoutAmountPence: typeof row.payout_amount_pence === 'number' ? row.payout_amount_pence : undefined,
@@ -67,6 +69,25 @@ async function runSingle<T = Row>(query: SupabaseSingle<T>, label: string): Prom
   if (error) throw new Error(`${label}: ${error.message}`);
   if (!data) throw new Error(`${label}: no row returned`);
   return data;
+}
+
+function normalizePlayerLookup(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function livePlayer(row: LivePlayerRow) {
+  const player = Array.isArray(row.players) ? row.players[0] : row.players;
+  if (!player || !player.active) return null;
+  return { id: row.player_id, displayName: player.display_name, nickname: player.nickname };
+}
+
+function resolveLiveBettor(livePlayers: ReturnType<typeof livePlayer>[], bettorName: string | null) {
+  const lookup = bettorName ? normalizePlayerLookup(bettorName) : '';
+  if (!lookup) return { ok: false as const, message: 'Choose a live tour player before saving a Bet Punto pick.' };
+  const matches = livePlayers.filter((player) => player && (normalizePlayerLookup(player.displayName) === lookup || (player.nickname && normalizePlayerLookup(player.nickname) === lookup)));
+  if (matches.length === 1 && matches[0]) return { ok: true as const, player: matches[0] };
+  if (matches.length > 1) return { ok: false as const, message: 'Multiple live players match that name. Please choose the intended player from the list.' };
+  return { ok: false as const, message: 'That bettor name does not match a live attending player. Please choose a player from the list.' };
 }
 
 export const handler = async (event: FunctionEvent): Promise<FunctionResponse> => {
@@ -106,9 +127,12 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
       if (!editToken || !(await tokenMatchesHash(editToken, storedEditTokenHash))) return jsonResponse(403, { ok: false, message: 'This Bet Punto pick cannot be changed without its private edit token.' });
       if (String(existingBet.status) !== 'active') return jsonResponse(400, { ok: false, message: 'Only active Bet Punto picks can be changed.' });
     }
-    const markets = await runRows<{ id: string; status: string; closes_at: string | null }>(supabase.from('bet_markets').select('id, status, closes_at').eq('id', effectiveMarketId).limit(1), 'find bet market');
+    const markets = await runRows<{ id: string; tour_id: string; status: string; closes_at: string | null }>(supabase.from('bet_markets').select('id, tour_id, status, closes_at').eq('id', effectiveMarketId).limit(1), 'find bet market');
     if (markets.length === 0) return jsonResponse(404, { ok: false, message: 'Bet market was not found.' });
     if (markets[0].status !== 'open') return jsonResponse(400, { ok: false, message: 'This Bet Punto market is not open for public bet changes.' });
+
+    const livePlayerRows = await runRows<LivePlayerRow>(supabase.from('tour_players').select('player_id, players(id, display_name, nickname, active)').eq('tour_id', markets[0].tour_id).eq('attending', true), 'find live tour bettors');
+    const livePlayers = livePlayerRows.map(livePlayer).filter((player): player is NonNullable<ReturnType<typeof livePlayer>> => Boolean(player));
 
     const marketCloseTime = markets[0].closes_at ? Date.parse(markets[0].closes_at) : null;
     if (marketCloseTime !== null && Number.isFinite(marketCloseTime) && marketCloseTime <= Date.now()) {
@@ -120,19 +144,24 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
       return jsonResponse(200, { ok: true, bet: mapPublicBet(saved) });
     }
 
-    const options = await runRows<{ id: string; market_id: string }>(supabase.from('bet_options').select('id, market_id').eq('id', optionId).eq('market_id', effectiveMarketId).limit(1), 'find bet option');
+    const options = await runRows<{ id: string; market_id: string; linked_player_id: string | null }>(supabase.from('bet_options').select('id, market_id, linked_player_id').eq('id', optionId).eq('market_id', effectiveMarketId).limit(1), 'find bet option');
     if (options.length === 0) return jsonResponse(400, { ok: false, message: 'Option does not belong to this market.' });
+    if (options[0].linked_player_id && !livePlayers.some((player) => player.id === options[0].linked_player_id)) return jsonResponse(400, { ok: false, message: 'Bet option must be a live attending tour player.' });
 
     if (action === 'edit') {
       const saved = await runSingle<Row>(supabase.from('bets').update({ option_id: optionId, stake_text: `£${(stakeAmountPence / 100).toFixed(stakeAmountPence % 100 === 0 ? 0 : 2)}`, stake_amount_pence: stakeAmountPence, comment: comment?.slice(0, 240) ?? null, updated_at: new Date().toISOString() }).eq('id', betId).select('*').single(), 'edit public bet');
       return jsonResponse(200, { ok: true, bet: mapPublicBet(saved) });
     }
 
+    const bettor = resolveLiveBettor(livePlayers, bettorName);
+    if (!bettor.ok) return jsonResponse(400, { ok: false, message: bettor.message });
+
     const newEditToken = generateEditToken();
     const insertRow = {
       market_id: effectiveMarketId,
       option_id: optionId,
-      bettor_name: bettorName!.slice(0, 120),
+      bettor_name: bettor.player.displayName.slice(0, 120),
+      bettor_player_id: bettor.player.id,
       stake_text: `£${(stakeAmountPence / 100).toFixed(stakeAmountPence % 100 === 0 ? 0 : 2)}`,
       stake_amount_pence: stakeAmountPence,
       comment: comment?.slice(0, 240) ?? null,

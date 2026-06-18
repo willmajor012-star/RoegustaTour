@@ -45,6 +45,7 @@ export function Betting() {
   const [submitMessages, setSubmitMessages] = useState<Record<string, string>>({});
   const [editingBetId, setEditingBetId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ optionId: '', stake: '', comment: '' });
+  const [showLedger, setShowLedger] = useState(false);
   const bets = [...savedBets, ...activeData.bets.filter((bet) => !savedBets.some((savedBet) => savedBet.id === bet.id))];
   const activeBets = bets.filter((bet) => bet.status === 'active');
   const attendingPlayerIds = new Set(activeData.tourPlayers.filter((tourPlayer) => tourPlayer.attending).map((tourPlayer) => tourPlayer.playerId));
@@ -127,23 +128,25 @@ export function Betting() {
         Your name
         <input list="bettor-name-options" value={bettorName} placeholder="Select or type your name" onChange={(event) => saveName(event.target.value)} />
         <datalist id="bettor-name-options">
-          {bettorOptions.map((player) => <option key={player.id} value={player.displayName} />)}
+          {bettorOptions.map((player) => <option key={player.id} value={player.displayName}>{player.nickname ? `Nickname: ${player.nickname}` : ''}</option>)}
+          {bettorOptions.filter((player) => player.nickname).map((player) => <option key={`${player.id}-nickname`} value={player.nickname}>{player.displayName}</option>)}
         </datalist>
       </label>
 
       <section className="card bet-summary-card">
-        <div className="section-heading"><div><p className="eyebrow">Organiser summary</p><h3>Tour Bet Punto ledger</h3></div><strong>{formatPenceCurrency(totalStakePence)} staked</strong></div>
+        <div className="section-heading"><div><p className="eyebrow">Audit view</p><h3>Player betting summary</h3></div><strong>{formatPenceCurrency(totalStakePence)} staked</strong></div>
         <div className="stat-grid">
-          <div className="stat-card"><span>Mandatory players</span><strong>{mandatoryBettorNames.length}</strong><small>Attending tour players expected to back each Stableford winner market.</small></div>
           <div className="stat-card"><span>Total picks</span><strong>{activeBets.length}</strong><small>Active Bet Punto entries across the tour.</small></div>
           <div className="stat-card"><span>Settled payouts</span><strong>{formatPenceCurrency(settledDuePence)}</strong><small>Calculated from settled markets and manual payout overrides.</small></div>
+          <div className="stat-card"><span>Your picks</span><strong>{myBets.length}</strong><small>Use the expandable ledger for full player audit details.</small></div>
         </div>
-        <div className="table-wrap">
+        <button className="pill" type="button" onClick={() => setShowLedger((current) => !current)}>{showLedger ? 'Hide player betting summary' : 'Show player betting summary'}</button>
+        {showLedger ? <div className="table-wrap">
           <table className="bet-summary-table">
             <thead><tr><th>Player</th><th>Picks</th><th>Staked</th><th>Settled payout</th><th>Net</th><th>W/L/P</th><th>Missing stableford</th></tr></thead>
             <tbody>{bettorSummaries.length === 0 ? <tr><td colSpan={7}>No player or bet summary yet.</td></tr> : bettorSummaries.map((summary) => <tr key={summary.bettorName}><td>{summary.bettorName}</td><td>{summary.totalBets}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{formatPenceCurrency(summary.settledPayoutPence)}</td><td>{formatPenceCurrency(summary.netPence)}</td><td>{summary.won}/{summary.lost}/{summary.push}</td><td>{summary.missingStablefordPicks}</td></tr>)}</tbody>
           </table>
-        </div>
+        </div> : <p>Compact summary shown above. Expand for the full player-by-player betting ledger.</p>}
       </section>
       <section className="card bet-summary-card">
         <div className="section-heading"><div><p className="eyebrow">Mandatory daily bet</p><h3>Stableford pick coverage</h3></div><strong>{stablefordMarketSummaries.length} market{stablefordMarketSummaries.length === 1 ? '' : 's'}</strong></div>

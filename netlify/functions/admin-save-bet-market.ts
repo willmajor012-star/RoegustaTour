@@ -84,6 +84,12 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     const matches = await runRows<{ id: string; tour_id: string }>(supabase.from('matches').select('id, tour_id').eq('id', matchId).limit(1), 'find bet market match');
     if (matches.length === 0 || matches[0].tour_id !== tourId) return badRequest('Match must belong to this tour.');
   }
+  const linkedPlayerIds = [...new Set(options.map((option) => option.linkedPlayerId).filter((playerId): playerId is string => Boolean(playerId)))];
+  if (linkedPlayerIds.length > 0) {
+    const liveOptionPlayers = await runRows<{ player_id: string; players: { active: boolean } | { active: boolean }[] | null }>(supabase.from('tour_players').select('player_id, players(active)').eq('tour_id', tourId).eq('attending', true).in('player_id', linkedPlayerIds), 'find live option players');
+    const validLivePlayerIds = new Set(liveOptionPlayers.filter((row) => { const player = Array.isArray(row.players) ? row.players[0] : row.players; return player?.active; }).map((row) => row.player_id));
+    if (linkedPlayerIds.some((playerId) => !validLivePlayerIds.has(playerId))) return badRequest('Player-linked Bet Punto options must be active attending players on this tour.');
+  }
 
   const marketId = id ?? crypto.randomUUID();
   const marketRow = {

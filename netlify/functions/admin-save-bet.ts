@@ -23,13 +23,25 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
 
   if (!optionId) return badRequest('Option is required.');
   if (!bettorName) return badRequest('Bettor name is required.');
+  if (!bettorPlayerId) return badRequest('Choose a live tour player for this bet.');
   if (stakeAmountPence === null || !Number.isInteger(stakeAmountPence) || stakeAmountPence <= 0) return badRequest('Stake must be a positive pounds-and-pence amount.');
   if (!['active', 'void'].includes(status)) return badRequest('Bet status is invalid.');
 
-  const optionRows = await runRows<{ market_id: string }>(supabase.from('bet_options').select('market_id').eq('id', optionId).limit(1), 'find bet option');
+  const optionRows = await runRows<{ market_id: string; linked_player_id: string | null; bet_markets: { tour_id: string } | { tour_id: string }[] | null }>(supabase.from('bet_options').select('market_id, linked_player_id, bet_markets(tour_id)').eq('id', optionId).limit(1), 'find bet option');
   if (optionRows.length === 0) return badRequest('Option must exist.');
   const effectiveMarketId = marketId ?? optionRows[0].market_id;
   if (String(optionRows[0].market_id) !== effectiveMarketId) return badRequest('Option does not belong to this market.');
+  const marketRow = Array.isArray(optionRows[0].bet_markets) ? optionRows[0].bet_markets[0] : optionRows[0].bet_markets;
+  const tourId = marketRow?.tour_id;
+  if (!tourId) return badRequest('Bet option must belong to a tour market.');
+  const liveBettors = await runRows<{ player_id: string; players: { display_name: string; active: boolean } | { display_name: string; active: boolean }[] | null }>(supabase.from('tour_players').select('player_id, players(display_name, active)').eq('tour_id', tourId).eq('attending', true).eq('player_id', bettorPlayerId).limit(1), 'find live admin bettor');
+  const liveBettorPlayer = liveBettors[0] ? (Array.isArray(liveBettors[0].players) ? liveBettors[0].players[0] : liveBettors[0].players) : null;
+  if (!liveBettorPlayer?.active) return badRequest('Bettor must be an active attending player on this tour.');
+  if (optionRows[0].linked_player_id) {
+    const optionPlayer = await runRows<{ player_id: string; players: { active: boolean } | { active: boolean }[] | null }>(supabase.from('tour_players').select('player_id, players(active)').eq('tour_id', tourId).eq('attending', true).eq('player_id', optionRows[0].linked_player_id).limit(1), 'find live option player');
+    const linked = optionPlayer[0] ? (Array.isArray(optionPlayer[0].players) ? optionPlayer[0].players[0] : optionPlayer[0].players) : null;
+    if (!linked?.active) return badRequest('Bet option must be a live attending player on this tour.');
+  }
 
   const previous = id ? await runRows<Record<string, unknown>>(supabase.from('bets').select('*').eq('id', id).limit(1), 'find bet') : [];
   if (id && previous.length === 0) return badRequest('Bet must exist.');
@@ -38,7 +50,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const row = {
     market_id: effectiveMarketId,
     option_id: optionId,
-    bettor_name: bettorName.slice(0, 120),
+    bettor_name: liveBettorPlayer.display_name.slice(0, 120),
     bettor_player_id: bettorPlayerId,
     stake_text: stakeText(stakeAmountPence),
     stake_amount_pence: stakeAmountPence,

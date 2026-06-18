@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { calculateIndicativePayouts, calculateMarketPotPence, formatPenceCurrency, formatStakeCurrency, parseStakeAmount, stakeAmountToPence } from '../lib/betting';
+import { calculateIndicativePayouts, calculateMarketPotPence, formatPenceCurrency, formatStakeCurrency, getBetStakePence, parseStakeAmount, stakeAmountToPence } from '../lib/betting';
 import type { Bet, BetMarket, BetOption, Round } from '../lib/types';
 import { formatTeeTimeDisplay } from '../lib/display';
 
@@ -34,6 +34,10 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
   const potPence = calculateMarketPotPence(market.id, bets);
   const payoutSummary = useMemo(() => calculateIndicativePayouts(market, options, bets), [market, options, bets]);
   const winningOption = options.find((option) => option.id === market.resultOptionId);
+  const optionStakeRows = options.map((option) => {
+    const optionBets = activeBets.filter((bet) => bet.optionId === option.id);
+    return { option, optionBets, totalPence: optionBets.reduce((total, bet) => total + getBetStakePence(bet), 0) };
+  });
 
   useEffect(() => {
     if (!options.some((option) => option.id === selectedOptionId)) setSelectedOptionId(options[0]?.id ?? '');
@@ -62,6 +66,13 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
       {market.resultText && <p className="settled">Result: {market.resultText}</p>}
       {market.status === 'settled' && winningOption && <p className="settled">Winning option: {winningOption.label}</p>}
       {isOpen ? (
+        <>
+        <div className="table-wrap">
+          <table className="bet-summary-table">
+            <thead><tr><th>Option</th><th>Total staked</th><th>Bets</th><th>Bettors / stakes</th></tr></thead>
+            <tbody>{optionStakeRows.map((row) => <tr key={row.option.id}><td>{row.option.label}</td><td>{formatPenceCurrency(row.totalPence)}</td><td>{row.optionBets.length}</td><td>{row.optionBets.length === 0 ? 'No stakes yet' : row.optionBets.map((bet) => `${bet.bettorName} ${formatStakeCurrency(bet)}`).join(', ')}</td></tr>)}</tbody>
+          </table>
+        </div>
         <form className="bet-form" onSubmit={handleSubmit}>
           <label>
             Pick an option
@@ -83,6 +94,7 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
           {submitMessage && <small>{submitMessage}</small>}
           <small>No wallet, no payment handling, no money transfer — this app only logs Bet Punto picks and indicative payouts.</small>
         </form>
+        </>
       ) : (
         <div className="option-list">{options.map((option) => <span className="pill" key={option.id}>{option.label}{option.oddsDecimal ? ` · ${option.oddsDecimal}x` : ''}</span>)}</div>
       )}

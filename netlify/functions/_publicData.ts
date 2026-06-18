@@ -120,6 +120,7 @@ function mapPublicBetRow(row: Row) {
     marketId: String(row.market_id),
     optionId: String(row.option_id),
     bettorName: String(row.bettor_name),
+    bettorPlayerId: typeof row.bettor_player_id === 'string' ? row.bettor_player_id : undefined,
     stakeText: typeof row.stake_text === 'string' ? row.stake_text : undefined,
     stakeAmountPence: typeof row.stake_amount_pence === 'number' ? row.stake_amount_pence : Number(row.stake_amount_pence) || undefined,
     payoutAmountPence: typeof row.payout_amount_pence === 'number' ? row.payout_amount_pence : undefined,
