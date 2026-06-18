@@ -12,7 +12,7 @@ const marketTypes: BetMarket['marketType'][] = ['match_winner', 'player_performa
 const marketScopes: BetMarket['marketScope'][] = ['general_pot', 'special'];
 const statuses: BetMarket['status'][] = ['open', 'closed', 'settled', 'void'];
 const sides: NonNullable<BetOption['linkedMatchSide']>[] = ['A', 'B', 'halved'];
-const betPuntoSchemaMessage = 'Bet Punto settlement columns are not available in the live schema yet. Run Supabase migrations 0004_bet_punto_tracking.sql and 0005_bet_market_scope.sql, then refresh the admin page.';
+const betPuntoSchemaMessage = 'Bet Punto settlement columns are not available in the live schema yet. Run Supabase migration 0013_bet_punto_round_market_schema_refresh.sql; it repairs Bet Punto columns and reloads the Supabase schema cache.';
 
 type OptionInput = {
   id?: string;

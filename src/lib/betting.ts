@@ -1,6 +1,62 @@
-import type { Bet, BetMarket, BetOption } from './types';
+import type { Bet, BetMarket, BetOption, Match, Round } from './types';
 
 const currencyFormatter = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' });
+
+export type BetPuntoMarketKind = 'player_winner' | 'team_winner' | 'advanced';
+
+export function betPuntoMarketKind(market: Pick<BetMarket, 'marketType'>): BetPuntoMarketKind {
+  if (market.marketType === 'player_performance') return 'player_winner';
+  if (market.marketType === 'team_result') return 'team_winner';
+  return 'advanced';
+}
+
+export function betPuntoMarketKindLabel(kind: BetPuntoMarketKind) {
+  if (kind === 'player_winner') return 'Player winner';
+  if (kind === 'team_winner') return 'Team winner';
+  return 'Advanced/custom';
+}
+
+function teeTimeMinutes(value?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+function minutesToTeeTime(minutes: number) {
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+}
+
+export function earliestRoundTeeTime(round: Pick<Round, 'id' | 'teeTime'>, matches: Pick<Match, 'roundId' | 'teeTime'>[] = []) {
+  const candidates = [teeTimeMinutes(round.teeTime), ...matches.filter((match) => match.roundId === round.id).map((match) => teeTimeMinutes(match.teeTime))].filter((minutes): minutes is number => minutes !== null);
+  if (candidates.length === 0) return null;
+  return minutesToTeeTime(Math.min(...candidates));
+}
+
+export function defaultBetMarketCloseLocal(round: Pick<Round, 'id' | 'roundDate' | 'teeTime'> | undefined, matches: Pick<Match, 'roundId' | 'teeTime'>[] = []) {
+  if (!round?.roundDate) return { value: '', warning: 'Round date is missing. Set the Bet Punto close time manually.' };
+  const firstTeeTime = earliestRoundTeeTime(round, matches);
+  if (!firstTeeTime) return { value: '', warning: 'No valid round or tee time found. Set the Bet Punto close time manually.' };
+  return { value: `${round.roundDate}T${firstTeeTime}`, warning: null };
+}
+
+export function isMarketPubliclyEditable(market: Pick<BetMarket, 'status' | 'closesAt'>, now = Date.now()) {
+  if (market.status !== 'open') return false;
+  if (!market.closesAt) return false;
+  const closeTime = Date.parse(market.closesAt);
+  return Number.isFinite(closeTime) && closeTime > now;
+}
+
+export function buildMarketOptionStakeRows(options: BetOption[], bets: Bet[]) {
+  return options.map((option) => {
+    const optionBets = bets.filter((bet) => bet.optionId === option.id && bet.status === 'active');
+    return { option, optionBets, totalPence: optionBets.reduce((total, bet) => total + getBetStakePence(bet), 0) };
+  });
+}
 
 export function getBetsForMarket(marketId: string, bets: Bet[]) {
   return bets.filter((bet) => bet.marketId === marketId && bet.status === 'active');
@@ -131,8 +187,8 @@ function normalizedName(name: string) {
   return name.trim().toLowerCase();
 }
 
-function isStablefordMarket(market: BetMarket) {
-  return market.status !== 'void' && market.marketType === 'player_performance' && market.title.toLowerCase().includes('stableford');
+function isMandatoryMarket(market: BetMarket) {
+  return market.status !== 'void' && (market.marketType === 'player_performance' || market.marketType === 'team_result');
 }
 
 export function getActiveBetsForMarket(marketId: string, bets: Bet[]) {
@@ -159,7 +215,7 @@ export function buildBetPuntoMarketSummaries(markets: BetMarket[], options: BetO
       totalBets: activeMarketBets.length,
       totalStakePence: activeMarketBets.reduce((total, bet) => total + getBetStakePence(bet), 0),
       settledPayoutPence: [...payoutSummary.payouts.values()].reduce((total, payout) => total + payout, 0),
-      missingBettorNames: isStablefordMarket(market) ? [...mandatoryNamesByKey].filter(([key]) => !backedKeys.has(key)).map(([, name]) => name) : [],
+      missingBettorNames: isMandatoryMarket(market) ? [...mandatoryNamesByKey].filter(([key]) => !backedKeys.has(key)).map(([, name]) => name) : [],
     };
   });
 }
@@ -167,7 +223,7 @@ export function buildBetPuntoMarketSummaries(markets: BetMarket[], options: BetO
 export function buildBetPuntoBettorSummaries(markets: BetMarket[], options: BetOption[], bets: Bet[], mandatoryBettorNames: string[] = []): BetPuntoBettorSummary[] {
   const marketById = new Map(markets.map((market) => [market.id, market]));
   const payoutMap = calculateMarketPayoutMap(markets, options, bets);
-  const stablefordMarkets = markets.filter(isStablefordMarket);
+  const mandatoryMarkets = markets.filter(isMandatoryMarket);
   const summaryByKey = new Map<string, BetPuntoBettorSummary>();
   const displayNameByKey = new Map<string, string>();
 
@@ -204,7 +260,7 @@ export function buildBetPuntoBettorSummaries(markets: BetMarket[], options: BetO
 
   for (const [key, summary] of summaryByKey) {
     const backedStablefordMarketIds = new Set(bets.filter((bet) => normalizedName(bet.bettorName) === key && bet.status === 'active').map((bet) => bet.marketId));
-    summary.missingStablefordPicks = stablefordMarkets.filter((market) => !backedStablefordMarketIds.has(market.id)).length;
+    summary.missingStablefordPicks = mandatoryMarkets.filter((market) => !backedStablefordMarketIds.has(market.id)).length;
     summary.netPence = summary.settledPayoutPence - summary.totalStakePence;
   }
 
