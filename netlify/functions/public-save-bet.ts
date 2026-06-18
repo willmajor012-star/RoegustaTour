@@ -16,6 +16,21 @@ function optionalString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
 }
 
+function generateEditToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+async function hashEditToken(token: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function tokenMatchesHash(token: string, expectedHash: string) {
+  return await hashEditToken(token) === expectedHash;
+}
+
 function mapPublicBet(row: Row) {
   return {
     id: String(row.id),
@@ -65,13 +80,15 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
   const optionId = optionalString(body.optionId);
   const bettorName = optionalString(body.bettorName);
   const comment = optionalString(body.comment);
+  const editToken = optionalString(body.editToken);
   const stakeAmountPence = typeof body.stakeAmountPence === 'number' ? body.stakeAmountPence : Number(body.stakeAmountPence);
 
   if (!['create', 'edit', 'void'].includes(action)) return jsonResponse(400, { ok: false, message: 'Bet action is invalid.' });
   if (!marketId && action === 'create') return jsonResponse(400, { ok: false, message: 'Market is required.' });
   if (!betId && action !== 'create') return jsonResponse(400, { ok: false, message: 'Bet is required.' });
   if (!optionId && action !== 'void') return jsonResponse(400, { ok: false, message: 'Option is required.' });
-  if (!bettorName) return jsonResponse(400, { ok: false, message: 'Bettor name is required.' });
+  if (action !== 'create' && !editToken) return jsonResponse(403, { ok: false, message: 'This Bet Punto pick cannot be changed without its private edit token.' });
+  if (action === 'create' && !bettorName) return jsonResponse(400, { ok: false, message: 'Bettor name is required.' });
   if (action !== 'void' && (!Number.isInteger(stakeAmountPence) || stakeAmountPence <= 0)) return jsonResponse(400, { ok: false, message: 'Stake must be a positive pounds-and-pence amount.' });
 
   try {
@@ -84,7 +101,9 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
       if (existing.length === 0) return jsonResponse(404, { ok: false, message: 'Bet was not found.' });
       existingBet = existing[0];
       effectiveMarketId = String(existingBet.market_id);
-      if (String(existingBet.bettor_name).trim().toLowerCase() !== bettorName.trim().toLowerCase()) return jsonResponse(403, { ok: false, message: 'You can only edit your own Bet Punto picks.' });
+      const storedEditTokenHash = optionalString(existingBet.public_edit_token_hash);
+      if (!storedEditTokenHash) return jsonResponse(403, { ok: false, message: 'This Bet Punto pick does not have public edit access. Ask an admin to change it.' });
+      if (!editToken || !(await tokenMatchesHash(editToken, storedEditTokenHash))) return jsonResponse(403, { ok: false, message: 'This Bet Punto pick cannot be changed without its private edit token.' });
       if (String(existingBet.status) !== 'active') return jsonResponse(400, { ok: false, message: 'Only active Bet Punto picks can be changed.' });
     }
     const markets = await runRows<{ id: string; status: string; closes_at: string | null }>(supabase.from('bet_markets').select('id, status, closes_at').eq('id', effectiveMarketId).limit(1), 'find bet market');
@@ -109,10 +128,11 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
       return jsonResponse(200, { ok: true, bet: mapPublicBet(saved) });
     }
 
+    const newEditToken = generateEditToken();
     const insertRow = {
       market_id: effectiveMarketId,
       option_id: optionId,
-      bettor_name: bettorName.slice(0, 120),
+      bettor_name: bettorName!.slice(0, 120),
       stake_text: `£${(stakeAmountPence / 100).toFixed(stakeAmountPence % 100 === 0 ? 0 : 2)}`,
       stake_amount_pence: stakeAmountPence,
       comment: comment?.slice(0, 240) ?? null,
@@ -120,9 +140,10 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
       outcome_status: 'pending',
       payout_status: 'not_applicable',
       device_id: deviceId,
+      public_edit_token_hash: await hashEditToken(newEditToken),
     };
     const saved = await runSingle<Row>(supabase.from('bets').insert(insertRow).select('*').single(), 'save public bet');
-    return jsonResponse(200, { ok: true, bet: mapPublicBet(saved) });
+    return jsonResponse(200, { ok: true, bet: mapPublicBet(saved), editToken: newEditToken });
   } catch (error) {
     console.error('Public bet save failed:', error);
     return jsonResponse(500, { ok: false, message: 'Bet Punto pick could not be saved.' });

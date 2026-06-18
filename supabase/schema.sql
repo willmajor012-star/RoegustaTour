@@ -258,6 +258,7 @@ create table bets (
   admin_entered boolean not null default false,
   admin_notes text,
   void_reason text,
+  public_edit_token_hash text,
   device_id text,
   status text not null check (status in ('active','void')) default 'active',
   created_at timestamptz not null default now(),
@@ -266,6 +267,7 @@ create table bets (
 create index bets_market_idx on bets(market_id);
 create index bets_device_idx on bets(device_id);
 create index bets_bettor_player_idx on bets(bettor_player_id);
+create index bets_public_edit_token_hash_idx on bets(public_edit_token_hash) where public_edit_token_hash is not null;
 create index bets_market_bettor_idx on bets(market_id, lower(btrim(bettor_name)));
 
 create table audit_log (

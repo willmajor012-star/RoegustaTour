@@ -34,6 +34,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const previous = id ? await runRows<Record<string, unknown>>(supabase.from('bets').select('*').eq('id', id).limit(1), 'find bet') : [];
   if (id && previous.length === 0) return badRequest('Bet must exist.');
 
+  const previousBet = previous[0];
   const row = {
     market_id: effectiveMarketId,
     option_id: optionId,
@@ -46,8 +47,10 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     admin_notes: adminNotes,
     void_reason: status === 'void' ? (voidReason ?? adminNotes ?? 'Voided by admin') : null,
     status,
-    outcome_status: status === 'void' ? 'void' : 'pending',
-    payout_status: 'not_applicable',
+    outcome_status: status === 'void' ? 'void' : (optionalString(previousBet?.outcome_status) ?? 'pending'),
+    payout_status: status === 'void' ? 'not_applicable' : (optionalString(previousBet?.payout_status) ?? 'not_applicable'),
+    payout_amount_pence: status === 'void' ? null : (typeof previousBet?.payout_amount_pence === 'number' ? previousBet.payout_amount_pence : previousBet?.payout_amount_pence ?? null),
+    payout_notes: status === 'void' ? null : (optionalString(previousBet?.payout_notes) ?? null),
     updated_at: new Date().toISOString(),
   };
 

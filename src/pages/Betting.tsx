@@ -15,6 +15,27 @@ function marketStatusLabel(status?: string) {
 }
 
 const emptyBettingData: Omit<PublicBetMarketsResponse, 'source'> = { rounds: [], players: [], tourPlayers: [], betMarkets: [], betOptions: [], bets: [] };
+const betEditTokenStorageKey = 'rt-bet-edit-tokens';
+
+function readBetEditTokens() {
+  try {
+    return JSON.parse(localStorage.getItem(betEditTokenStorageKey) ?? '{}') as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function saveBetEditToken(betId: string, editToken?: string) {
+  if (!editToken) return;
+  const tokens = readBetEditTokens();
+  tokens[betId] = editToken;
+  localStorage.setItem(betEditTokenStorageKey, JSON.stringify(tokens));
+}
+
+function betEditToken(betId: string) {
+  return readBetEditTokens()[betId];
+}
+
 
 export function Betting() {
   const [bettorName, setBettorName] = useState('');
@@ -57,6 +78,7 @@ export function Betting() {
     setSubmitMessages((current) => ({ ...current, [marketId]: 'Saving your Bet Punto pick…' }));
     try {
       const response = await savePublicBet({ marketId, optionId, bettorName: name, stakeAmountPence, comment: comment || undefined });
+      saveBetEditToken(response.bet.id, response.editToken);
       upsertLocalBet(response.bet);
       setSubmitMessages((current) => ({ ...current, [marketId]: 'Pick saved to the tour Bet Punto log.' }));
     } catch (saveError) {
@@ -71,7 +93,9 @@ export function Betting() {
     if (!market || market.status !== 'open') return;
     const stakeAmountPence = Math.round(Number(editDraft.stake) * 100);
     if (!editDraft.optionId || !Number.isInteger(stakeAmountPence) || stakeAmountPence <= 0) return;
-    const response = await savePublicBet({ action: 'edit', betId: bet.id, bettorName: bettorName.trim(), optionId: editDraft.optionId, stakeAmountPence, comment: editDraft.comment || undefined });
+    const editToken = betEditToken(bet.id);
+    if (!editToken) return;
+    const response = await savePublicBet({ action: 'edit', betId: bet.id, bettorName: bettorName.trim(), optionId: editDraft.optionId, stakeAmountPence, comment: editDraft.comment || undefined, editToken });
     upsertLocalBet(response.bet);
     setEditingBetId(null);
   };
@@ -79,7 +103,9 @@ export function Betting() {
   const voidBet = async (bet: Bet) => {
     const market = activeData.betMarkets.find((candidate) => candidate.id === bet.marketId);
     if (!market || market.status !== 'open') return;
-    const response = await savePublicBet({ action: 'void', betId: bet.id, bettorName: bettorName.trim(), optionId: bet.optionId, stakeAmountPence: bet.stakeAmountPence ?? 1, comment: 'Cancelled by bettor' });
+    const editToken = betEditToken(bet.id);
+    if (!editToken) return;
+    const response = await savePublicBet({ action: 'void', betId: bet.id, bettorName: bettorName.trim(), optionId: bet.optionId, stakeAmountPence: bet.stakeAmountPence ?? 1, comment: 'Cancelled by bettor', editToken });
     upsertLocalBet(response.bet);
   };
 
@@ -134,7 +160,7 @@ export function Betting() {
           const market = activeData.betMarkets.find((candidate) => candidate.id === bet.marketId);
           const option = activeData.betOptions.find((candidate) => candidate.id === bet.optionId);
           const round = market?.roundId ? activeData.rounds.find((candidate) => candidate.id === market.roundId) : undefined;
-          const editable = market?.status === 'open';
+          const editable = market?.status === 'open' && Boolean(betEditToken(bet.id));
           return <article key={bet.id}><strong>{market?.title ?? 'Bet Punto market'}</strong><span>{option?.label ?? 'Option'} · {formatStakeCurrency(bet)} · {marketStatusLabel(market?.status)}{round ? ` · Round ${round.roundNumber}` : ''}</span>{bet.comment ? <small>{bet.comment}</small> : null}{editable && editingBetId !== bet.id ? <div className="chip-list"><button className="pill" type="button" onClick={() => beginEditBet(bet)}>Edit pick</button><button className="pill" type="button" onClick={() => void voidBet(bet)}>Cancel pick</button></div> : null}{editable && editingBetId === bet.id ? <div className="bet-form"><select value={editDraft.optionId} onChange={(event) => setEditDraft({ ...editDraft, optionId: event.target.value })}>{activeData.betOptions.filter((candidate) => candidate.marketId === bet.marketId).map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.label}</option>)}</select><input inputMode="decimal" value={editDraft.stake} onChange={(event) => setEditDraft({ ...editDraft, stake: event.target.value })} /><input value={editDraft.comment} onChange={(event) => setEditDraft({ ...editDraft, comment: event.target.value })} /><button type="button" onClick={() => void editBet(bet)}>Save edit</button><button type="button" onClick={() => setEditingBetId(null)}>Cancel edit</button></div> : null}</article>;
         })}</div>}
       </section>

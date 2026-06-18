@@ -32,6 +32,21 @@ function canPlaceRepeatActivePick() {
   return true;
 }
 
+
+function canPublicChangeBet(existingBet, providedToken) {
+  return Boolean(existingBet.publicEditTokenHash && providedToken && existingBet.publicEditTokenHash === `hash:${providedToken}` && existingBet.status === 'active');
+}
+
+function adminSaveBetRow(previousBet, nextStatus) {
+  return {
+    status: nextStatus,
+    outcomeStatus: nextStatus === 'void' ? 'void' : (previousBet?.outcomeStatus ?? 'pending'),
+    payoutStatus: nextStatus === 'void' ? 'not_applicable' : (previousBet?.payoutStatus ?? 'not_applicable'),
+    payoutAmountPence: nextStatus === 'void' ? null : (previousBet?.payoutAmountPence ?? null),
+    payoutNotes: nextStatus === 'void' ? null : (previousBet?.payoutNotes ?? null),
+  };
+}
+
 function mapPublicBetRow(row) {
   return {
     id: String(row.id),
@@ -80,6 +95,30 @@ describe('Bet Punto payout and duplicate rules', () => {
     ]);
     assert.equal(payouts.get('rosie-1'), 1000);
     assert.equal(payouts.get('rosie-2'), 500);
+  });
+});
+
+describe('Bet Punto public edit tokens and admin overrides', () => {
+  it('requires a private edit token for public edit and void', () => {
+    const bet = { status: 'active', bettorName: 'Rosie', publicEditTokenHash: 'hash:secret-token' };
+    assert.equal(canPublicChangeBet(bet, 'secret-token'), true);
+    assert.equal(canPublicChangeBet(bet, undefined), false);
+    assert.equal(canPublicChangeBet(bet, 'wrong-token'), false);
+  });
+
+  it('does not let bettorName alone or no-token legacy bets authorize public changes', () => {
+    assert.equal(canPublicChangeBet({ status: 'active', bettorName: 'Rosie', publicEditTokenHash: null }, 'secret-token'), false);
+    assert.equal(canPublicChangeBet({ status: 'active', bettorName: 'Rosie', publicEditTokenHash: 'hash:other-token' }, undefined), false);
+  });
+
+  it('preserves admin settlement fields when editing non-void bets', () => {
+    const saved = adminSaveBetRow({ outcomeStatus: 'won', payoutStatus: 'unpaid', payoutAmountPence: 1200, payoutNotes: 'Pay cash' }, 'active');
+    assert.deepEqual(saved, { status: 'active', outcomeStatus: 'won', payoutStatus: 'unpaid', payoutAmountPence: 1200, payoutNotes: 'Pay cash' });
+  });
+
+  it('normalises settlement fields when admin voids a bet', () => {
+    const saved = adminSaveBetRow({ outcomeStatus: 'won', payoutStatus: 'unpaid', payoutAmountPence: 1200, payoutNotes: 'Pay cash' }, 'void');
+    assert.deepEqual(saved, { status: 'void', outcomeStatus: 'void', payoutStatus: 'not_applicable', payoutAmountPence: null, payoutNotes: null });
   });
 });
 
