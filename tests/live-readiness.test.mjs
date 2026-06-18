@@ -59,6 +59,32 @@ function optionStakeRows(options, bets) {
   });
 }
 
+
+function teeTimeMinutes(value) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+function earliestRoundTeeTime(round, matches = []) {
+  const candidates = [teeTimeMinutes(round.teeTime), ...matches.filter((match) => match.roundId === round.id).map((match) => teeTimeMinutes(match.teeTime))].filter((minutes) => minutes !== null);
+  if (candidates.length === 0) return null;
+  const minutes = Math.min(...candidates);
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
+}
+
+function defaultBetMarketCloseLocal(round, matches = []) {
+  if (!round?.roundDate) return { value: '', warning: 'Round date is missing. Set the Bet Punto close time manually.' };
+  const firstTeeTime = earliestRoundTeeTime(round, matches);
+  if (!firstTeeTime) return { value: '', warning: 'No valid round or tee time found. Set the Bet Punto close time manually.' };
+  return { value: `${round.roundDate}T${firstTeeTime}`, warning: null };
+}
+
 function resolveLivePlayer(input, players, tourPlayers) {
   const liveIds = new Set(tourPlayers.filter((row) => row.attending).map((row) => row.playerId));
   const normalized = input.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -130,6 +156,14 @@ describe('Bet Punto payout and duplicate rules', () => {
 describe('Bet Punto live market public layout and settlement rules', () => {
   it('keeps the player betting summary collapsed by default', () => {
     assert.equal(playerSummaryExpandedByDefault(), false);
+  });
+
+  it('uses Supabase HH:mm:ss tee times when defaulting round market close time', () => {
+    assert.deepEqual(defaultBetMarketCloseLocal({ id: 'r1', roundDate: '2026-11-07', teeTime: '09:00:00' }), { value: '2026-11-07T09:00', warning: null });
+  });
+
+  it('uses the earliest tee time across round and match tee times', () => {
+    assert.equal(earliestRoundTeeTime({ id: 'r1', teeTime: '09:15:00' }, [{ roundId: 'r1', teeTime: '08:45:00' }, { roundId: 'r1', teeTime: '09:05' }, { roundId: 'r2', teeTime: '07:30:00' }]), '08:45');
   });
 
   it('builds open-market stake totals by option', () => {

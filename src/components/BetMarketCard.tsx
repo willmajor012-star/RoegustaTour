@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { calculateIndicativePayouts, calculateMarketPotPence, formatPenceCurrency, formatStakeCurrency, getBetStakePence, parseStakeAmount, stakeAmountToPence } from '../lib/betting';
+import { betPuntoMarketKind, betPuntoMarketKindLabel, buildMarketOptionStakeRows, calculateIndicativePayouts, calculateMarketPotPence, formatPenceCurrency, formatStakeCurrency, isMarketPubliclyEditable, parseStakeAmount, stakeAmountToPence } from '../lib/betting';
 import type { Bet, BetMarket, BetOption, Round } from '../lib/types';
 import { formatTeeTimeDisplay } from '../lib/display';
 
@@ -28,16 +28,14 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
   const [stakeTouched, setStakeTouched] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const activeBets = bets.filter((bet) => bet.marketId === market.id && bet.status === 'active');
-  const isOpen = market.status === 'open';
+  const isOpen = isMarketPubliclyEditable(market);
+  const marketKind = betPuntoMarketKind(market);
   const parsedStake = parseStakeAmount(stakeInput);
   const hasStakeError = stakeTouched && stakeInput.trim().length > 0 && parsedStake === null;
   const potPence = calculateMarketPotPence(market.id, bets);
   const payoutSummary = useMemo(() => calculateIndicativePayouts(market, options, bets), [market, options, bets]);
   const winningOption = options.find((option) => option.id === market.resultOptionId);
-  const optionStakeRows = options.map((option) => {
-    const optionBets = activeBets.filter((bet) => bet.optionId === option.id);
-    return { option, optionBets, totalPence: optionBets.reduce((total, bet) => total + getBetStakePence(bet), 0) };
-  });
+  const optionStakeRows = buildMarketOptionStakeRows(options, activeBets);
 
   useEffect(() => {
     if (!options.some((option) => option.id === selectedOptionId)) setSelectedOptionId(options[0]?.id ?? '');
@@ -60,11 +58,12 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
 
   return (
     <article className="bet-card card">
-      <div className="card-meta"><span>{market.marketType.replace('_', ' ')}</span>{round && <span>Round {round.roundNumber}{round.roundDate ? ` · ${round.roundDate}` : ''}{round.teeTime ? ` · ${formatTeeTimeDisplay(round.teeTime)}` : ''}</span>}<span>{market.marketScope === 'general_pot' ? 'General pot' : 'Special/manual'}</span><span>{marketStatusLabel(market.status)}</span></div>
+      <div className="card-meta"><span>{betPuntoMarketKindLabel(marketKind)}</span>{round && <span>Round {round.roundNumber}{round.roundDate ? ` · ${round.roundDate}` : ''}{round.teeTime ? ` · ${formatTeeTimeDisplay(round.teeTime)}` : ''}</span>}<span>{market.marketScope === 'general_pot' ? 'General pot' : 'Special/manual'}</span><span>{marketStatusLabel(market.status)}</span></div>
       <div className="bet-card-title"><h3>{market.title}</h3><span>{formatPenceCurrency(potPence)} pot</span></div>
       {market.description && <p>{market.description}</p>}
       {market.resultText && <p className="settled">Result: {market.resultText}</p>}
       {market.status === 'settled' && winningOption && <p className="settled">Winning option: {winningOption.label}</p>}
+      {market.status === 'open' && !isOpen ? <p className="settled">This market has reached its close time. Public edits and cancellations are disabled while it awaits admin closure/result entry.</p> : null}
       {isOpen ? (
         <>
         <div className="table-wrap">
@@ -92,12 +91,10 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
           <button disabled={!bettorName.trim() || parsedStake === null || isSubmitting} type="submit">{isSubmitting ? 'Saving…' : 'Submit Bet Punto pick'}</button>
           {!bettorName.trim() && <small>Enter your name above before submitting.</small>}
           {submitMessage && <small>{submitMessage}</small>}
-          <small>No wallet, no payment handling, no money transfer — this app only logs Bet Punto picks and indicative payouts.</small>
         </form>
         </>
-      ) : (
-        <div className="option-list">{options.map((option) => <span className="pill" key={option.id}>{option.label}{option.oddsDecimal ? ` · ${option.oddsDecimal}x` : ''}</span>)}</div>
-      )}
+      ) : null}
+      {!isOpen ? <div className="table-wrap"><table className="bet-summary-table"><thead><tr><th>Option</th><th>Total staked</th><th>Bets</th><th>Bettors / stakes</th></tr></thead><tbody>{optionStakeRows.map((row) => <tr key={row.option.id}><td>{row.option.label}</td><td>{formatPenceCurrency(row.totalPence)}</td><td>{row.optionBets.length}</td><td>{row.optionBets.length === 0 ? 'No stakes logged' : row.optionBets.map((bet) => `${bet.bettorName} ${formatStakeCurrency(bet)}`).join(', ')}</td></tr>)}</tbody></table></div> : null}
       <div className="bet-log premium-inset">
         <strong>Backed by</strong>
         {activeBets.length === 0 ? <p>No picks logged yet.</p> : activeBets.map((bet) => {

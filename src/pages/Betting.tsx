@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BetMarketCard } from '../components/BetMarketCard';
 import { fetchPublicBetMarkets, savePublicBet, type PublicBetMarketsResponse } from '../lib/publicApi';
 import { usePublicData } from '../lib/usePublicData';
-import { buildBetPuntoBettorSummaries, buildBetPuntoMarketSummaries, formatPenceCurrency, formatStakeCurrency } from '../lib/betting';
+import { buildBetPuntoBettorSummaries, buildBetPuntoMarketSummaries, formatPenceCurrency, formatStakeCurrency, isMarketPubliclyEditable } from '../lib/betting';
 import type { Bet } from '../lib/types';
 
 
@@ -91,7 +91,7 @@ export function Betting() {
 
   const editBet = async (bet: Bet) => {
     const market = activeData.betMarkets.find((candidate) => candidate.id === bet.marketId);
-    if (!market || market.status !== 'open') return;
+    if (!market || !isMarketPubliclyEditable(market)) return;
     const stakeAmountPence = Math.round(Number(editDraft.stake) * 100);
     if (!editDraft.optionId || !Number.isInteger(stakeAmountPence) || stakeAmountPence <= 0) return;
     const editToken = betEditToken(bet.id);
@@ -103,7 +103,7 @@ export function Betting() {
 
   const voidBet = async (bet: Bet) => {
     const market = activeData.betMarkets.find((candidate) => candidate.id === bet.marketId);
-    if (!market || market.status !== 'open') return;
+    if (!market || !isMarketPubliclyEditable(market)) return;
     const editToken = betEditToken(bet.id);
     if (!editToken) return;
     const response = await savePublicBet({ action: 'void', betId: bet.id, bettorName: bettorName.trim(), optionId: bet.optionId, stakeAmountPence: bet.stakeAmountPence ?? 1, comment: 'Cancelled by bettor', editToken });
@@ -120,7 +120,6 @@ export function Betting() {
       <section className="page-title premium-title bet-punto-hero card">
         <p className="eyebrow">Visible voting and stake log</p>
         <h2>Bet Punto</h2>
-        <p>No wallet, no payment handling and no money transfer. This is only a private tour stake log and indicative payout tracker.</p>
       </section>
       {loading && <p className="card">Loading Bet Punto markets…</p>}
       {error && <p className="card form-error">{error}</p>}
@@ -163,7 +162,7 @@ export function Betting() {
           const market = activeData.betMarkets.find((candidate) => candidate.id === bet.marketId);
           const option = activeData.betOptions.find((candidate) => candidate.id === bet.optionId);
           const round = market?.roundId ? activeData.rounds.find((candidate) => candidate.id === market.roundId) : undefined;
-          const editable = market?.status === 'open' && Boolean(betEditToken(bet.id));
+          const editable = Boolean(market && isMarketPubliclyEditable(market) && betEditToken(bet.id));
           return <article key={bet.id}><strong>{market?.title ?? 'Bet Punto market'}</strong><span>{option?.label ?? 'Option'} · {formatStakeCurrency(bet)} · {marketStatusLabel(market?.status)}{round ? ` · Round ${round.roundNumber}` : ''}</span>{bet.comment ? <small>{bet.comment}</small> : null}{editable && editingBetId !== bet.id ? <div className="chip-list"><button className="pill" type="button" onClick={() => beginEditBet(bet)}>Edit pick</button><button className="pill" type="button" onClick={() => void voidBet(bet)}>Cancel pick</button></div> : null}{editable && editingBetId === bet.id ? <div className="bet-form"><select value={editDraft.optionId} onChange={(event) => setEditDraft({ ...editDraft, optionId: event.target.value })}>{activeData.betOptions.filter((candidate) => candidate.marketId === bet.marketId).map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.label}</option>)}</select><input inputMode="decimal" value={editDraft.stake} onChange={(event) => setEditDraft({ ...editDraft, stake: event.target.value })} /><input value={editDraft.comment} onChange={(event) => setEditDraft({ ...editDraft, comment: event.target.value })} /><button type="button" onClick={() => void editBet(bet)}>Save edit</button><button type="button" onClick={() => setEditingBetId(null)}>Cancel edit</button></div> : null}</article>;
         })}</div>}
       </section>
