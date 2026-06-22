@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from './_supabase';
 import { mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapTour, mapTourHandbookSection, mapTourItineraryItem, mapTourPlayer, mapTourTeam, mapTourTeamDayKit, mapTourTeamMember, mapTourTeamResult } from './_mappers';
 import type { Match, Round, Tour, TourTeam, TourTeamMember } from '../../src/lib/types';
-import { betMarketVisibilityWarning, publicBetPuntoMatchIds, publicBetPuntoPlayerIds, publicBetPuntoRoundIds, publicBetPuntoTeamIds } from '../../src/lib/betPuntoRules';
+import { publicBetPuntoMatchIds, publicBetPuntoPlayerIds, publicBetPuntoRoundIds, publicBetPuntoTeamIds, visibleBetMarkets } from '../../src/lib/betPuntoRules';
 import { selectDefaultTour } from './_tourResolution';
 
 type Row = Record<string, unknown>;
@@ -298,7 +298,7 @@ export async function getBettingBundle(supabase: SupabaseClient) {
   ]);
   const options = optionRows.map(mapBetOption);
   const visibilityContext = { roundIds: publicRoundIds, matchIds: publicMatchIds, playerIds: publicPlayerIds, teamIds: publicTeamIds };
-  const visibleMarkets = marketRows.map(mapBetMarket).filter((market) => !betMarketVisibilityWarning(market, options, visibilityContext));
+  const visibleMarkets = visibleBetMarkets(marketRows.map(mapBetMarket), options, visibilityContext);
   const visibleMarketIds = new Set(visibleMarkets.map((market) => market.id));
   const visibleOptions = options.filter((option) => visibleMarketIds.has(option.marketId));
   const visibleOptionIds = new Set(visibleOptions.map((option) => option.id));

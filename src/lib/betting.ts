@@ -181,14 +181,33 @@ export type BetPuntoBettorSummary = {
   void: number;
   push: number;
   missingStablefordPicks: number;
+  missingMandatoryPicks: number;
 };
 
 function normalizedName(name: string) {
   return name.trim().toLowerCase();
 }
 
-function isMandatoryMarket(market: BetMarket) {
-  return market.status !== 'void' && (market.marketType === 'player_performance' || market.marketType === 'team_result');
+export function isMandatoryMarket(market: BetMarket) {
+  if (market.status === 'void' || market.status === 'draft') return false;
+  if (market.required !== undefined) return market.required;
+  return market.marketType === 'player_performance' && market.title.toLowerCase().includes('stableford');
+}
+
+export function betMarketUiStatus(market: Pick<BetMarket, 'status' | 'closesAt'>, now = Date.now()) {
+  if (market.status === 'open' && !isMarketPubliclyEditable(market, now)) return 'locked';
+  return market.status;
+}
+
+export function betMarketUiStatusLabel(market: Pick<BetMarket, 'status' | 'closesAt'>, now = Date.now()) {
+  const status = betMarketUiStatus(market, now);
+  if (status === 'draft') return 'Draft';
+  if (status === 'open') return 'Open';
+  if (status === 'locked') return 'Locked / awaiting result';
+  if (status === 'closed') return 'Closed / awaiting result';
+  if (status === 'settled') return 'Settled';
+  if (status === 'void') return 'Void';
+  return 'Unavailable';
 }
 
 export function getActiveBetsForMarket(marketId: string, bets: Bet[]) {
@@ -233,7 +252,7 @@ export function buildBetPuntoBettorSummaries(markets: BetMarket[], options: BetO
     displayNameByKey.set(key, displayName);
     const existing = summaryByKey.get(key);
     if (existing) return existing;
-    const next: BetPuntoBettorSummary = { bettorName: displayName, totalBets: 0, totalStakePence: 0, settledPayoutPence: 0, netPence: 0, won: 0, lost: 0, pending: 0, void: 0, push: 0, missingStablefordPicks: 0 };
+    const next: BetPuntoBettorSummary = { bettorName: displayName, totalBets: 0, totalStakePence: 0, settledPayoutPence: 0, netPence: 0, won: 0, lost: 0, pending: 0, void: 0, push: 0, missingStablefordPicks: 0, missingMandatoryPicks: 0 };
     summaryByKey.set(key, next);
     return next;
   };
@@ -259,10 +278,76 @@ export function buildBetPuntoBettorSummaries(markets: BetMarket[], options: BetO
   }
 
   for (const [key, summary] of summaryByKey) {
-    const backedStablefordMarketIds = new Set(bets.filter((bet) => normalizedName(bet.bettorName) === key && bet.status === 'active').map((bet) => bet.marketId));
-    summary.missingStablefordPicks = mandatoryMarkets.filter((market) => !backedStablefordMarketIds.has(market.id)).length;
+    const backedMandatoryMarketIds = new Set(bets.filter((bet) => normalizedName(bet.bettorName) === key && bet.status === 'active').map((bet) => bet.marketId));
+    summary.missingMandatoryPicks = mandatoryMarkets.filter((market) => !backedMandatoryMarketIds.has(market.id)).length;
+    summary.missingStablefordPicks = summary.missingMandatoryPicks;
     summary.netPence = summary.settledPayoutPence - summary.totalStakePence;
   }
 
   return [...summaryByKey.values()].sort((a, b) => b.totalStakePence - a.totalStakePence || a.bettorName.localeCompare(b.bettorName));
+}
+
+
+export type BetPuntoReconciliationRow = {
+  bettorName: string;
+  totalStakePence: number;
+  calculatedReturnsPence: number;
+  netPence: number;
+  statusLabel: string;
+};
+
+export type BetPuntoReconciliation = {
+  rows: BetPuntoReconciliationRow[];
+  balancePence: number;
+  pendingStakePence: number;
+  manualExcludedMarketCount: number;
+};
+
+export function buildBetPuntoReconciliation(markets: BetMarket[], options: BetOption[], bets: Bet[], mandatoryBettorNames: string[] = []): BetPuntoReconciliation {
+  const rowByKey = new Map<string, BetPuntoReconciliationRow>();
+  const displayNameByKey = new Map<string, string>();
+  const ensureRow = (name: string) => {
+    const key = normalizedName(name);
+    const displayName = displayNameByKey.get(key) ?? name.trim();
+    displayNameByKey.set(key, displayName);
+    const existing = rowByKey.get(key);
+    if (existing) return existing;
+    const next: BetPuntoReconciliationRow = { bettorName: displayName, totalStakePence: 0, calculatedReturnsPence: 0, netPence: 0, statusLabel: 'Square' };
+    rowByKey.set(key, next);
+    return next;
+  };
+  for (const name of mandatoryBettorNames) ensureRow(name);
+  const marketById = new Map(markets.map((market) => [market.id, market]));
+  const payoutMap = calculateMarketPayoutMap(markets, options, bets);
+  let pendingStakePence = 0;
+  let manualExcludedMarketCount = 0;
+  const excludedManualMarkets = new Set<string>();
+
+  for (const market of markets) {
+    if (market.status === 'void' || market.status === 'draft') continue;
+    if (market.status !== 'settled') {
+      pendingStakePence += bets.filter((bet) => bet.marketId === market.id && bet.status === 'active' && bet.outcomeStatus !== 'void').reduce((total, bet) => total + getBetStakePence(bet), 0);
+      continue;
+    }
+    if (market.marketScope === 'special') {
+      const resultOption = options.find((option) => option.id === market.resultOptionId);
+      if (typeof resultOption?.oddsDecimal !== 'number') {
+        excludedManualMarkets.add(market.id);
+        continue;
+      }
+    }
+    for (const bet of bets.filter((candidate) => candidate.marketId === market.id)) {
+      if (bet.status === 'void' || bet.outcomeStatus === 'void') continue;
+      const row = ensureRow(bet.bettorName);
+      row.totalStakePence += getBetStakePence(bet);
+      row.calculatedReturnsPence += bet.payoutAmountPence ?? payoutMap.get(bet.id) ?? 0;
+    }
+  }
+  manualExcludedMarketCount = excludedManualMarkets.size;
+  const rows = [...rowByKey.values()].map((row) => {
+    const netPence = row.calculatedReturnsPence - row.totalStakePence;
+    const statusLabel = netPence > 0 ? `Receives ${formatPenceCurrency(netPence)}` : netPence < 0 ? `Owes ${formatPenceCurrency(Math.abs(netPence))}` : 'Square';
+    return { ...row, netPence, statusLabel };
+  }).sort((a, b) => b.netPence - a.netPence || a.bettorName.localeCompare(b.bettorName));
+  return { rows, balancePence: rows.reduce((total, row) => total + row.netPence, 0), pendingStakePence, manualExcludedMarketCount };
 }

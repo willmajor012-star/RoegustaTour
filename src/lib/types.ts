@@ -136,11 +136,12 @@ export type BetMarket = {
   title: string;
   description?: string;
   marketType: 'match_winner' | 'player_performance' | 'team_result' | 'over_under' | 'special' | 'custom';
-  status: 'open' | 'closed' | 'settled' | 'void';
+  status: 'draft' | 'open' | 'closed' | 'settled' | 'void';
   marketScope: 'general_pot' | 'special';
   closesAt?: string;
   resultOptionId?: string;
   resultText?: string;
+  required?: boolean;
 };
 
 export type BetOption = {

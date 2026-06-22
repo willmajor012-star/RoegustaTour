@@ -199,6 +199,7 @@ export function mapBetMarket(row: Row): BetMarket {
     closesAt: asString(row.closes_at),
     resultOptionId: asString(row.result_option_id),
     resultText: asString(row.result_text),
+    required: asBoolean(row.required) ?? false,
   };
 }
 

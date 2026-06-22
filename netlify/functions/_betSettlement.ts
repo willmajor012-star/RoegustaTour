@@ -51,7 +51,7 @@ export async function settleBetMarketRows(supabase: SupabaseClient, marketId: st
     const updated = await supabase.from('bets').update({
       outcome_status: isWinner ? 'won' : 'lost',
       payout_amount_pence: payout,
-      payout_status: payout && payout > 0 ? 'unpaid' : 'not_applicable',
+      payout_status: 'not_applicable',
     }).eq('id', String(bet.id));
     if (updated.error) throw new Error(`update settled bet outcome: ${updated.error.message}`);
   }

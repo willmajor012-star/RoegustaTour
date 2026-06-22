@@ -10,7 +10,7 @@ type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
 const marketTypes: BetMarket['marketType'][] = ['match_winner', 'player_performance', 'team_result', 'over_under', 'special', 'custom'];
 const marketScopes: BetMarket['marketScope'][] = ['general_pot', 'special'];
-const statuses: BetMarket['status'][] = ['open', 'closed', 'settled', 'void'];
+const statuses: BetMarket['status'][] = ['draft', 'open', 'closed', 'settled', 'void'];
 const sides: NonNullable<BetOption['linkedMatchSide']>[] = ['A', 'B', 'halved'];
 const betPuntoSchemaMessage = 'Bet Punto settlement columns are not available in the live schema yet. Run Supabase migration 0013_bet_punto_round_market_schema_refresh.sql; it repairs Bet Punto columns and reloads the Supabase schema cache.';
 
@@ -51,6 +51,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const status = optionalString(body.status) as BetMarket['status'] | null;
   const options = parseOptions(body.options);
   const resultOptionId = optionalString(body.resultOptionId);
+  const required = Boolean(body.required);
 
   if (!tourId) return badRequest('Tour ID is required.');
   if (!title) return badRequest('Market title is required.');
@@ -105,6 +106,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     closes_at: optionalString(body.closesAt),
     result_option_id: null,
     result_text: optionalString(body.resultText),
+    required,
   };
 
   const query = id
@@ -114,7 +116,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     await runSingle<Record<string, unknown>>(query, 'save bet market');
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
-    if (/market_scope|result_option_id|result_text|schema cache/i.test(message)) return badRequest(betPuntoSchemaMessage);
+    if (/market_scope|result_option_id|result_text|required|schema cache/i.test(message)) return badRequest(betPuntoSchemaMessage);
     throw error;
   }
 

@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { betPuntoMarketKind, betPuntoMarketKindLabel, buildMarketOptionStakeRows, calculateIndicativePayouts, calculateMarketPotPence, formatPenceCurrency, formatStakeCurrency, isMarketPubliclyEditable, parseStakeAmount, stakeAmountToPence } from '../lib/betting';
+import { betMarketUiStatusLabel, betPuntoMarketKind, betPuntoMarketKindLabel, buildMarketOptionStakeRows, calculateIndicativePayouts, calculateMarketPotPence, formatPenceCurrency, formatStakeCurrency, isMarketPubliclyEditable, parseStakeAmount, stakeAmountToPence } from '../lib/betting';
 import type { Bet, BetMarket, BetOption, Round } from '../lib/types';
 import { formatTeeTimeDisplay } from '../lib/display';
 
@@ -12,14 +12,6 @@ type Props = {
   onSubmit?: (marketId: string, optionId: string, stakeAmount: number, stakeAmountPence: number, comment: string) => Promise<void> | void;
   submitMessage?: string;
 };
-
-function marketStatusLabel(status: BetMarket['status']) {
-  if (status === 'open') return 'Open';
-  if (status === 'closed') return 'Closed';
-  if (status === 'settled') return 'Settled';
-  if (status === 'void') return 'Void';
-  return 'Unavailable';
-}
 
 export function BetMarketCard({ market, round, options, bets, bettorName, onSubmit, submitMessage }: Props) {
   const [selectedOptionId, setSelectedOptionId] = useState(options[0]?.id ?? '');
@@ -60,16 +52,17 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
 
   return (
     <article className="bet-card card">
-      <div className="card-meta"><span>{betPuntoMarketKindLabel(marketKind)}</span>{round && <span>Round {round.roundNumber}{round.roundDate ? ` · ${round.roundDate}` : ''}{round.teeTime ? ` · ${formatTeeTimeDisplay(round.teeTime)}` : ''}</span>}<span>{market.marketScope === 'general_pot' ? 'General pot' : 'Special/manual'}</span><span>{marketStatusLabel(market.status)}</span></div>
+      <div className="card-meta"><span>{betPuntoMarketKindLabel(marketKind)}</span>{round && <span>Round {round.roundNumber}{round.roundDate ? ` · ${round.roundDate}` : ''}{round.teeTime ? ` · ${formatTeeTimeDisplay(round.teeTime)}` : ''}</span>}<span>{market.marketScope === 'general_pot' ? 'General pot' : 'Special/manual'}</span><span>{betMarketUiStatusLabel(market)}</span></div>
       <div className="bet-card-title"><h3>{market.title}</h3><span>{formatPenceCurrency(potPence)} pot</span></div>
       {market.description && <p>{market.description}</p>}
       {market.status !== 'settled' && market.resultText && <p className="settled">Result: {market.resultText}</p>}
       {market.status === 'settled' && winningOption ? <div className="settled-market-summary">
         <div><span>Winner</span><strong>{market.resultText || winningOption.label}</strong></div>
         <div><span>Pot</span><strong>{formatPenceCurrency(potPence)}</strong></div>
-        <div><span>Winning payout</span><strong>{winningBets.length > 0 ? formatPenceCurrency(winningPayoutPence) : '—'}</strong></div>
+        <div><span>Winning return</span><strong>{winningBets.length > 0 ? formatPenceCurrency(winningPayoutPence) : '—'}</strong></div>
       </div> : null}
-      {market.status === 'open' && !isOpen ? <p className="settled">This market has reached its close time. Public edits and cancellations are disabled while it awaits admin closure/result entry.</p> : null}
+      {market.status === 'open' && !isOpen ? <p className="settled">Locked / awaiting result. The close time has passed, so public bets, edits and cancellations are disabled while an admin enters the result.</p> : null}
+      {market.status === 'closed' ? <p className="settled">Closed / awaiting result. This market is no longer taking bets and is waiting for admin result.</p> : null}
       {isOpen ? (
         <>
         <div className="table-wrap">
@@ -105,9 +98,9 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
         <strong>{market.status === 'settled' ? 'Winning bets' : 'Backed by'}</strong>
         {(market.status === 'settled' ? winningBets : activeBets).length === 0 ? <p>{market.status === 'settled' ? 'No winning bets.' : 'No picks logged yet.'}</p> : (market.status === 'settled' ? winningBets : activeBets).map((bet) => {
           const indicativePayout = payoutSummary.payouts.get(bet.id);
-          return <p key={bet.id}>{bet.bettorName}{market.status !== 'settled' ? ` → ${options.find((option) => option.id === bet.optionId)?.label ?? 'Option'}` : ''} <em>{formatStakeCurrency(bet)}</em>{market.status === 'settled' && indicativePayout !== undefined ? ` · payout ${formatPenceCurrency(indicativePayout)}` : ''}{bet.comment && ` — ${bet.comment}`}</p>;
+          return <p key={bet.id}>{bet.bettorName}{market.status !== 'settled' ? ` → ${options.find((option) => option.id === bet.optionId)?.label ?? 'Option'}` : ''} <em>{formatStakeCurrency(bet)}</em>{market.status === 'settled' && indicativePayout !== undefined ? ` · return ${formatPenceCurrency(indicativePayout)}` : ''}{bet.comment && ` — ${bet.comment}`}</p>;
         })}
-        {market.status === 'settled' && market.marketScope === 'special' && winningOption && !winningOption.oddsDecimal && <p>Special payout is manual: use the result notes for indicative tracking.</p>}
+        {market.status === 'settled' && market.marketScope === 'special' && winningOption && !winningOption.oddsDecimal && <p>Special return is manual: use the result notes for indicative tracking.</p>}
       </div>
     </article>
   );
