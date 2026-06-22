@@ -133,19 +133,19 @@ export function Betting() {
       </label>
 
       <section className="card bet-summary-card">
-        <div className="section-heading"><div><p className="eyebrow">Audit view</p><h3>Player betting summary</h3></div><strong>{formatPenceCurrency(totalStakePence)} staked</strong></div>
+        <div className="section-heading"><div><p className="eyebrow">Audit view</p><h3>Bet Punto leaderboard</h3></div><strong>{formatPenceCurrency(totalStakePence)} staked</strong></div>
         <div className="stat-grid">
           <div className="stat-card"><span>Total picks</span><strong>{activeBets.length}</strong><small>Active Bet Punto entries across the tour.</small></div>
           <div className="stat-card"><span>Settled payouts</span><strong>{formatPenceCurrency(settledDuePence)}</strong><small>Calculated from settled markets and manual payout overrides.</small></div>
           <div className="stat-card"><span>Your picks</span><strong>{myBets.length}</strong><small>Use the expandable ledger for full player audit details.</small></div>
         </div>
-        <button className="pill" type="button" onClick={() => setShowLedger((current) => !current)}>{showLedger ? 'Hide player betting summary' : 'Show player betting summary'}</button>
+        <button className="pill" type="button" onClick={() => setShowLedger((current) => !current)}>{showLedger ? 'Hide Bet Punto leaderboard' : 'Show Bet Punto leaderboard'}</button>
         {showLedger ? <div className="table-wrap">
           <table className="bet-summary-table">
-            <thead><tr><th>Player</th><th>Picks</th><th>Staked</th><th>Settled payout</th><th>Net</th><th>W/L/P</th><th>Missing stableford</th></tr></thead>
-            <tbody>{bettorSummaries.length === 0 ? <tr><td colSpan={7}>No player or bet summary yet.</td></tr> : bettorSummaries.map((summary) => <tr key={summary.bettorName}><td>{summary.bettorName}</td><td>{summary.totalBets}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{formatPenceCurrency(summary.settledPayoutPence)}</td><td>{formatPenceCurrency(summary.netPence)}</td><td>{summary.won}/{summary.lost}/{summary.push}</td><td>{summary.missingStablefordPicks}</td></tr>)}</tbody>
+            <thead><tr><th>Player</th><th>Picks</th><th>Staked</th><th>Settled payout</th><th className="net-column">Net</th><th>W/L/P</th><th className="missing-stableford-column">Missing stableford</th></tr></thead>
+            <tbody>{bettorSummaries.length === 0 ? <tr><td colSpan={7}>No player or bet summary yet.</td></tr> : bettorSummaries.map((summary) => <tr key={summary.bettorName}><td>{summary.bettorName}</td><td>{summary.totalBets}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{formatPenceCurrency(summary.settledPayoutPence)}</td><td className={`net-column net-value ${summary.netPence > 0 ? 'positive' : summary.netPence < 0 ? 'negative' : 'neutral'}`}>{formatPenceCurrency(summary.netPence)}</td><td>{summary.won}/{summary.lost}/{summary.push}</td><td className="missing-stableford-column">{summary.missingStablefordPicks}</td></tr>)}</tbody>
           </table>
-        </div> : <p>Compact summary shown above. Expand for the full player-by-player betting ledger.</p>}
+        </div> : <p>Compact summary shown above. Expand for the full player-by-player Bet Punto leaderboard.</p>}
       </section>
       <section className="card bet-summary-card">
         <div className="section-heading"><div><p className="eyebrow">Mandatory daily bet</p><h3>Stableford pick coverage</h3></div><strong>{stablefordMarketSummaries.length} market{stablefordMarketSummaries.length === 1 ? '' : 's'}</strong></div>
@@ -172,9 +172,13 @@ export function Betting() {
         if (markets.length === 0) return null;
         return <section className="market-section" key={status}>
           <div className="section-heading"><div><p className="eyebrow">Bet Punto</p><h2>{marketStatusLabel(status)} markets</h2></div></div>
-          {markets.map((market) => (
-            <BetMarketCard key={market.id} market={market} round={activeData.rounds.find((round) => round.id === market.roundId)} options={activeData.betOptions.filter((option) => option.marketId === market.id)} bets={bets} bettorName={bettorName} onSubmit={submit} submitMessage={submitMessages[market.id]} />
-          ))}
+          {markets.map((market) => {
+            const round = activeData.rounds.find((candidate) => candidate.id === market.roundId);
+            return <div className={status === 'settled' ? 'settled-market-block' : undefined} key={market.id}>
+              {status === 'settled' ? <div className="settled-market-heading"><span>{round ? `Round ${round.roundNumber}` : 'Settled market'}</span><strong>{market.title}</strong></div> : null}
+              <BetMarketCard market={market} round={round} options={activeData.betOptions.filter((option) => option.marketId === market.id)} bets={bets} bettorName={bettorName} onSubmit={submit} submitMessage={submitMessages[market.id]} />
+            </div>;
+          })}
         </section>;
       })}
     </div>
