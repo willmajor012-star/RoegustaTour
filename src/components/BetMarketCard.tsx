@@ -37,7 +37,7 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
   const winningOption = options.find((option) => option.id === market.resultOptionId);
   const winningBets = winningOption ? activeBets.filter((bet) => bet.optionId === winningOption.id) : [];
   const optionStakeRows = buildMarketOptionStakeRows(options, activeBets);
-  const winningStakePence = winningBets.reduce((total, bet) => total + (bet.stakeAmountPence ?? 0), 0);
+  const winningPayoutPence = winningBets.reduce((total, bet) => total + (payoutSummary.payouts.get(bet.id) ?? 0), 0);
 
   useEffect(() => {
     if (!options.some((option) => option.id === selectedOptionId)) setSelectedOptionId(options[0]?.id ?? '');
@@ -67,7 +67,7 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
       {market.status === 'settled' && winningOption ? <div className="settled-market-summary">
         <div><span>Winner</span><strong>{market.resultText || winningOption.label}</strong></div>
         <div><span>Pot</span><strong>{formatPenceCurrency(potPence)}</strong></div>
-        <div><span>Winning payout</span><strong>{winningBets.length > 0 ? formatPenceCurrency(payoutSummary.winningStakeTotalPence > 0 ? Math.floor(potPence * (winningStakePence / payoutSummary.winningStakeTotalPence)) : 0) : '—'}</strong></div>
+        <div><span>Winning payout</span><strong>{winningBets.length > 0 ? formatPenceCurrency(winningPayoutPence) : '—'}</strong></div>
       </div> : null}
       {market.status === 'open' && !isOpen ? <p className="settled">This market has reached its close time. Public edits and cancellations are disabled while it awaits admin closure/result entry.</p> : null}
       {isOpen ? (
