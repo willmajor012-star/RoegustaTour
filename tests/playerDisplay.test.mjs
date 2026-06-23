@@ -17,4 +17,5 @@ test('tour display player uses tour-specific profile values before global fallba
   const player = { id: 'p1', displayName: 'Player One', nickname: 'Global Nick', photoUrl: 'global.jpg', profileBio: 'Global bio', active: true, createdAt: 'now' };
   assert.deepEqual(tourDisplayPlayer(player, { nickname: 'Tour Nick', photoUrl: 'tour.jpg', profileBio: 'Tour bio' }), { ...player, nickname: 'Tour Nick', photoUrl: 'tour.jpg', profileBio: 'Tour bio' });
   assert.deepEqual(tourDisplayPlayer(player, {}), player);
+  assert.deepEqual(tourDisplayPlayer(player, { nickname: '', photoUrl: '   ', profileBio: '' }), player);
 });
