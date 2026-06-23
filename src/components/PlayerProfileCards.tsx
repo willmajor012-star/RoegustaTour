@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import type { Player, TourTeam } from '../lib/types';
 import { getPlayerInitials } from '../lib/people';
 import { normalizeTeamColour } from '../lib/teamColours';
@@ -6,7 +6,11 @@ import { normalizeTeamColour } from '../lib/teamColours';
 type TeamPlayer = { player: Player; team: TourTeam; isCaptain?: boolean };
 
 function Avatar({ player, colour, size = 'normal' }: { player: Player; colour: string; size?: 'normal' | 'large' }) {
-  return player.photoUrl ? <img className={`profile-avatar ${size}`} src={player.photoUrl} alt={`${player.displayName} profile`} /> : <span className={`profile-avatar initials ${size}`} style={{ '--team-colour': colour } as CSSProperties}>{getPlayerInitials(player)}</span>;
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [player.photoUrl]);
+  return player.photoUrl && !imageFailed
+    ? <img className={`profile-avatar ${size}`} src={player.photoUrl} alt={`${player.displayName} profile`} onError={() => setImageFailed(true)} />
+    : <span className={`profile-avatar initials ${size}`} style={{ '--team-colour': colour } as CSSProperties}>{getPlayerInitials(player)}</span>;
 }
 
 export function TeamRosterCards({ entries }: { entries: TeamPlayer[] }) {

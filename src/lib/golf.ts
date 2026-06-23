@@ -6,6 +6,6 @@ export function tourPointsTarget(matches: Match[]) {
     .reduce((sum, match) => sum + (Number.isFinite(match.pointsAvailable) ? match.pointsAvailable : 1), 0);
   return {
     totalAvailablePoints,
-    pointsToWin: totalAvailablePoints > 0 ? Math.floor(totalAvailablePoints / 2) + 0.5 : 0,
+    pointsToWin: totalAvailablePoints > 0 ? Math.floor(totalAvailablePoints + 1) / 2 : 0,
   };
 }

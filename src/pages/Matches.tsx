@@ -57,7 +57,6 @@ export function Matches() {
 
   const scoreRows = activeData.tour ? calculateTeamScoreByTour(activeData.tour.id, activeData.tourTeams, activeData.rounds, publicMatches) : [];
   const teeSheetMatches = [...selectedRoundMatches].sort((a, b) => compareTeeTimeValues(a.teeTime, b.teeTime) || a.matchNumber - b.matchNumber);
-  const hasTeeTimes = teeSheetMatches.some((match) => Boolean(match.teeTime?.trim()));
   const { totalAvailablePoints, pointsToWin } = tourPointsTarget(publicMatches);
 
   useEffect(() => {
@@ -75,17 +74,17 @@ export function Matches() {
       </section>
       <div className="segmented tour-detail-switch golf-section-switch" role="tablist" aria-label="Golf sections">{golfSections.map((item) => <button key={item.value} className={section === item.value ? 'active' : ''} onClick={() => setSection(item.value)}>{item.label}</button>)}</div>
       {activeData.rounds.length === 0 ? <p className="card">Pairings and tee times will appear once published.</p> : <label className="filters card golf-round-selector"><span>Round</span><select value={selectedRound?.id ?? ''} onChange={(event) => setRoundId(event.target.value)}>{activeData.rounds.map((round, index) => <option key={round.id} value={round.id}>{formatRoundDisplayName(round, index)}</option>)}</select></label>}
-      {section === 'tee-times' && selectedRound && <GolfTeeTimes selectedRound={selectedRound} matches={teeSheetMatches} hasTeeTimes={hasTeeTimes} players={activeData.players} teams={activeData.tourTeams} participants={activeData.matchParticipants} />}
+      {section === 'tee-times' && selectedRound && <GolfTeeTimes selectedRound={selectedRound} matches={teeSheetMatches} players={activeData.players} teams={activeData.tourTeams} participants={activeData.matchParticipants} />}
       {section === 'results' && <GolfResults rounds={activeData.rounds} selectedRound={selectedRound} matches={publicMatches} data={activeData} teams={activeData.tourTeams} />}
       {section === 'teams' && <GolfTeams teams={activeData.tourTeams} data={activeData} />}
     </>}
   </div>;
 }
 
-function GolfTeeTimes({ selectedRound, matches, hasTeeTimes, players, teams, participants }: { selectedRound: Round; matches: Match[]; hasTeeTimes: boolean; players: Player[]; teams: TourTeam[]; participants: MatchParticipant[] }) {
+function GolfTeeTimes({ selectedRound, matches, players, teams, participants }: { selectedRound: Round; matches: Match[]; players: Player[]; teams: TourTeam[]; participants: MatchParticipant[] }) {
   const roundFormats = [...new Set(matches.map((match) => formatMatchFormat(match.format)))].join(' / ');
   const roundSessionLabel = roundSession(selectedRound);
-  return <section className="card tee-sheet-card"><div className="section-heading"><div><p className="eyebrow">Tee times and pairings</p><h3>{formatRoundDisplayName(selectedRound)}</h3></div></div><RoundMeta selectedRound={selectedRound} roundFormats={roundFormats} roundSessionLabel={roundSessionLabel} />{matches.length === 0 ? <p>Pairings and tee times will appear once published.</p> : <div className="tee-sheet-list">{!hasTeeTimes ? <p>{selectedRound.teeTime ? `First tee / round tee time ${formatTeeTimeDisplay(selectedRound.teeTime)}` : 'Tee times will appear once published.'}</p> : matches.map((match) => <TeeSheetRow key={match.id} match={match} participants={participants.filter((participant) => participant.matchId === match.id)} players={players} teams={teams} />)}</div>}</section>;
+  return <section className="card tee-sheet-card"><div className="section-heading"><div><p className="eyebrow">Tee times and pairings</p><h3>{formatRoundDisplayName(selectedRound)}</h3></div></div><RoundMeta selectedRound={selectedRound} roundFormats={roundFormats} roundSessionLabel={roundSessionLabel} />{matches.length === 0 ? <p>Pairings and tee times will appear once published.</p> : <div className="tee-sheet-list">{matches.map((match) => <TeeSheetRow key={match.id} match={match} participants={participants.filter((participant) => participant.matchId === match.id)} players={players} teams={teams} />)}</div>}</section>;
 }
 
 function GolfResults({ rounds, selectedRound, matches, data, teams }: { rounds: Round[]; selectedRound?: Round; matches: Match[]; data: Omit<PublicMatchesResponse, 'source'>; teams: TourTeam[] }) {
