@@ -8,15 +8,18 @@ import { compareTeeTimeValues, formatRoundDisplayName, formatTeeTimeDisplay, isP
 import { tourPointsTarget } from '../lib/golf';
 import { calculateTeamScoreByTour } from '../lib/scoring';
 import { normalizeTeamColour } from '../lib/teamColours';
+import { tourDisplayPlayer } from '../lib/playerDisplay';
 import type { Match, MatchParticipant, Player, Round, TourTeam } from '../lib/types';
 
-const emptyMatchesData: Omit<PublicMatchesResponse, 'source'> = { tour: undefined, rounds: [], matches: [], matchParticipants: [], players: [], tourTeams: [], tourTeamMembers: [] };
+const emptyMatchesData: Omit<PublicMatchesResponse, 'source'> = { tour: undefined, rounds: [], matches: [], matchParticipants: [], players: [], tourPlayers: [], tourTeams: [], tourTeamMembers: [] };
 type GolfSection = 'tee-times' | 'results' | 'teams';
 const golfSections: Array<{ value: GolfSection; label: string }> = [
   { value: 'tee-times', label: 'Tee Times' },
   { value: 'results', label: 'Results' },
   { value: 'teams', label: 'Teams' },
 ];
+
+
 
 function roundSession(round?: Round) {
   const match = round?.notes?.match(/^\[Session: (AM|PM|TBC)\]/);
@@ -99,7 +102,8 @@ function GolfResults({ rounds, selectedRound, matches, data, teams }: { rounds: 
 }
 
 function GolfTeams({ teams, data }: { teams: TourTeam[]; data: Omit<PublicMatchesResponse, 'source'> }) {
-  const playerById = new Map(data.players.map((player) => [player.id, player]));
+  const tourPlayerByPlayerId = new Map(data.tourPlayers.map((tourPlayer) => [tourPlayer.playerId, tourPlayer]));
+  const playerById = new Map(data.players.map((player) => [player.id, tourDisplayPlayer(player, tourPlayerByPlayerId.get(player.id))]));
   return <section className="tour-detail-section"><h3>Teams</h3>{teams.length === 0 ? <p className="card">Teams TBC</p> : <div className="team-card-grid">{teams.map((team, index) => {
     const captain = team.captainPlayerId ? playerById.get(team.captainPlayerId) : undefined;
     const members = data.tourTeamMembers.filter((member) => member.teamId === team.id).map((member) => playerById.get(member.playerId)).filter(Boolean);

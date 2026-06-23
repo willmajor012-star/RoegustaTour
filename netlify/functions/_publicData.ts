@@ -143,12 +143,13 @@ export async function getCurrentTour(supabase: SupabaseClient) {
 
 export async function getPublicMatchBundle(supabase: SupabaseClient) {
   const tour = await getCurrentTour(supabase);
-  if (!tour) return { tour: undefined, rounds: [], matches: [], matchParticipants: [], players: [], tourTeams: [], tourTeamMembers: [] };
+  if (!tour) return { tour: undefined, rounds: [], matches: [], matchParticipants: [], players: [], tourPlayers: [], tourTeams: [], tourTeamMembers: [] };
 
-  const [roundRows, matchRows, playerRows, teamRows, memberRows] = await Promise.all([
+  const [roundRows, matchRows, playerRows, tourPlayerRows, teamRows, memberRows] = await Promise.all([
     runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'public rounds'),
     runQuery(table(supabase, 'matches').select('*').eq('tour_id', tour.id).order('match_number', { ascending: true }), 'public matches'),
     runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'public players'),
+    runQuery(table(supabase, 'tour_players').select('*').eq('tour_id', tour.id), 'public tour players'),
     runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'public tour teams'),
     runQuery(table(supabase, 'tour_team_members').select('*').eq('tour_id', tour.id), 'public tour team members'),
   ]);
@@ -166,6 +167,7 @@ export async function getPublicMatchBundle(supabase: SupabaseClient) {
     matches,
     matchParticipants: participantRows.map(mapMatchParticipant),
     players: playerRows.map(mapPlayer),
+    tourPlayers: tourPlayerRows.map(mapTourPlayer),
     tourTeams,
     tourTeamMembers: filterPublicTeamMembers(memberRows.map(mapTourTeamMember), tourTeams),
   };

@@ -4,6 +4,7 @@ export type Player = {
   nickname?: string;
   initials?: string;
   photoUrl?: string;
+  photoPath?: string;
   profileBio?: string;
   active: boolean;
   createdAt: string;
@@ -28,6 +29,10 @@ export type TourPlayer = {
   attending: boolean;
   tourHandicap?: number;
   notes?: string;
+  nickname?: string;
+  photoUrl?: string;
+  photoPath?: string;
+  profileBio?: string;
 };
 
 export type TourTeam = {
