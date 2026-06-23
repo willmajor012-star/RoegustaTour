@@ -55,7 +55,7 @@ export function Betting() {
   const bettorSummaries = useMemo(() => buildBetPuntoBettorSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames), [activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames]);
   const reconciliation = useMemo(() => buildBetPuntoReconciliation(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames), [activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames]);
   const marketSummaries = useMemo(() => buildBetPuntoMarketSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames), [activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames]);
-  const stablefordMarketSummaries = marketSummaries.filter((summary) => summary.market.marketType === 'player_performance' && summary.market.title.toLowerCase().includes('stableford'));
+  const requiredMarketSummaries = marketSummaries.filter((summary) => summary.market.required ?? (summary.market.marketType === 'player_performance' && summary.market.title.toLowerCase().includes('stableford')));
   const settledDuePence = bettorSummaries.reduce((total, summary) => total + summary.settledPayoutPence, 0);
   const totalStakePence = bettorSummaries.reduce((total, summary) => total + summary.totalStakePence, 0);
   const myBets = useMemo(() => {
@@ -156,11 +156,11 @@ export function Betting() {
         </div> : <p>Compact summary shown above. Expand for the full player-by-player Bet Punto leaderboard.</p>}
       </section>
       <section className="card bet-summary-card">
-        <div className="section-heading"><div><p className="eyebrow">Mandatory daily bet</p><h3>Stableford pick coverage</h3></div><strong>{stablefordMarketSummaries.length} market{stablefordMarketSummaries.length === 1 ? '' : 's'}</strong></div>
+        <div className="section-heading"><div><p className="eyebrow">Required markets</p><h3>Mandatory pick coverage</h3></div><strong>{requiredMarketSummaries.length} market{requiredMarketSummaries.length === 1 ? '' : 's'}</strong></div>
         <div className="table-wrap">
           <table className="bet-summary-table">
-            <thead><tr><th>Market</th><th>Status</th><th>Picks</th><th>Pot</th><th>Missing players</th></tr></thead>
-            <tbody>{stablefordMarketSummaries.length === 0 ? <tr><td colSpan={5}>No Stableford winner markets have been created yet.</td></tr> : stablefordMarketSummaries.map((summary) => <tr key={summary.market.id}><td>{summary.market.title}</td><td>{betMarketUiStatusLabel(summary.market)}</td><td>{summary.totalBets}/{mandatoryBettorNames.length}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{summary.missingBettorNames.length === 0 ? 'Complete' : summary.missingBettorNames.join(', ')}</td></tr>)}</tbody>
+            <thead><tr><th>Market</th><th>Type</th><th>Status</th><th>Picks</th><th>Pot</th><th>Missing players</th></tr></thead>
+            <tbody>{requiredMarketSummaries.length === 0 ? <tr><td colSpan={6}>No mandatory pick markets have been created yet.</td></tr> : requiredMarketSummaries.map((summary) => <tr key={summary.market.id}><td>{summary.market.title}</td><td>{summary.market.marketType === 'team_result' ? 'Team' : summary.market.marketType === 'player_performance' ? 'Player' : 'Custom'}</td><td>{betMarketUiStatusLabel(summary.market)}</td><td>{summary.totalBets}/{mandatoryBettorNames.length}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{summary.missingBettorNames.length === 0 ? 'Complete' : summary.missingBettorNames.join(', ')}</td></tr>)}</tbody>
           </table>
         </div>
       </section>

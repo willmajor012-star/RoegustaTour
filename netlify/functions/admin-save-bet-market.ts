@@ -12,7 +12,8 @@ const marketTypes: BetMarket['marketType'][] = ['match_winner', 'player_performa
 const marketScopes: BetMarket['marketScope'][] = ['general_pot', 'special'];
 const statuses: BetMarket['status'][] = ['draft', 'open', 'closed', 'settled', 'void'];
 const sides: NonNullable<BetOption['linkedMatchSide']>[] = ['A', 'B', 'halved'];
-const betPuntoSchemaMessage = 'Bet Punto settlement columns are not available in the live schema yet. Run Supabase migration 0013_bet_punto_round_market_schema_refresh.sql; it repairs Bet Punto columns and reloads the Supabase schema cache.';
+const betPuntoSchemaMessage0013 = 'Bet Punto settlement columns are not available in the live schema yet. Run Supabase migration 0013_bet_punto_round_market_schema_refresh.sql; it repairs Bet Punto round/settlement columns and reloads the Supabase schema cache.';
+const betPuntoSchemaMessage0014 = 'Bet Punto draft/required market support is not available in the live schema yet. Run Supabase migration 0014_bet_punto_tour_reset_required_draft.sql, then reload the Supabase/PostgREST schema cache.';
 
 type OptionInput = {
   id?: string;
@@ -116,7 +117,8 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     await runSingle<Record<string, unknown>>(query, 'save bet market');
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
-    if (/market_scope|result_option_id|result_text|required|schema cache/i.test(message)) return badRequest(betPuntoSchemaMessage);
+    if (/required|draft|status|bet_markets_status_check|schema cache/i.test(message)) return badRequest(betPuntoSchemaMessage0014);
+    if (/market_scope|result_option_id|result_text|round_id|match_id|closes_at/i.test(message)) return badRequest(betPuntoSchemaMessage0013);
     throw error;
   }
 
