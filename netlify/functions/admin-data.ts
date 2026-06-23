@@ -1,6 +1,6 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { withAdminSupabase, runRows } from './_adminSupabase';
-import { mapBet, mapBetMarket, mapBetOption, mapMatch, mapMatchParticipant, mapPlayer, mapRound, mapTour, mapTourPlayer, mapTourTeam, mapTourTeamMember, mapTourHandbookSection, mapTourTeamResult } from './_mappers';
+import { mapBet, mapBetMarket, mapBetOption, mapMatch, mapMatchParticipant, mapPlayer, mapRound, mapTour, mapTourPlayer, mapTourTeam, mapTourTeamMember, mapTourHandbookSection, mapTourItineraryItem, mapTourTeamResult } from './_mappers';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -32,10 +32,11 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
       betOptions: [],
       bets: [],
       handbookSections: [],
+      itineraryItems: [],
     });
   }
 
-  const [tourPlayerRows, teamRows, memberRows, roundRows, matchRows, marketRows, handbookRows] = await Promise.all([
+  const [tourPlayerRows, teamRows, memberRows, roundRows, matchRows, marketRows, handbookRows, itineraryRows] = await Promise.all([
     runRows(supabase.from('tour_players').select('*').eq('tour_id', selectedTour.id), 'admin tour players'),
     runRows(supabase.from('tour_teams').select('*').eq('tour_id', selectedTour.id).order('sort_order', { ascending: true }), 'admin tour teams'),
     runRows(supabase.from('tour_team_members').select('*').eq('tour_id', selectedTour.id), 'admin team members'),
@@ -43,6 +44,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
     runRows(supabase.from('matches').select('*').eq('tour_id', selectedTour.id).order('match_number', { ascending: true }), 'admin matches'),
     runRows(supabase.from('bet_markets').select('*').eq('tour_id', selectedTour.id).order('created_at', { ascending: true }), 'admin bet markets'),
     runRows(supabase.from('tour_handbook_sections').select('*').eq('tour_id', selectedTour.id).order('sort_order', { ascending: true }), 'admin handbook sections'),
+    runRows(supabase.from('tour_itinerary_items').select('*').eq('tour_id', selectedTour.id).order('sort_order', { ascending: true }), 'admin itinerary items'),
   ]);
 
   const matchIds = matchRows.map((row) => String(row.id));
@@ -81,5 +83,6 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
     betOptions: optionRows.map(mapBetOption),
     bets: betRows.map(mapBet),
     handbookSections: handbookRows.map(mapTourHandbookSection),
+    itineraryItems: itineraryRows.map(mapTourItineraryItem),
   });
 });
