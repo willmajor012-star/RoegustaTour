@@ -5,6 +5,9 @@ import { usePublicData } from '../lib/usePublicData';
 import { betMarketUiStatusLabel, buildBetPuntoBettorSummaries, buildBetPuntoMarketSummaries, buildBetPuntoReconciliation, formatPenceCurrency, formatStakeCurrency, isMarketPubliclyEditable } from '../lib/betting';
 import type { Bet } from '../lib/types';
 
+function normalizeBettorInput(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
 
 function marketStatusLabel(status?: string) {
   if (status === 'draft') return 'Draft';
@@ -50,8 +53,13 @@ export function Betting() {
   const bets = [...savedBets, ...activeData.bets.filter((bet) => !savedBets.some((savedBet) => savedBet.id === bet.id))];
   const activeBets = bets.filter((bet) => bet.status === 'active');
   const attendingPlayerIds = new Set(activeData.tourPlayers.filter((tourPlayer) => tourPlayer.attending).map((tourPlayer) => tourPlayer.playerId));
-  const bettorOptions = activeData.players.filter((player) => attendingPlayerIds.has(player.id));
+  const bettorOptions = activeData.players.filter((player) => player.active && attendingPlayerIds.has(player.id));
   const mandatoryBettorNames = bettorOptions.map((player) => player.displayName);
+  const selectedBettorPlayer = useMemo(() => {
+    const normalizedInput = normalizeBettorInput(bettorName);
+    if (!normalizedInput) return undefined;
+    return bettorOptions.find((player) => normalizeBettorInput(player.displayName) === normalizedInput || (player.nickname && normalizeBettorInput(player.nickname) === normalizedInput));
+  }, [bettorName, bettorOptions]);
   const bettorSummaries = useMemo(() => buildBetPuntoBettorSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames), [activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames]);
   const reconciliation = useMemo(() => buildBetPuntoReconciliation(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames), [activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames]);
   const marketSummaries = useMemo(() => buildBetPuntoMarketSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames), [activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames]);
@@ -59,10 +67,16 @@ export function Betting() {
   const settledDuePence = bettorSummaries.reduce((total, summary) => total + summary.settledPayoutPence, 0);
   const totalStakePence = bettorSummaries.reduce((total, summary) => total + summary.totalStakePence, 0);
   const myBets = useMemo(() => {
-    const normalizedName = bettorName.trim().toLowerCase();
-    if (!normalizedName) return [];
-    return activeBets.filter((bet) => bet.bettorName.trim().toLowerCase() === normalizedName).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-  }, [activeBets, bettorName]);
+    const normalizedInput = normalizeBettorInput(bettorName);
+    const normalizedDisplayName = normalizeBettorInput(selectedBettorPlayer?.displayName ?? bettorName);
+    if (!normalizedInput) return [];
+    return activeBets.filter((bet) => {
+      if (selectedBettorPlayer && bet.bettorPlayerId) return bet.bettorPlayerId === selectedBettorPlayer.id;
+      if (bet.bettorPlayerId) return false;
+      const normalizedBetName = normalizeBettorInput(bet.bettorName);
+      return normalizedBetName === normalizedDisplayName || normalizedBetName === normalizedInput;
+    }).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  }, [activeBets, bettorName, selectedBettorPlayer]);
 
   useEffect(() => setBettorName(localStorage.getItem('rt-bettor-name') ?? ''), []);
   useEffect(() => setSavedBets([]), [data]);
@@ -82,6 +96,7 @@ export function Betting() {
     try {
       const response = await savePublicBet({ marketId, optionId, bettorName: name, stakeAmountPence, comment: comment || undefined });
       saveBetEditToken(response.bet.id, response.editToken);
+      saveName(response.bet.bettorName);
       upsertLocalBet(response.bet);
       setSubmitMessages((current) => ({ ...current, [marketId]: 'Pick saved to the tour Bet Punto log.' }));
     } catch (saveError) {

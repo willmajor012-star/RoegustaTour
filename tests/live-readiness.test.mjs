@@ -218,9 +218,37 @@ describe('Bet Punto public edit tokens and admin overrides', () => {
     assert.equal(canPublicChangeBet(bet, 'wrong-token'), false);
   });
 
+  function trackerBetIds(input, players, tourPlayers, bets) {
+    const normalize = (value) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+    const attendingIds = new Set(tourPlayers.filter((row) => row.attending).map((row) => row.playerId));
+    const bettorOptions = players.filter((player) => player.active && attendingIds.has(player.id));
+    const selected = bettorOptions.find((player) => normalize(player.displayName) === normalize(input) || (player.nickname && normalize(player.nickname) === normalize(input)));
+    const normalizedInput = normalize(input);
+    const normalizedDisplay = normalize(selected?.displayName ?? input);
+    return bets.filter((bet) => {
+      if (selected && bet.bettorPlayerId) return bet.bettorPlayerId === selected.id;
+      if (bet.bettorPlayerId) return false;
+      const normalizedBetName = normalize(bet.bettorName);
+      return normalizedBetName === normalizedDisplay || normalizedBetName === normalizedInput;
+    }).map((bet) => bet.id);
+  }
+
   it('does not let bettorName alone or no-token legacy bets authorize public changes', () => {
     assert.equal(canPublicChangeBet({ status: 'active', bettorName: 'Rosie', publicEditTokenHash: null }, 'secret-token'), false);
     assert.equal(canPublicChangeBet({ status: 'active', bettorName: 'Rosie', publicEditTokenHash: 'hash:other-token' }, undefined), false);
+  });
+
+  it('matches public tracker bets by bettorPlayerId when the input is a nickname', () => {
+    const players = [{ id: 'will', displayName: 'Will Major', nickname: 'Major', active: true }];
+    const tourPlayers = [{ playerId: 'will', attending: true }];
+    const bets = [
+      { id: 'saved-display', bettorName: 'Will Major', bettorPlayerId: 'will' },
+      { id: 'legacy-display', bettorName: 'Will Major' },
+      { id: 'legacy-nickname', bettorName: 'Major' },
+      { id: 'other', bettorName: 'Tom Reed', bettorPlayerId: 'tom' },
+    ];
+    assert.deepEqual(trackerBetIds('Major', players, tourPlayers, bets), ['saved-display', 'legacy-display', 'legacy-nickname']);
+    assert.deepEqual(trackerBetIds('Will Major', players, tourPlayers, bets), ['saved-display', 'legacy-display']);
   });
 
   it('preserves admin settlement fields when editing non-void bets', () => {
