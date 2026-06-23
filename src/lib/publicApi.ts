@@ -25,6 +25,7 @@ export type PublicMatchesResponse = PublicResponse<{
   matches: Match[];
   matchParticipants: MatchParticipant[];
   players: Player[];
+  tourPlayers: TourPlayer[];
   tourTeams: TourTeam[];
   tourTeamMembers: TourTeamMember[];
 }>;

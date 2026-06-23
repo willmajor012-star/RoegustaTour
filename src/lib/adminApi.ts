@@ -27,6 +27,8 @@ export type SavePlayerPayload = {
   displayName: string;
   nickname?: string;
   initials?: string;
+  photoUrl?: string;
+  profileBio?: string;
   active: boolean;
 };
 
@@ -47,6 +49,10 @@ export type SaveTourPlayerPayload = {
   attending: boolean;
   tourHandicap?: number | null;
   notes?: string;
+  nickname?: string | null;
+  photoUrl?: string | null;
+  photoPath?: string | null;
+  profileBio?: string | null;
 };
 
 export type SaveTourTeamPayload = {

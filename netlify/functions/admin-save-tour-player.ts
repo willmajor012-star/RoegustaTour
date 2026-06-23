@@ -27,6 +27,10 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     attending,
     tour_handicap: tourHandicap,
     notes: optionalString(body.notes),
+    nickname: optionalString(body.nickname),
+    photo_url: optionalString(body.photoUrl),
+    photo_path: optionalString(body.photoPath),
+    profile_bio: optionalString(body.profileBio),
   };
 
   const query = existing[0]?.id

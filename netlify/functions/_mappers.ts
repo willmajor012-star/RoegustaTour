@@ -38,6 +38,9 @@ export function mapPlayer(row: Row): Player {
     displayName: requiredString(row, 'display_name'),
     nickname: asString(row.nickname),
     initials: asString(row.initials),
+    photoUrl: asString(row.photo_url),
+    photoPath: asString(row.photo_path),
+    profileBio: asString(row.profile_bio),
     active: asBoolean(row.active, true),
     createdAt: requiredString(row, 'created_at'),
   };
@@ -66,6 +69,10 @@ export function mapTourPlayer(row: Row): TourPlayer {
     attending: asBoolean(row.attending, true),
     tourHandicap: asNumber(row.tour_handicap),
     notes: asString(row.notes),
+    nickname: asString(row.nickname),
+    photoUrl: asString(row.photo_url),
+    photoPath: asString(row.photo_path),
+    profileBio: asString(row.profile_bio),
   };
 }
 
