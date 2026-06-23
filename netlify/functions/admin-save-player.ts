@@ -15,6 +15,8 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     display_name: displayName,
     nickname: optionalString(body.nickname),
     initials: optionalString(body.initials),
+    photo_url: optionalString(body.photoUrl),
+    profile_bio: optionalString(body.profileBio),
     active,
   };
 

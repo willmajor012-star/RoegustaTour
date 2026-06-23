@@ -1,12 +1,12 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { MatchCard } from '../components/MatchCard';
 import { LeaderboardTable } from '../components/LeaderboardTable';
+import { TeamRosterCards } from '../components/PlayerProfileCards';
 import { calculatePlayerAdvancedSummaries, type AdvancedStatsData } from '../lib/advancedStats';
 import { formatDate, formatMatchFormat, formatPercent, formatPoints, formatShortDate } from '../lib/formatting';
 import { formatRoundDisplayName, formatTourDisplayName, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
-import { getPlayerInitials } from '../lib/people';
 import { fetchPublicAdvancedStats, type PublicAdvancedStatsResponse } from '../lib/publicApi';
-import type { LeaderboardRow, Match, Round, Tour, TourTeam } from '../lib/types';
+import type { LeaderboardRow, Match, Player, Round, Tour, TourTeam } from '../lib/types';
 import { usePublicData } from '../lib/usePublicData';
 import { normalizeTeamColour } from '../lib/teamColours';
 
@@ -187,7 +187,7 @@ function TourTeams({ teams, data }: { teams: TourTeam[]; data: Omit<PublicAdvanc
   return <section className="tour-detail-section"><h3>Teams</h3>{teams.length === 0 ? <p className="card">Teams TBC</p> : <div className="team-card-grid">{teams.map((team, index) => {
     const captain = team.captainPlayerId ? playerById.get(team.captainPlayerId) : undefined;
     const members = data.tourTeamMembers.filter((member) => member.teamId === team.id).map((member) => playerById.get(member.playerId)).filter(Boolean);
-    return <article className="team-display-card card" key={team.id} style={{ '--team-colour': normalizeTeamColour(team.colour, index) } as CSSProperties}><div className="team-card-topline"><span className="team-dot" /><p className="eyebrow">Team</p></div><h3>{team.name}</h3>{captain && <div className="captain-strip"><span>Captain</span><strong>{captain.displayName}</strong></div>}<div className="team-member-list">{members.length === 0 ? <p>Players TBC</p> : members.map((player) => player && <div className="team-member-row" key={player.id}><span className="avatar small">{getPlayerInitials(player)}</span><div><strong>{player.displayName}</strong>{player.nickname && <span>{player.nickname}</span>}</div></div>)}</div></article>;
+    return <article className="team-display-card card" key={team.id} style={{ '--team-colour': normalizeTeamColour(team.colour, index) } as CSSProperties}><div className="team-card-topline"><span className="team-dot" /><p className="eyebrow">Team</p></div><h3>{team.name}</h3>{captain && <div className="captain-strip"><span>Captain</span><strong>{captain.displayName}</strong></div>}<div className="team-member-list">{members.length === 0 ? <p>Players TBC</p> : <TeamRosterCards entries={members.filter((player): player is Player => Boolean(player)).map((player) => ({ player, team, isCaptain: team.captainPlayerId === player.id }))} />}</div></article>;
   })}</div>}</section>;
 }
 

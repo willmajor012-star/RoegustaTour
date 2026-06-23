@@ -38,6 +38,8 @@ export function mapPlayer(row: Row): Player {
     displayName: requiredString(row, 'display_name'),
     nickname: asString(row.nickname),
     initials: asString(row.initials),
+    photoUrl: asString(row.photo_url),
+    profileBio: asString(row.profile_bio),
     active: asBoolean(row.active, true),
     createdAt: requiredString(row, 'created_at'),
   };

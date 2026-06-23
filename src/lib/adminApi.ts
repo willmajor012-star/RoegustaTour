@@ -27,6 +27,8 @@ export type SavePlayerPayload = {
   displayName: string;
   nickname?: string;
   initials?: string;
+  photoUrl?: string;
+  profileBio?: string;
   active: boolean;
 };
 

@@ -3,6 +3,8 @@ export type Player = {
   displayName: string;
   nickname?: string;
   initials?: string;
+  photoUrl?: string;
+  profileBio?: string;
   active: boolean;
   createdAt: string;
 };
