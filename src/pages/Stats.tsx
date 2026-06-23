@@ -215,7 +215,7 @@ export function Stats() {
 
   useEffect(() => { setSelectedPlayerId(undefined); }, [view, selectedTourId]);
 
-  return <div className="page-stack stats-page"><section className="page-title"><h2>Stats</h2></section>{loading && <p className="card">Loading stats…</p>}{error && <p className="card form-error">{error}</p>}
+  return <div className="page-stack stats-page"><section className="page-title premium-title"><p className="eyebrow">Standings and player records</p><h2>Stats</h2></section>{loading && <p className="card">Loading stats…</p>}{error && <p className="card form-error">{error}</p>}
     <div className="segmented stats-switch" role="tablist" aria-label="Stats views">{[
       ['current', 'Current tour'], ['previous', 'Previous tours'], ['all', 'All tours'], ['h2h', 'Head-to-head'],
     ].map(([value, label]) => <button key={value} className={view === value ? 'active' : ''} onClick={() => setView(value as StatsView)}>{label}</button>)}</div>

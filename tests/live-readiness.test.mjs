@@ -218,9 +218,37 @@ describe('Bet Punto public edit tokens and admin overrides', () => {
     assert.equal(canPublicChangeBet(bet, 'wrong-token'), false);
   });
 
+  function trackerBetIds(input, players, tourPlayers, bets) {
+    const normalize = (value) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+    const attendingIds = new Set(tourPlayers.filter((row) => row.attending).map((row) => row.playerId));
+    const bettorOptions = players.filter((player) => player.active && attendingIds.has(player.id));
+    const selected = bettorOptions.find((player) => normalize(player.displayName) === normalize(input) || (player.nickname && normalize(player.nickname) === normalize(input)));
+    const normalizedInput = normalize(input);
+    const normalizedDisplay = normalize(selected?.displayName ?? input);
+    return bets.filter((bet) => {
+      if (selected && bet.bettorPlayerId) return bet.bettorPlayerId === selected.id;
+      if (bet.bettorPlayerId) return false;
+      const normalizedBetName = normalize(bet.bettorName);
+      return normalizedBetName === normalizedDisplay || normalizedBetName === normalizedInput;
+    }).map((bet) => bet.id);
+  }
+
   it('does not let bettorName alone or no-token legacy bets authorize public changes', () => {
     assert.equal(canPublicChangeBet({ status: 'active', bettorName: 'Rosie', publicEditTokenHash: null }, 'secret-token'), false);
     assert.equal(canPublicChangeBet({ status: 'active', bettorName: 'Rosie', publicEditTokenHash: 'hash:other-token' }, undefined), false);
+  });
+
+  it('matches public tracker bets by bettorPlayerId when the input is a nickname', () => {
+    const players = [{ id: 'will', displayName: 'Will Major', nickname: 'Major', active: true }];
+    const tourPlayers = [{ playerId: 'will', attending: true }];
+    const bets = [
+      { id: 'saved-display', bettorName: 'Will Major', bettorPlayerId: 'will' },
+      { id: 'legacy-display', bettorName: 'Will Major' },
+      { id: 'legacy-nickname', bettorName: 'Major' },
+      { id: 'other', bettorName: 'Tom Reed', bettorPlayerId: 'tom' },
+    ];
+    assert.deepEqual(trackerBetIds('Major', players, tourPlayers, bets), ['saved-display', 'legacy-display', 'legacy-nickname']);
+    assert.deepEqual(trackerBetIds('Will Major', players, tourPlayers, bets), ['saved-display', 'legacy-display']);
   });
 
   it('preserves admin settlement fields when editing non-void bets', () => {
@@ -333,5 +361,63 @@ describe('Bet Punto market lifecycle rules', () => {
     assert.equal(visibilityWarning({ id: 'm1', status: 'open', roundId: 'r2' }, [{ id: 'o1', marketId: 'm1' }], context), 'round');
     assert.equal(visibilityWarning({ id: 'm2', status: 'open', roundId: 'r1' }, [], context), 'options');
     assert.equal(visibilityWarning({ id: 'm3', status: 'open', roundId: 'r1' }, [{ id: 'o3', marketId: 'm3', linkedPlayerId: 'missing' }], context), 'player');
+  });
+});
+
+describe('Bet Punto tour reset and reconciliation refinements', () => {
+  function visibleMarkets(markets) {
+    return markets.filter((market) => ['open', 'closed', 'settled'].includes(market.status));
+  }
+
+  function resetPlan(tourId, markets, bets, options) {
+    const marketIds = new Set(markets.filter((market) => market.tourId === tourId).map((market) => market.id));
+    return {
+      deletedMarkets: markets.filter((market) => marketIds.has(market.id)).map((market) => market.id),
+      deletedOptions: options.filter((option) => marketIds.has(option.marketId)).map((option) => option.id),
+      deletedBets: bets.filter((bet) => marketIds.has(bet.marketId)).map((bet) => bet.id),
+      remainingMarkets: markets.filter((market) => !marketIds.has(market.id)).map((market) => market.id),
+    };
+  }
+
+  function reconcile(markets, bets) {
+    const rows = new Map();
+    const ensure = (name) => rows.get(name) ?? rows.set(name, { staked: 0, returns: 0 }).get(name);
+    for (const market of markets) {
+      if (market.status !== 'settled') continue;
+      for (const bet of bets.filter((candidate) => candidate.marketId === market.id && candidate.status !== 'void' && candidate.outcomeStatus !== 'void')) {
+        const row = ensure(bet.bettorName);
+        row.staked += bet.stakePence;
+        row.returns += bet.returnPence ?? 0;
+      }
+    }
+    return [...rows].map(([bettorName, row]) => ({ bettorName, net: row.returns - row.staked, status: row.returns - row.staked > 0 ? 'receives' : row.returns - row.staked < 0 ? 'owes' : 'square' }));
+  }
+
+  it('resetting Bet Punto for one tour deletes only that tour Bet Punto rows', () => {
+    const plan = resetPlan('tour-a', [{ id: 'm1', tourId: 'tour-a' }, { id: 'm2', tourId: 'tour-b' }], [{ id: 'b1', marketId: 'm1' }, { id: 'b2', marketId: 'm2' }], [{ id: 'o1', marketId: 'm1' }, { id: 'o2', marketId: 'm2' }]);
+    assert.deepEqual(plan.deletedMarkets, ['m1']);
+    assert.deepEqual(plan.deletedOptions, ['o1']);
+    assert.deepEqual(plan.deletedBets, ['b1']);
+    assert.deepEqual(plan.remainingMarkets, ['m2']);
+  });
+
+  it('whole-tour reconciliation shows owes/receives and balances a settled general pot', () => {
+    const rows = reconcile([{ id: 'm1', status: 'settled' }], [
+      { id: 'b1', marketId: 'm1', bettorName: 'Winner', stakePence: 500, returnPence: 1500, status: 'active', outcomeStatus: 'won' },
+      { id: 'b2', marketId: 'm1', bettorName: 'Loser A', stakePence: 500, returnPence: 0, status: 'active', outcomeStatus: 'lost' },
+      { id: 'b3', marketId: 'm1', bettorName: 'Loser B', stakePence: 500, returnPence: 0, status: 'active', outcomeStatus: 'lost' },
+      { id: 'b4', marketId: 'm1', bettorName: 'Void', stakePence: 500, returnPence: 0, status: 'void', outcomeStatus: 'void' },
+    ]);
+    assert.equal(rows.find((row) => row.bettorName === 'Winner').status, 'receives');
+    assert.equal(rows.find((row) => row.bettorName === 'Loser A').status, 'owes');
+    assert.equal(rows.reduce((total, row) => total + row.net, 0), 0);
+  });
+
+  it('draft generated markets stay private and mandatory coverage is not Stableford-only', () => {
+    const context = { roundIds: new Set(['r1']), matchIds: new Set(), playerIds: new Set(['p1']), teamIds: new Set(['team1']) };
+    const markets = [{ id: 'draft-team', status: 'draft', required: true, roundId: 'r1' }, { id: 'open-team', status: 'open', required: true, roundId: 'r1' }];
+    const options = [{ id: 'o1', marketId: 'draft-team', linkedTeamId: 'team1' }, { id: 'o2', marketId: 'open-team', linkedTeamId: 'team1' }];
+    assert.deepEqual(visibleMarkets(markets, options, context).map((market) => market.id), ['open-team']);
+    assert.equal(markets.filter((market) => market.required).length, 2);
   });
 });

@@ -2,13 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { BetMarketCard } from '../components/BetMarketCard';
 import { fetchPublicBetMarkets, savePublicBet, type PublicBetMarketsResponse } from '../lib/publicApi';
 import { usePublicData } from '../lib/usePublicData';
-import { buildBetPuntoBettorSummaries, buildBetPuntoMarketSummaries, formatPenceCurrency, formatStakeCurrency, isMarketPubliclyEditable } from '../lib/betting';
+import { betMarketUiStatusLabel, buildBetPuntoBettorSummaries, buildBetPuntoMarketSummaries, buildBetPuntoReconciliation, formatPenceCurrency, formatStakeCurrency, isMarketPubliclyEditable } from '../lib/betting';
 import type { Bet } from '../lib/types';
 
+function normalizeBettorInput(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
 
 function marketStatusLabel(status?: string) {
+  if (status === 'draft') return 'Draft';
   if (status === 'open') return 'Open';
-  if (status === 'closed') return 'Closed';
+  if (status === 'closed') return 'Closed / awaiting result';
   if (status === 'settled') return 'Settled';
   if (status === 'void') return 'Void';
   return 'Unavailable';
@@ -49,18 +53,30 @@ export function Betting() {
   const bets = [...savedBets, ...activeData.bets.filter((bet) => !savedBets.some((savedBet) => savedBet.id === bet.id))];
   const activeBets = bets.filter((bet) => bet.status === 'active');
   const attendingPlayerIds = new Set(activeData.tourPlayers.filter((tourPlayer) => tourPlayer.attending).map((tourPlayer) => tourPlayer.playerId));
-  const bettorOptions = activeData.players.filter((player) => attendingPlayerIds.has(player.id));
+  const bettorOptions = activeData.players.filter((player) => player.active && attendingPlayerIds.has(player.id));
   const mandatoryBettorNames = bettorOptions.map((player) => player.displayName);
+  const selectedBettorPlayer = useMemo(() => {
+    const normalizedInput = normalizeBettorInput(bettorName);
+    if (!normalizedInput) return undefined;
+    return bettorOptions.find((player) => normalizeBettorInput(player.displayName) === normalizedInput || (player.nickname && normalizeBettorInput(player.nickname) === normalizedInput));
+  }, [bettorName, bettorOptions]);
   const bettorSummaries = useMemo(() => buildBetPuntoBettorSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames), [activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames]);
+  const reconciliation = useMemo(() => buildBetPuntoReconciliation(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames), [activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames]);
   const marketSummaries = useMemo(() => buildBetPuntoMarketSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames), [activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames]);
-  const stablefordMarketSummaries = marketSummaries.filter((summary) => summary.market.marketType === 'player_performance' && summary.market.title.toLowerCase().includes('stableford'));
+  const requiredMarketSummaries = marketSummaries.filter((summary) => summary.market.required ?? (summary.market.marketType === 'player_performance' && summary.market.title.toLowerCase().includes('stableford')));
   const settledDuePence = bettorSummaries.reduce((total, summary) => total + summary.settledPayoutPence, 0);
   const totalStakePence = bettorSummaries.reduce((total, summary) => total + summary.totalStakePence, 0);
   const myBets = useMemo(() => {
-    const normalizedName = bettorName.trim().toLowerCase();
-    if (!normalizedName) return [];
-    return activeBets.filter((bet) => bet.bettorName.trim().toLowerCase() === normalizedName).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-  }, [activeBets, bettorName]);
+    const normalizedInput = normalizeBettorInput(bettorName);
+    const normalizedDisplayName = normalizeBettorInput(selectedBettorPlayer?.displayName ?? bettorName);
+    if (!normalizedInput) return [];
+    return activeBets.filter((bet) => {
+      if (selectedBettorPlayer && bet.bettorPlayerId) return bet.bettorPlayerId === selectedBettorPlayer.id;
+      if (bet.bettorPlayerId) return false;
+      const normalizedBetName = normalizeBettorInput(bet.bettorName);
+      return normalizedBetName === normalizedDisplayName || normalizedBetName === normalizedInput;
+    }).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  }, [activeBets, bettorName, selectedBettorPlayer]);
 
   useEffect(() => setBettorName(localStorage.getItem('rt-bettor-name') ?? ''), []);
   useEffect(() => setSavedBets([]), [data]);
@@ -80,6 +96,7 @@ export function Betting() {
     try {
       const response = await savePublicBet({ marketId, optionId, bettorName: name, stakeAmountPence, comment: comment || undefined });
       saveBetEditToken(response.bet.id, response.editToken);
+      saveName(response.bet.bettorName);
       upsertLocalBet(response.bet);
       setSubmitMessages((current) => ({ ...current, [marketId]: 'Pick saved to the tour Bet Punto log.' }));
     } catch (saveError) {
@@ -132,27 +149,33 @@ export function Betting() {
         </datalist>
       </label>
 
+      <section className="card bet-reconciliation-card">
+        <div className="section-heading"><div><p className="eyebrow">Manual settlement outside app</p><h3>Tour Bet Punto reconciliation</h3></div><strong>{formatPenceCurrency(reconciliation.balancePence)} balance</strong></div>
+        <div className="table-wrap"><table className="bet-summary-table"><thead><tr><th>Player</th><th>Staked</th><th>Returns</th><th className="net-column">Net</th><th>Owes / receives</th></tr></thead><tbody>{reconciliation.rows.length === 0 ? <tr><td colSpan={5}>No settled Bet Punto returns yet.</td></tr> : reconciliation.rows.map((row) => <tr key={row.bettorName}><td>{row.bettorName}</td><td>{formatPenceCurrency(row.totalStakePence)}</td><td>{formatPenceCurrency(row.calculatedReturnsPence)}</td><td className={`net-column net-value ${row.netPence > 0 ? 'positive' : row.netPence < 0 ? 'negative' : 'neutral'}`}>{formatPenceCurrency(row.netPence)}</td><td>{row.statusLabel}</td></tr>)}</tbody></table></div>
+        <small>{reconciliation.pendingStakePence > 0 ? `${formatPenceCurrency(reconciliation.pendingStakePence)} in open/locked/closed markets is pending and excluded from returns. ` : ''}{Math.abs(reconciliation.balancePence) <= 1 ? 'General pot reconciliation balances to within penny rounding.' : `Balance check: ${formatPenceCurrency(reconciliation.balancePence)}.`}{reconciliation.manualExcludedMarketCount > 0 ? ` ${reconciliation.manualExcludedMarketCount} manual special market${reconciliation.manualExcludedMarketCount === 1 ? '' : 's'} excluded from automatic reconciliation.` : ''}</small>
+      </section>
+
       <section className="card bet-summary-card">
-        <div className="section-heading"><div><p className="eyebrow">Audit view</p><h3>Player betting summary</h3></div><strong>{formatPenceCurrency(totalStakePence)} staked</strong></div>
+        <div className="section-heading"><div><p className="eyebrow">Audit view</p><h3>Bet Punto leaderboard</h3></div><strong>{formatPenceCurrency(totalStakePence)} staked</strong></div>
         <div className="stat-grid">
           <div className="stat-card"><span>Total picks</span><strong>{activeBets.length}</strong><small>Active Bet Punto entries across the tour.</small></div>
-          <div className="stat-card"><span>Settled payouts</span><strong>{formatPenceCurrency(settledDuePence)}</strong><small>Calculated from settled markets and manual payout overrides.</small></div>
+          <div className="stat-card"><span>Calculated returns</span><strong>{formatPenceCurrency(settledDuePence)}</strong><small>Calculated from settled markets and manual return overrides.</small></div>
           <div className="stat-card"><span>Your picks</span><strong>{myBets.length}</strong><small>Use the expandable ledger for full player audit details.</small></div>
         </div>
-        <button className="pill" type="button" onClick={() => setShowLedger((current) => !current)}>{showLedger ? 'Hide player betting summary' : 'Show player betting summary'}</button>
+        <button className="pill" type="button" onClick={() => setShowLedger((current) => !current)}>{showLedger ? 'Hide Bet Punto leaderboard' : 'Show Bet Punto leaderboard'}</button>
         {showLedger ? <div className="table-wrap">
           <table className="bet-summary-table">
-            <thead><tr><th>Player</th><th>Picks</th><th>Staked</th><th>Settled payout</th><th>Net</th><th>W/L/P</th><th>Missing stableford</th></tr></thead>
-            <tbody>{bettorSummaries.length === 0 ? <tr><td colSpan={7}>No player or bet summary yet.</td></tr> : bettorSummaries.map((summary) => <tr key={summary.bettorName}><td>{summary.bettorName}</td><td>{summary.totalBets}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{formatPenceCurrency(summary.settledPayoutPence)}</td><td>{formatPenceCurrency(summary.netPence)}</td><td>{summary.won}/{summary.lost}/{summary.push}</td><td>{summary.missingStablefordPicks}</td></tr>)}</tbody>
+            <thead><tr><th>Player</th><th>Picks</th><th>Staked</th><th>Calculated return</th><th className="net-column">Net</th><th>W/L/P</th><th className="missing-stableford-column">Missing mandatory</th></tr></thead>
+            <tbody>{bettorSummaries.length === 0 ? <tr><td colSpan={7}>No player or bet summary yet.</td></tr> : bettorSummaries.map((summary) => <tr key={summary.bettorName}><td>{summary.bettorName}</td><td>{summary.totalBets}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{formatPenceCurrency(summary.settledPayoutPence)}</td><td className={`net-column net-value ${summary.netPence > 0 ? 'positive' : summary.netPence < 0 ? 'negative' : 'neutral'}`}>{formatPenceCurrency(summary.netPence)}</td><td>{summary.won}/{summary.lost}/{summary.push}</td><td className="missing-stableford-column">{summary.missingMandatoryPicks}</td></tr>)}</tbody>
           </table>
-        </div> : <p>Compact summary shown above. Expand for the full player-by-player betting ledger.</p>}
+        </div> : <p>Compact summary shown above. Expand for the full player-by-player Bet Punto leaderboard.</p>}
       </section>
       <section className="card bet-summary-card">
-        <div className="section-heading"><div><p className="eyebrow">Mandatory daily bet</p><h3>Stableford pick coverage</h3></div><strong>{stablefordMarketSummaries.length} market{stablefordMarketSummaries.length === 1 ? '' : 's'}</strong></div>
+        <div className="section-heading"><div><p className="eyebrow">Required markets</p><h3>Mandatory pick coverage</h3></div><strong>{requiredMarketSummaries.length} market{requiredMarketSummaries.length === 1 ? '' : 's'}</strong></div>
         <div className="table-wrap">
           <table className="bet-summary-table">
-            <thead><tr><th>Market</th><th>Status</th><th>Picks</th><th>Pot</th><th>Missing players</th></tr></thead>
-            <tbody>{stablefordMarketSummaries.length === 0 ? <tr><td colSpan={5}>No Stableford winner markets have been created yet.</td></tr> : stablefordMarketSummaries.map((summary) => <tr key={summary.market.id}><td>{summary.market.title}</td><td>{marketStatusLabel(summary.market.status)}</td><td>{summary.totalBets}/{mandatoryBettorNames.length}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{summary.missingBettorNames.length === 0 ? 'Complete' : summary.missingBettorNames.join(', ')}</td></tr>)}</tbody>
+            <thead><tr><th>Market</th><th>Type</th><th>Status</th><th>Picks</th><th>Pot</th><th>Missing players</th></tr></thead>
+            <tbody>{requiredMarketSummaries.length === 0 ? <tr><td colSpan={6}>No mandatory pick markets have been created yet.</td></tr> : requiredMarketSummaries.map((summary) => <tr key={summary.market.id}><td>{summary.market.title}</td><td>{summary.market.marketType === 'team_result' ? 'Team' : summary.market.marketType === 'player_performance' ? 'Player' : 'Custom'}</td><td>{betMarketUiStatusLabel(summary.market)}</td><td>{summary.totalBets}/{mandatoryBettorNames.length}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{summary.missingBettorNames.length === 0 ? 'Complete' : summary.missingBettorNames.join(', ')}</td></tr>)}</tbody>
           </table>
         </div>
       </section>
@@ -172,9 +195,13 @@ export function Betting() {
         if (markets.length === 0) return null;
         return <section className="market-section" key={status}>
           <div className="section-heading"><div><p className="eyebrow">Bet Punto</p><h2>{marketStatusLabel(status)} markets</h2></div></div>
-          {markets.map((market) => (
-            <BetMarketCard key={market.id} market={market} round={activeData.rounds.find((round) => round.id === market.roundId)} options={activeData.betOptions.filter((option) => option.marketId === market.id)} bets={bets} bettorName={bettorName} onSubmit={submit} submitMessage={submitMessages[market.id]} />
-          ))}
+          {markets.map((market) => {
+            const round = activeData.rounds.find((candidate) => candidate.id === market.roundId);
+            return <div className={status === 'settled' ? 'settled-market-block' : undefined} key={market.id}>
+              {status === 'settled' ? <div className="settled-market-heading"><span>{round ? `Round ${round.roundNumber}` : 'Settled market'}</span><strong>{market.title}</strong></div> : null}
+              <BetMarketCard market={market} round={round} options={activeData.betOptions.filter((option) => option.marketId === market.id)} bets={bets} bettorName={bettorName} onSubmit={submit} submitMessage={submitMessages[market.id]} />
+            </div>;
+          })}
         </section>;
       })}
     </div>

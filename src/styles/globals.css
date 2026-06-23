@@ -1107,3 +1107,100 @@ main { padding: 14px; }
   box-shadow: none;
   cursor: not-allowed;
 }
+
+/* Bet Punto refinement pass */
+.betting-page .bet-summary-card > button.pill {
+  justify-self: start;
+  border: 1px solid var(--rt-green-900);
+  background: var(--rt-green-900);
+  color: var(--rt-cream);
+  border-radius: 999px;
+  padding: 11px 16px;
+  font-weight: 900;
+  box-shadow: 0 8px 18px rgba(15, 47, 36, .16);
+}
+
+.betting-page .bet-summary-card > button.pill:hover {
+  background: var(--rt-green-700);
+}
+
+.bet-summary-table .net-column {
+  min-width: 112px;
+  white-space: nowrap;
+}
+
+.bet-summary-table .net-value {
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.bet-summary-table .net-value.positive { color: var(--rt-green-700); }
+.bet-summary-table .net-value.negative { color: var(--rt-burgundy); }
+.bet-summary-table .net-value.neutral { color: var(--rt-text-muted); }
+
+.bet-summary-table .missing-stableford-column {
+  width: 1%;
+  min-width: 72px;
+  max-width: 96px;
+  white-space: normal;
+  color: var(--rt-text-muted);
+  font-size: .82rem;
+}
+
+.settled-market-block {
+  display: grid;
+  gap: 8px;
+}
+
+.settled-market-heading {
+  display: grid;
+  gap: 2px;
+  padding: 0 4px;
+}
+
+.settled-market-heading span {
+  color: var(--rt-gold);
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.settled-market-heading strong {
+  color: var(--rt-green-900);
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: 1.15rem;
+}
+
+.settled-market-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  border: 1px solid rgba(184, 154, 93, .32);
+  border-radius: 18px;
+  background: rgba(255, 253, 246, .72);
+  padding: 12px;
+}
+
+.settled-market-summary span {
+  display: block;
+  color: var(--rt-text-muted);
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.settled-market-summary strong {
+  display: block;
+  color: var(--rt-green-900);
+  margin-top: 3px;
+}
+
+.stats-page .page-title.premium-title {
+  background: rgba(255, 250, 240, .94);
+  border: 1px solid rgba(184,154,93,.32);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
