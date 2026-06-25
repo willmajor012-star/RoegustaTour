@@ -8,6 +8,7 @@ import { formatTeeTimeDisplay, normalizeTeeTime } from '../lib/display';
 import { deriveMatchPoints, MATCHPLAY_RESULT_OPTIONS, normalizeMatchplayResult } from '../lib/matchplay';
 import type { Bet, BetMarket, BetOption, Match, MatchFormat, Player, Round, Tour, TourTeam } from '../lib/types';
 import type { TourItineraryItem } from '../lib/publicApi';
+import { buildMissingRoundItineraryDrafts, reorderItineraryItems } from '../lib/adminItinerary';
 
 const tabs = ['Overview', 'Tour setup', 'Player library', 'Squads & teams', 'Rounds & tee times', 'Matches & pairings', 'Result entry', 'Handbook', 'Admin guide', 'Bet Punto', 'Coming next'] as const;
 type AdminTab = typeof tabs[number];
@@ -57,9 +58,9 @@ const adminGuideSections = [
   { id: 'guide-teams', title: 'Creating teams and rosters', steps: ['Create named teams, set colours, captains and sort order.', 'Mark players attending, assign them to teams, then publish rosters.', 'Archived/current team displays use the tour-specific roster and team names.'], publicNote: 'Published rosters appear on public Teams and Golf team views.', warning: 'Use real team names; avoid generic labels when team names exist.' },
   { id: 'guide-photos', title: 'Player profiles and photos', steps: ['Global player nickname/photo/profile is the fallback everywhere.', 'Tour-specific nickname/photo/profile overrides global data for that tour.', 'Upload photos to Supabase Storage bucket player-photos, then paste the public URL into admin.', 'Preferred paths: player-photos/global/{player_id}/profile.{ext} and player-photos/tours/{tour_id}/{player_id}/profile.{ext}.', 'Broken or missing photos fall back to initials.'], publicNote: 'Controls player cards/profile photos without requiring an in-app upload UI.', warning: 'Do not store photos by player name; use stable player IDs.' },
   { id: 'guide-rounds', title: 'Rounds and tee times', steps: ['Create rounds with date, course, session, format, first tee time, notes and status.', 'Publish rounds when public users should see them.', 'Round tee time is the overall round start; match tee times are pairings-specific.', 'Sequential tee times apply to draft/planned matches in a selected round.'], publicNote: 'Public Course Guide/Rounds come from actual rounds only.', warning: 'Do not rely on itinerary placeholders to create golf rounds.' },
-  { id: 'guide-matches', title: 'Matches, pairings and results', steps: ['Create matches, assign players, set tee times and publish matches.', 'Tee Times can show pairings even when tee times are TBC; Results only shows results.', 'Enter results by selecting round/match and using the controlled result dropdown. AS is a halved match; wins update points; void/planned/complete status controls scoring behaviour.'], publicNote: 'Published matches feed public Tee Times, Results and score views.', warning: 'Avoid manual free-text results that conflict with the controlled dropdown.' },
+  { id: 'guide-matches', title: 'Matches, pairings and results', steps: ['Create matches, assign players, set tee times and publish matches.', 'Tee Times can show pairings even when tee times are TBC; Results only shows results.', 'Enter results by selecting round/match and using the controlled result dropdown. AS is a halved match; wins update points; void/planned/complete status controls scoring behaviour.'], publicNote: 'Published matches feed Golf page tabs: Tee Times, Results, Teams and score views.', warning: 'Avoid manual free-text results that conflict with the controlled dropdown.' },
   { id: 'guide-info', title: 'Handbook / Info page', steps: ['Handbook sections are public Info cards such as Key Information, Teams, Rooms, Format, Prize Fund, Itinerary, Kit / Shirt Colours, flights/travel, accommodation, dinner/social notes and FAQs.', 'Itinerary/schedule items are separate rows with date, day, time, activity, location, notes, placeholder and sort order.', 'Use Build draft itinerary from tour dates and rounds to add missing round items only from actual rounds, then edit travel/dinner/accommodation separately.'], publicNote: 'Controls the public Info page Schedule / Itinerary and Key notes cards.', warning: 'Do not assume Friday golf; only actual rounds or explicit itinerary items appear.' },
-  { id: 'guide-bet', title: 'Bet Punto', steps: ['Create markets or generate Stableford/round/team markets.', 'Open, close, settle or void markets as required.', 'Use manual admin bet entry for corrections.', 'Tour reconciliation shows who owes what. Reset Bet Punto clears only markets/options/bets for a tour.'], publicNote: 'Bet Punto has no wallet/payment handling.', warning: 'Reset cannot be undone.' },
+  { id: 'guide-bet', title: 'Bet Punto', steps: ['Create markets or generate Stableford/round/team markets.', 'Open, close, settle or void markets as required.', 'Use default picks and manual admin bet entry for corrections.', 'Tour reconciliation shows who owes what. Reset Bet Punto clears only markets/options/bets for a tour.'], publicNote: 'Bet Punto has no wallet/payment handling.', warning: 'Reset cannot be undone.' },
   { id: 'guide-archive', title: 'Tour archive', steps: ['Historical tours preserve teams, rounds, matches, results, handbook and player snapshots.', 'Tour-specific player profile snapshots protect old tours from later global edits.', 'Edit archived data only for deliberate corrections.'], publicNote: 'Archive pages and historic stats depend on preserved tour data.', warning: 'Changing old published data can alter historical displays.' },
   { id: 'guide-trouble', title: 'Troubleshooting', steps: ['If Supabase schema cache warnings appear after migrations, run notify pgrst, reload schema.', 'Run migrations when adding missing columns/functions before using new admin fields.', 'If public data does not appear, check current public tour, publish flags and selected tour.', 'If publish buttons fail, check admin PIN/session and Supabase errors.', 'If photos do not show, check public URL, bucket policy and ID-based path.', 'If schedule looks wrong, edit or delete tour_itinerary_items in Handbook.'], publicNote: 'Most public mismatches are caused by current tour, publish status, or stale itinerary rows.', warning: 'Never fix stale itinerary by hardcoding public page content.' },
 ];
@@ -814,20 +815,20 @@ export function Admin() {
 
   const editItineraryItem = (item: TourItineraryItem) => setItineraryForm({ id: item.id, itemDate: item.itemDate ?? '', dayLabel: item.dayLabel ?? '', timeLabel: item.timeLabel ?? '', activity: item.activity, location: item.location ?? '', notes: item.notes ?? '', isPlaceholder: item.isPlaceholder, sortOrder: String(item.sortOrder) });
   const duplicateItineraryItem = (item: TourItineraryItem) => setItineraryForm({ itemDate: item.itemDate ?? '', dayLabel: item.dayLabel ?? '', timeLabel: item.timeLabel ?? '', activity: item.activity, location: item.location ?? '', notes: item.notes ?? '', isPlaceholder: item.isPlaceholder, sortOrder: String(item.sortOrder + 1) });
-  const moveItineraryItem = (item: TourItineraryItem, delta: number) => {
+  const moveItineraryItem = (item: TourItineraryItem, delta: -1 | 1) => {
     if (!selectedTour) return;
+    const reordered = reorderItineraryItems(adminData?.itineraryItems ?? [], item.id, delta);
     void runSave(`move-itinerary-${item.id}`, 'Itinerary order updated.', async () => {
-      await saveItineraryItem({ ...item, tourId: selectedTour.id, itemDate: item.itemDate ?? null, dayLabel: item.dayLabel ?? null, timeLabel: item.timeLabel ?? null, location: item.location ?? null, notes: item.notes ?? null, sortOrder: item.sortOrder + delta });
+      for (const nextItem of reordered) {
+        await saveItineraryItem({ ...nextItem, tourId: selectedTour.id, itemDate: nextItem.itemDate ?? null, dayLabel: nextItem.dayLabel ?? null, timeLabel: nextItem.timeLabel ?? null, location: nextItem.location ?? null, notes: nextItem.notes ?? null });
+      }
       return selectedTour.id;
     });
   };
 
   const buildDraftItinerary = () => {
     if (!selectedTour) return;
-    const existing = adminData?.itineraryItems ?? [];
-    const existingKeys = new Set(existing.map((item) => `${item.itemDate ?? ''}|${item.activity.toLowerCase()}|${item.timeLabel ?? ''}`));
-    const drafts = (adminData?.rounds ?? []).filter((round) => round.roundDate).map((round) => ({ itemDate: round.roundDate ?? null, dayLabel: '', timeLabel: round.teeTime || 'TBC', activity: round.name || `Round ${round.roundNumber}`, location: round.courseName || 'Course TBC', notes: round.formatLabel || null, isPlaceholder: !round.teeTime || !round.courseName, sortOrder: existing.length + round.roundNumber }));
-    const missing = drafts.filter((draft) => !existingKeys.has(`${draft.itemDate ?? ''}|${draft.activity.toLowerCase()}|${draft.timeLabel ?? ''}`));
+    const missing = buildMissingRoundItineraryDrafts(adminData?.itineraryItems ?? [], adminData?.rounds ?? []);
     if (missing.length === 0) {
       setSaveState('build-itinerary', { saving: false, error: 'No missing draft round itinerary items to add.' });
       return;
