@@ -27,7 +27,7 @@ type BetMarketForm = { id?: string; title: string; description: string; marketTy
 type ResultForm = { roundId: string; matchId: string; resultText: string; winningSide: '' | 'A' | 'B'; published: boolean; correctionReason: string };
 type TeeTimePlanForm = { firstTeeTime: string; intervalMinutes: string };
 type HandbookForm = { id?: string; sectionKey: string; title: string; body: string; sortOrder: string };
-type ItineraryForm = { id?: string; itemDate: string; dayLabel: string; timeLabel: string; activity: string; location: string; notes: string; isPlaceholder: boolean; sortOrder: string };
+type ItineraryForm = { id?: string; itemDate: string; dayLabel: string; timeLabel: string; activity: string; location: string; notes: string; isPlaceholder: boolean; sortOrder: string; sourceType?: string; sourceId?: string };
 
 const emptyPlayerForm: PlayerForm = { displayName: '', nickname: '', initials: '', photoUrl: '', profileBio: '', active: true };
 const emptyTeamForm: TeamForm = { name: '', colour: '', captainPlayerId: '', sortOrder: '1' };
@@ -799,7 +799,7 @@ export function Admin() {
       return;
     }
     void runSave('itinerary-item', 'Itinerary item saved.', async () => {
-      await saveItineraryItem({ id: itineraryForm.id, tourId: selectedTour.id, itemDate: itineraryForm.itemDate || null, dayLabel: itineraryForm.dayLabel || null, timeLabel: itineraryForm.timeLabel || null, activity: itineraryForm.activity.trim(), location: itineraryForm.location || null, notes: itineraryForm.notes || null, isPlaceholder: itineraryForm.isPlaceholder, sortOrder });
+      await saveItineraryItem({ id: itineraryForm.id, tourId: selectedTour.id, itemDate: itineraryForm.itemDate || null, dayLabel: itineraryForm.dayLabel || null, timeLabel: itineraryForm.timeLabel || null, activity: itineraryForm.activity.trim(), location: itineraryForm.location || null, notes: itineraryForm.notes || null, isPlaceholder: itineraryForm.isPlaceholder, sortOrder, sourceType: itineraryForm.sourceType || null, sourceId: itineraryForm.sourceId || null });
       setItineraryForm(emptyItineraryForm);
       return selectedTour.id;
     });
@@ -813,14 +813,14 @@ export function Admin() {
     });
   };
 
-  const editItineraryItem = (item: TourItineraryItem) => setItineraryForm({ id: item.id, itemDate: item.itemDate ?? '', dayLabel: item.dayLabel ?? '', timeLabel: item.timeLabel ?? '', activity: item.activity, location: item.location ?? '', notes: item.notes ?? '', isPlaceholder: item.isPlaceholder, sortOrder: String(item.sortOrder) });
-  const duplicateItineraryItem = (item: TourItineraryItem) => setItineraryForm({ itemDate: item.itemDate ?? '', dayLabel: item.dayLabel ?? '', timeLabel: item.timeLabel ?? '', activity: item.activity, location: item.location ?? '', notes: item.notes ?? '', isPlaceholder: item.isPlaceholder, sortOrder: String(item.sortOrder + 1) });
+  const editItineraryItem = (item: TourItineraryItem) => setItineraryForm({ id: item.id, itemDate: item.itemDate ?? '', dayLabel: item.dayLabel ?? '', timeLabel: item.timeLabel ?? '', activity: item.activity, location: item.location ?? '', notes: item.notes ?? '', isPlaceholder: item.isPlaceholder, sortOrder: String(item.sortOrder), sourceType: item.sourceType, sourceId: item.sourceId });
+  const duplicateItineraryItem = (item: TourItineraryItem) => setItineraryForm({ itemDate: item.itemDate ?? '', dayLabel: item.dayLabel ?? '', timeLabel: item.timeLabel ?? '', activity: item.activity, location: item.location ?? '', notes: item.notes ?? '', isPlaceholder: item.isPlaceholder, sortOrder: String(Math.max(0, ...(adminData?.itineraryItems ?? []).map((candidate) => candidate.sortOrder)) + 1) });
   const moveItineraryItem = (item: TourItineraryItem, delta: -1 | 1) => {
     if (!selectedTour) return;
     const reordered = reorderItineraryItems(adminData?.itineraryItems ?? [], item.id, delta);
     void runSave(`move-itinerary-${item.id}`, 'Itinerary order updated.', async () => {
       for (const nextItem of reordered) {
-        await saveItineraryItem({ ...nextItem, tourId: selectedTour.id, itemDate: nextItem.itemDate ?? null, dayLabel: nextItem.dayLabel ?? null, timeLabel: nextItem.timeLabel ?? null, location: nextItem.location ?? null, notes: nextItem.notes ?? null });
+        await saveItineraryItem({ ...nextItem, tourId: selectedTour.id, itemDate: nextItem.itemDate ?? null, dayLabel: nextItem.dayLabel ?? null, timeLabel: nextItem.timeLabel ?? null, location: nextItem.location ?? null, notes: nextItem.notes ?? null, sourceType: nextItem.sourceType ?? null, sourceId: nextItem.sourceId ?? null });
       }
       return selectedTour.id;
     });

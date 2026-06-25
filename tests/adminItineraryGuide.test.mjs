@@ -16,7 +16,7 @@ const reorderItineraryItems = (items, itemId, direction) => {
 };
 const buildMissingRoundItineraryDrafts = (existingItems, rounds) => {
   const ordered = normalizeOrder(existingItems);
-  return rounds.filter((candidate) => candidate.roundDate).filter((candidate) => !ordered.some((existing) => existing.notes?.includes(roundItinerarySourceToken(candidate.id)) || (existing.itemDate === candidate.roundDate && existing.activity.trim().toLowerCase() === (candidate.name || `Round ${candidate.roundNumber}`).trim().toLowerCase()))).map((candidate, index) => ({ itemDate: candidate.roundDate, dayLabel: null, timeLabel: candidate.teeTime || 'TBC', activity: candidate.name || `Round ${candidate.roundNumber}`, location: candidate.courseName || 'Course TBC', notes: [roundItinerarySourceToken(candidate.id), candidate.formatLabel].filter(Boolean).join(' '), isPlaceholder: !candidate.teeTime || !candidate.courseName, sortOrder: ordered.length + index + 1 }));
+  return rounds.filter((candidate) => candidate.roundDate).filter((candidate) => !ordered.some((existing) => (existing.sourceType === 'round' && existing.sourceId === candidate.id) || existing.notes?.includes(roundItinerarySourceToken(candidate.id)) || (existing.itemDate === candidate.roundDate && existing.activity.trim().toLowerCase() === (candidate.name || `Round ${candidate.roundNumber}`).trim().toLowerCase()))).map((candidate, index) => ({ itemDate: candidate.roundDate, dayLabel: null, timeLabel: candidate.teeTime || 'TBC', activity: candidate.name || `Round ${candidate.roundNumber}`, location: candidate.courseName || 'Course TBC', notes: candidate.formatLabel || null, sourceType: 'round', sourceId: candidate.id, isPlaceholder: !candidate.teeTime || !candidate.courseName, sortOrder: ordered.length + index + 1 }));
 };
 
 const item = (id, sortOrder, overrides = {}) => ({
@@ -60,6 +60,7 @@ test('Admin itinerary CRUD functions use tour_itinerary_items', async () => {
   const deleteFn = await readFile(new URL('../netlify/functions/admin-delete-itinerary-item.ts', import.meta.url), 'utf8');
   assert.match(saveFn, /tour_itinerary_items/);
   assert.match(saveFn, /is_placeholder/);
+  assert.match(saveFn, /source_type/);
   assert.match(deleteFn, /tour_itinerary_items/);
 });
 
@@ -73,6 +74,9 @@ test('itinerary builder does not duplicate generated round items after time labe
   const sourceRound = round();
   const firstDraft = buildMissingRoundItineraryDrafts([], [sourceRound]);
   assert.equal(firstDraft.length, 1);
+  assert.equal(firstDraft[0].sourceType, 'round');
+  assert.equal(firstDraft[0].sourceId, sourceRound.id);
+  assert.doesNotMatch(firstDraft[0].notes, /\[round:/);
   const existing = item('generated', 1, { activity: 'Round 1', timeLabel: '09:32', notes: `${roundItinerarySourceToken(sourceRound.id)} Singles` });
   assert.deepEqual(buildMissingRoundItineraryDrafts([existing], [{ ...sourceRound, teeTime: '10:00' }]), []);
 });
@@ -81,6 +85,25 @@ test('itinerary builder does not duplicate generated round items after round tee
   const sourceRound = round({ teeTime: 'TBC' });
   const existing = item('legacy-generated', 1, { activity: 'Round 1', timeLabel: '09:32', notes: 'Singles' });
   assert.deepEqual(buildMissingRoundItineraryDrafts([existing], [{ ...sourceRound, teeTime: '10:00' }]), []);
+});
+
+
+
+test('itinerary builder matches generated rows by source fields before editable labels', () => {
+  const sourceRound = round();
+  const existing = item('generated-source', 1, { activity: 'Admin edited title', timeLabel: '09:32', notes: 'Better ball', sourceType: 'round', sourceId: sourceRound.id });
+  assert.deepEqual(buildMissingRoundItineraryDrafts([existing], [{ ...sourceRound, name: 'Round 1 updated', teeTime: '10:00' }]), []);
+});
+
+test('duplicating an itinerary item should use the next max sort order', async () => {
+  const admin = await readFile(new URL('../src/pages/Admin.tsx', import.meta.url), 'utf8');
+  assert.match(admin, /Math\.max\(0, \.\.\.\(adminData\?\.itineraryItems \?\? \[\]\)\.map\(\(candidate\) => candidate\.sortOrder\)\) \+ 1/);
+});
+
+test('public itinerary mapper strips legacy round tokens from notes', async () => {
+  const mapper = await readFile(new URL('../netlify/functions/_mappers.ts', import.meta.url), 'utf8');
+  assert.match(mapper, /publicItineraryNotes/);
+  assert.match(mapper, /replace\(\/\\s\*\\\[round:/);
 });
 
 test('Public Info itinerary empty state is explicit TBC', async () => {

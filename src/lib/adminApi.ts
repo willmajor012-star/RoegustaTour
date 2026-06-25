@@ -148,7 +148,7 @@ export type SubmitResultPayload = {
 };
 
 export type SaveHandbookSectionPayload = { id?: string; tourId: string; sectionKey: string; title: string; body?: string | null; sortOrder: number };
-export type SaveItineraryItemPayload = { id?: string; tourId: string; itemDate?: string | null; dayLabel?: string | null; timeLabel?: string | null; activity: string; location?: string | null; notes?: string | null; isPlaceholder: boolean; sortOrder: number };
+export type SaveItineraryItemPayload = { id?: string; tourId: string; itemDate?: string | null; dayLabel?: string | null; timeLabel?: string | null; activity: string; location?: string | null; notes?: string | null; isPlaceholder: boolean; sortOrder: number; sourceType?: string | null; sourceId?: string | null };
 
 export type SettleBetMarketPayload = {
   marketId: string;

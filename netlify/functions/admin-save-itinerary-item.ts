@@ -23,6 +23,8 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     notes: optionalString(body.notes) || null,
     is_placeholder: Boolean(body.isPlaceholder),
     sort_order: sortOrder,
+    source_type: optionalString(body.sourceType) || null,
+    source_id: optionalString(body.sourceId) || null,
   };
   const query = id
     ? supabase.from('tour_itinerary_items').update(values).eq('id', id).eq('tour_id', tourId).select('*').single()

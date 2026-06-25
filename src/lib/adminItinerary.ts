@@ -8,6 +8,8 @@ export type DraftItineraryPayload = {
   activity: string;
   location?: string | null;
   notes?: string | null;
+  sourceType?: string | null;
+  sourceId?: string | null;
   isPlaceholder: boolean;
   sortOrder: number;
 };
@@ -30,6 +32,7 @@ export function reorderItineraryItems(items: TourItineraryItem[], itemId: string
 
 function itineraryItemReferencesRound(item: TourItineraryItem, round: Round): boolean {
   const token = roundItinerarySourceToken(round.id);
+  if (item.sourceType === 'round' && item.sourceId === round.id) return true;
   if (item.notes?.includes(token)) return true;
   return Boolean(item.itemDate && round.roundDate && item.itemDate === round.roundDate && item.activity.trim().toLowerCase() === (round.name || `Round ${round.roundNumber}`).trim().toLowerCase());
 }
@@ -41,15 +44,15 @@ export function buildMissingRoundItineraryDrafts(existingItems: TourItineraryIte
     .filter((round) => round.roundDate)
     .filter((round) => !ordered.some((item) => itineraryItemReferencesRound(item, round)))
     .map((round, index) => {
-      const sourceToken = roundItinerarySourceToken(round.id);
-      const notes = [sourceToken, round.formatLabel].filter(Boolean).join(' ');
       return {
         itemDate: round.roundDate ?? null,
         dayLabel: null,
         timeLabel: round.teeTime || 'TBC',
         activity: round.name || `Round ${round.roundNumber}`,
         location: round.courseName || 'Course TBC',
-        notes: notes || sourceToken,
+        notes: round.formatLabel || null,
+        sourceType: 'round',
+        sourceId: round.id,
         isPlaceholder: !round.teeTime || !round.courseName,
         sortOrder: baseOrder + index + 1,
       };
