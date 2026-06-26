@@ -259,7 +259,18 @@ export function mapTourHandbookSection(row: Row): TourHandbookSection {
   };
 }
 
+function legacyRoundItinerarySourceId(value: unknown): string | undefined {
+  return asString(value)?.match(/\[round:([^\]]+)\]/i)?.[1]?.trim() || undefined;
+}
+
+function publicItineraryNotes(value: unknown): string | undefined {
+  const cleaned = asString(value)?.replace(/\s*\[round:[^\]]+\]\s*/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+  return cleaned || undefined;
+}
+
 export function mapTourItineraryItem(row: Row): TourItineraryItem {
+  const sourceId = asString(row.source_id) ?? legacyRoundItinerarySourceId(row.notes);
+  const sourceType = asString(row.source_type) ?? (sourceId ? 'round' : undefined);
   return {
     id: requiredString(row, 'id'),
     tourId: requiredString(row, 'tour_id'),
@@ -268,9 +279,11 @@ export function mapTourItineraryItem(row: Row): TourItineraryItem {
     timeLabel: asString(row.time_label),
     activity: requiredString(row, 'activity'),
     location: asString(row.location),
-    notes: asString(row.notes),
+    notes: publicItineraryNotes(row.notes),
     isPlaceholder: asBoolean(row.is_placeholder),
     sortOrder: requiredNumber(row, 'sort_order'),
+    sourceType,
+    sourceId,
   };
 }
 

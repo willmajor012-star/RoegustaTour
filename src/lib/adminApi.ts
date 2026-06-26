@@ -1,6 +1,6 @@
 import { clearStoredAdminSession, getAdminAuthorizationHeaders } from './adminSession';
 import type { Bet, BetMarket, BetOption, Match, MatchFormat, MatchParticipant, Player, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from './types';
-import type { TourHandbookSection } from './publicApi';
+import type { TourHandbookSection, TourItineraryItem } from './publicApi';
 
 export type AdminDataResponse = {
   ok: true;
@@ -20,6 +20,7 @@ export type AdminDataResponse = {
   betOptions: BetOption[];
   bets: Bet[];
   handbookSections: TourHandbookSection[];
+  itineraryItems: TourItineraryItem[];
 };
 
 export type SavePlayerPayload = {
@@ -147,6 +148,7 @@ export type SubmitResultPayload = {
 };
 
 export type SaveHandbookSectionPayload = { id?: string; tourId: string; sectionKey: string; title: string; body?: string | null; sortOrder: number };
+export type SaveItineraryItemPayload = { id?: string; tourId: string; itemDate?: string | null; dayLabel?: string | null; timeLabel?: string | null; activity: string; location?: string | null; notes?: string | null; isPlaceholder: boolean; sortOrder: number; sourceType?: string | null; sourceId?: string | null };
 
 export type SettleBetMarketPayload = {
   marketId: string;
@@ -236,3 +238,6 @@ export const updateBet = (payload: UpdateBetPayload) => postAdminJson<{ ok: true
 export const deleteBet = (payload: { id: string }) => postAdminJson<{ ok: true; deletedBetId: string }>('/.netlify/functions/admin-delete-bet', payload);
 export const saveHandbookSection = (payload: SaveHandbookSectionPayload) => postAdminJson<{ ok: true; handbookSection: TourHandbookSection }>('/.netlify/functions/admin-save-handbook-section', payload);
 export const deleteHandbookSection = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedHandbookSectionId: string }>('/.netlify/functions/admin-delete-handbook-section', payload);
+
+export const saveItineraryItem = (payload: SaveItineraryItemPayload) => postAdminJson<{ ok: true; itineraryItem: TourItineraryItem }>('/.netlify/functions/admin-save-itinerary-item', payload);
+export const deleteItineraryItem = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedItineraryItemId: string }>('/.netlify/functions/admin-delete-itinerary-item', payload);

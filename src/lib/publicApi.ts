@@ -70,6 +70,8 @@ export type TourItineraryItem = {
   notes?: string;
   isPlaceholder: boolean;
   sortOrder: number;
+  sourceType?: string;
+  sourceId?: string;
 };
 
 export type TourTeamDayKit = {

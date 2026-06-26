@@ -41,10 +41,13 @@ create table if not exists tour_itinerary_items (
   notes text,
   is_placeholder boolean not null default false,
   sort_order integer not null default 0,
+  source_type text,
+  source_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 create index if not exists tour_itinerary_items_tour_date_idx on tour_itinerary_items(tour_id, item_date, sort_order);
+create index if not exists tour_itinerary_items_source_idx on tour_itinerary_items(tour_id, source_type, source_id);
 
 create table if not exists tour_team_day_kit (
   id uuid primary key default gen_random_uuid(),
