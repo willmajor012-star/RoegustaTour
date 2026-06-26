@@ -89,7 +89,7 @@ test('itinerary builder does not duplicate generated round items after round tee
 
 
 
-test('itinerary builder matches generated rows by source fields before editable labels', () => {
+test('itinerary builder matches mapped legacy source fields before editable labels', () => {
   const sourceRound = round();
   const existing = item('generated-source', 1, { activity: 'Admin edited title', timeLabel: '09:32', notes: 'Better ball', sourceType: 'round', sourceId: sourceRound.id });
   assert.deepEqual(buildMissingRoundItineraryDrafts([existing], [{ ...sourceRound, name: 'Round 1 updated', teeTime: '10:00' }]), []);
@@ -100,10 +100,22 @@ test('duplicating an itinerary item should use the next max sort order', async (
   assert.match(admin, /Math\.max\(0, \.\.\.\(adminData\?\.itineraryItems \?\? \[\]\)\.map\(\(candidate\) => candidate\.sortOrder\)\) \+ 1/);
 });
 
-test('public itinerary mapper strips legacy round tokens from notes', async () => {
+test('public itinerary mapper strips legacy round tokens and infers source fields from notes', async () => {
   const mapper = await readFile(new URL('../netlify/functions/_mappers.ts', import.meta.url), 'utf8');
-  assert.match(mapper, /publicItineraryNotes/);
+  assert.match(mapper, /legacyRoundItinerarySourceId/);
+  assert.match(mapper, /sourceId = asString\(row\.source_id\) \?\? legacyRoundItinerarySourceId\(row\.notes\)/);
+  assert.match(mapper, /sourceType = asString\(row\.source_type\) \?\? \(sourceId \? 'round' : undefined\)/);
   assert.match(mapper, /replace\(\/\\s\*\\\[round:/);
+});
+
+
+
+test('source migration backfills source fields from legacy round notes', async () => {
+  const migration = await readFile(new URL('../supabase/migrations/202606250001_itinerary_source_fields.sql', import.meta.url), 'utf8');
+  assert.match(migration, /update tour_itinerary_items/);
+  assert.match(migration, /source_type = 'round'/);
+  assert.match(migration, /substring\(notes from/);
+  assert.match(migration, /round:/);
 });
 
 test('Public Info itinerary empty state is explicit TBC', async () => {
