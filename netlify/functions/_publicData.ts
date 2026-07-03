@@ -319,14 +319,15 @@ export async function getBettingBundle(supabase: SupabaseClient) {
 
 export async function getTourInfoBundle(supabase: SupabaseClient) {
   const tour = await getCurrentTour(supabase);
-  if (!tour) return { tour: undefined, rounds: [], handbookSections: [], itineraryItems: [], teamDayKit: [], tourTeams: [], roundPrizeResults: [] };
+  if (!tour) return { tour: undefined, rounds: [], handbookSections: [], itineraryItems: [], teamDayKit: [], tourTeams: [], players: [], roundPrizeResults: [] };
 
-  const [roundRows, sectionRows, itineraryRows, kitRows, teamRows, prizeRows] = await Promise.all([
+  const [roundRows, sectionRows, itineraryRows, kitRows, teamRows, playerRows, prizeRows] = await Promise.all([
     runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'tour info rounds'),
     runQuery(table(supabase, 'tour_handbook_sections').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour handbook sections'),
     runQuery(table(supabase, 'tour_itinerary_items').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour itinerary items'),
     runQuery(table(supabase, 'tour_team_day_kit').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour team day kit'),
     runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour info teams'),
+    runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'tour info players'),
     runQuery(table(supabase, 'round_prize_results').select('*').eq('tour_id', tour.id).eq('published', true), 'tour info prize results').catch(() => []),
   ]);
   const tourTeams = publicTeamsOrLegacyCurrent(teamRows.map(mapTourTeam), tour);
@@ -341,6 +342,7 @@ export async function getTourInfoBundle(supabase: SupabaseClient) {
     itineraryItems: itineraryRows.map(mapTourItineraryItem),
     teamDayKit: kitRows.map(mapTourTeamDayKit).filter((kit) => publicTeamIds.has(kit.teamId)),
     tourTeams,
+    players: playerRows.map(mapPlayer),
     roundPrizeResults: prizeRows.map(mapRoundPrizeResult).filter((prize) => roundById.has(prize.roundId)),
   };
 }

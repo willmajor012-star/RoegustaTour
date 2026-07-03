@@ -52,5 +52,5 @@ export function awardedPoints(matches: Match[]) {
 }
 
 export function pointsRequiredToWinOutright(totalAvailable: number) {
-  return totalAvailable > 0 ? Math.floor(totalAvailable / 2) + 0.5 : undefined;
+  return totalAvailable > 0 ? Math.floor(totalAvailable + 1) / 2 : undefined;
 }

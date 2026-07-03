@@ -110,6 +110,7 @@ export type PublicTourInfoResponse = PublicResponse<{
   itineraryItems: TourItineraryItem[];
   teamDayKit: TourTeamDayKit[];
   tourTeams: TourTeam[];
+  players: Player[];
   roundPrizeResults: RoundPrizeResult[];
 }>;
 

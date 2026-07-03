@@ -29,6 +29,21 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
 
   const winnerPlayerId = optionalString(body.winnerPlayerId);
   const winnerTeamId = optionalString(body.winnerTeamId);
+  const linkedBetMarketId = optionalString(body.linkedBetMarketId);
+  if (winnerPlayerId) {
+    const players = await runRows<{ id: string }>(supabase.from('players').select('id').eq('id', winnerPlayerId).limit(1), 'find prize winner player');
+    if (players.length === 0) return badRequest('Winner player must exist.');
+    const attending = await runRows<{ player_id: string }>(supabase.from('tour_players').select('player_id').eq('tour_id', tourId).eq('player_id', winnerPlayerId).eq('attending', true).limit(1), 'find prize winner tour player');
+    if (attending.length === 0) return badRequest('Winner player must be attending this tour.');
+  }
+  if (winnerTeamId) {
+    const teams = await runRows<{ id: string }>(supabase.from('tour_teams').select('id').eq('id', winnerTeamId).eq('tour_id', tourId).limit(1), 'find prize winner team');
+    if (teams.length === 0) return badRequest('Winner team must belong to this tour.');
+  }
+  if (linkedBetMarketId) {
+    const markets = await runRows<{ id: string }>(supabase.from('bet_markets').select('id').eq('id', linkedBetMarketId).eq('tour_id', tourId).limit(1), 'find linked prize bet market');
+    if (markets.length === 0) return badRequest('Linked Bet Punto market must belong to this tour.');
+  }
   const row = {
     id: id ?? crypto.randomUUID(),
     tour_id: tourId,
@@ -41,7 +56,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     score_value: optionalNumber(body.scoreValue),
     score_unit: optionalString(body.scoreUnit),
     notes: optionalString(body.notes),
-    linked_bet_market_id: optionalString(body.linkedBetMarketId),
+    linked_bet_market_id: linkedBetMarketId,
     published,
     updated_at: new Date().toISOString(),
   };

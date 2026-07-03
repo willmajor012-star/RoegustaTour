@@ -92,7 +92,8 @@ function GolfTeeTimes({ selectedRound, matches, players, teams, participants }: 
 
 function GolfResults({ rounds, selectedRound, matches, data, teams }: { rounds: Round[]; selectedRound?: Round; matches: Match[]; data: Omit<PublicMatchesResponse, 'source'>; teams: TourTeam[] }) {
   const visibleRounds = selectedRound ? [selectedRound] : rounds;
-  if (matches.length === 0) return <section className="tour-detail-section card"><h3>Results</h3><p>Pairings and tee times will appear once published.</p></section>;
+  const hasPrizeResults = visibleRounds.some((round) => data.roundPrizeResults.some((prize) => prize.roundId === round.id));
+  if (matches.length === 0 && !hasPrizeResults) return <section className="tour-detail-section card"><h3>Results</h3><p>Pairings and tee times will appear once published.</p></section>;
   return <section className="tour-detail-section card"><h3>Results</h3>{visibleRounds.map((round, index) => {
     const roundMatches = matches.filter((match) => match.roundId === round.id);
     const score = roundTeamScore(roundMatches);
