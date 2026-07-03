@@ -1,5 +1,5 @@
 import type { AdvancedStatsData, MvpLeaderboardRow, PlayerAdvancedSummary, TourSummary } from './advancedStats';
-import type { Bet, BetMarket, BetOption, Match, MatchParticipant, Player, Round, TeamScoreRow, Tour, TourPlayer, TourTeam, TourTeamMember } from './types';
+import type { Bet, BetMarket, BetOption, Match, MatchParticipant, Player, Round, RoundPrizeResult, TeamScoreRow, Tour, TourPlayer, TourTeam, TourTeamMember } from './types';
 
 export type PublicDataSource = 'supabase';
 export type PublicResponse<T> = T & { source: PublicDataSource };
@@ -28,6 +28,7 @@ export type PublicMatchesResponse = PublicResponse<{
   tourPlayers: TourPlayer[];
   tourTeams: TourTeam[];
   tourTeamMembers: TourTeamMember[];
+  roundPrizeResults: RoundPrizeResult[];
 }>;
 
 export type PublicPlayersResponse = PublicResponse<{
@@ -109,6 +110,8 @@ export type PublicTourInfoResponse = PublicResponse<{
   itineraryItems: TourItineraryItem[];
   teamDayKit: TourTeamDayKit[];
   tourTeams: TourTeam[];
+  players: Player[];
+  roundPrizeResults: RoundPrizeResult[];
 }>;
 
 async function fetchPublicJson<T>(path: string): Promise<T> {

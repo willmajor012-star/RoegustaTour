@@ -1,6 +1,6 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { withAdminSupabase, runRows } from './_adminSupabase';
-import { mapBet, mapBetMarket, mapBetOption, mapMatch, mapMatchParticipant, mapPlayer, mapRound, mapTour, mapTourPlayer, mapTourTeam, mapTourTeamMember, mapTourHandbookSection, mapTourItineraryItem, mapTourTeamResult } from './_mappers';
+import { mapBet, mapBetMarket, mapBetOption, mapMatch, mapMatchParticipant, mapPlayer, mapRound, mapTour, mapTourPlayer, mapTourTeam, mapTourTeamMember, mapTourHandbookSection, mapTourItineraryItem, mapTourTeamResult, mapRoundPrizeResult } from './_mappers';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -33,6 +33,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
       bets: [],
       handbookSections: [],
       itineraryItems: [],
+      roundPrizeResults: [],
     });
   }
 
@@ -49,9 +50,13 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
 
   const matchIds = matchRows.map((row) => String(row.id));
   const marketIds = marketRows.map((row) => String(row.id));
-  const [resultRows, participantRows, optionRows, betRows] = await Promise.all([
+  const [resultRows, prizeRows, participantRows, optionRows, betRows] = await Promise.all([
     runRows(supabase.from('tour_team_results').select('*').eq('tour_id', selectedTour.id), 'admin team results').catch((error) => {
       console.warn('Optional tour_team_results admin read failed:', error);
+      return [] as Record<string, unknown>[];
+    }),
+    runRows(supabase.from('round_prize_results').select('*').eq('tour_id', selectedTour.id), 'admin round prize results').catch((error) => {
+      console.warn('Optional round_prize_results admin read failed:', error);
       return [] as Record<string, unknown>[];
     }),
     matchIds.length > 0
@@ -84,5 +89,6 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
     bets: betRows.map(mapBet),
     handbookSections: handbookRows.map(mapTourHandbookSection),
     itineraryItems: itineraryRows.map(mapTourItineraryItem),
+    roundPrizeResults: prizeRows.map(mapRoundPrizeResult),
   });
 });

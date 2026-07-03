@@ -13,11 +13,21 @@ export function isPublicVisibleMatch(match: Match) {
   return match.status !== 'draft' && match.status !== 'void' && (match.published !== false || match.status === 'complete');
 }
 
+export function roundSession(round?: Round) {
+  const match = round?.notes?.match(/^\[Session: (AM|PM|TBC)\]/);
+  return match?.[1];
+}
+
 export function formatRoundDisplayName(round?: Round, fallbackIndex?: number) {
-  const cleanName = cleanText(round?.name);
-  if (cleanName) return cleanName;
   const number = round?.roundNumber || (fallbackIndex !== undefined ? fallbackIndex + 1 : undefined);
-  return number ? `Round ${number}` : 'Round';
+  const prefix = number ? `Round ${number}` : 'Round';
+  const cleanName = cleanText(round?.name);
+  return cleanName && !/^round\s+\d+$/i.test(cleanName) ? `${prefix} · ${cleanName}` : prefix;
+}
+
+export function formatRoundContextLabel(round?: Round, fallbackIndex?: number) {
+  const parts = [formatRoundDisplayName(round, fallbackIndex), formatShortDate(round?.roundDate), roundSession(round), cleanText(round?.courseName), cleanText(round?.formatLabel), `${round?.holes ?? 18} holes`].filter(Boolean);
+  return parts.join(' · ');
 }
 
 export function formatTourDisplayName(tour?: Tour) {
@@ -32,7 +42,7 @@ export function formatTourDates(tour?: Pick<Tour, 'startDate' | 'endDate'>) {
 }
 
 export function formatRoundMeta(round?: Round, format?: MatchFormat) {
-  const parts = [format ? formatMatchFormat(format) : cleanText(round?.formatLabel), cleanText(round?.courseName), formatShortDate(round?.roundDate), normalizeTeeTime(round?.teeTime)].filter(Boolean);
+  const parts = [format ? formatMatchFormat(format) : cleanText(round?.formatLabel), cleanText(round?.courseName), formatShortDate(round?.roundDate), `${round?.holes ?? 18} holes`, normalizeTeeTime(round?.teeTime)].filter(Boolean);
   return parts.join(' · ') || 'Details TBC';
 }
 

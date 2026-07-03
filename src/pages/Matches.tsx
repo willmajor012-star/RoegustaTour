@@ -4,14 +4,14 @@ import { TeamRosterCards } from '../components/PlayerProfileCards';
 import { fetchPublicMatches, type PublicMatchesResponse } from '../lib/publicApi';
 import { usePublicData } from '../lib/usePublicData';
 import { formatDate, formatMatchFormat, formatPoints, formatShortDate } from '../lib/formatting';
-import { compareTeeTimeValues, formatRoundDisplayName, formatTeeTimeDisplay, isPublicVisibleMatch, publicWorkflowStatusLabel } from '../lib/display';
+import { compareTeeTimeValues, formatRoundContextLabel, formatRoundDisplayName, formatTeeTimeDisplay, isPublicVisibleMatch, publicWorkflowStatusLabel } from '../lib/display';
 import { tourPointsTarget } from '../lib/golf';
 import { calculateTeamScoreByTour } from '../lib/scoring';
 import { normalizeTeamColour } from '../lib/teamColours';
 import { tourDisplayPlayer } from '../lib/playerDisplay';
-import type { Match, MatchParticipant, Player, Round, TourTeam } from '../lib/types';
+import type { Match, MatchParticipant, Player, Round, RoundPrizeResult, TourTeam } from '../lib/types';
 
-const emptyMatchesData: Omit<PublicMatchesResponse, 'source'> = { tour: undefined, rounds: [], matches: [], matchParticipants: [], players: [], tourPlayers: [], tourTeams: [], tourTeamMembers: [] };
+const emptyMatchesData: Omit<PublicMatchesResponse, 'source'> = { tour: undefined, rounds: [], matches: [], matchParticipants: [], players: [], tourPlayers: [], tourTeams: [], tourTeamMembers: [], roundPrizeResults: [] };
 type GolfSection = 'tee-times' | 'results' | 'teams';
 const golfSections: Array<{ value: GolfSection; label: string }> = [
   { value: 'tee-times', label: 'Tee Times' },
@@ -76,7 +76,7 @@ export function Matches() {
         <div className="tour-detail-score">{scoreRows.length > 0 ? scoreRows.map((row, index) => <span key={row.teamId} style={{ '--team-colour': normalizeTeamColour(row.colour, index) } as CSSProperties}>{row.teamName} <b>{formatPoints(row.points)}</b></span>) : <span>Score TBC</span>}<span>Total <b>{formatPoints(totalAvailablePoints)}</b> available</span><span>To win <b>{formatPoints(pointsToWin)}</b></span></div>
       </section>
       <div className="segmented tour-detail-switch golf-section-switch" role="tablist" aria-label="Golf sections">{golfSections.map((item) => <button key={item.value} className={section === item.value ? 'active' : ''} onClick={() => setSection(item.value)}>{item.label}</button>)}</div>
-      {activeData.rounds.length === 0 ? <p className="card">Pairings and tee times will appear once published.</p> : <label className="filters card golf-round-selector"><span>Round</span><select value={selectedRound?.id ?? ''} onChange={(event) => setRoundId(event.target.value)}>{activeData.rounds.map((round, index) => <option key={round.id} value={round.id}>{formatRoundDisplayName(round, index)}</option>)}</select></label>}
+      {activeData.rounds.length === 0 ? <p className="card">Pairings and tee times will appear once published.</p> : <label className="filters card golf-round-selector"><span>Round</span><select value={selectedRound?.id ?? ''} onChange={(event) => setRoundId(event.target.value)}>{activeData.rounds.map((round, index) => <option key={round.id} value={round.id}>{formatRoundContextLabel(round, index)}</option>)}</select></label>}
       {section === 'tee-times' && selectedRound && <GolfTeeTimes selectedRound={selectedRound} matches={teeSheetMatches} players={activeData.players} teams={activeData.tourTeams} participants={activeData.matchParticipants} />}
       {section === 'results' && <GolfResults rounds={activeData.rounds} selectedRound={selectedRound} matches={publicMatches} data={activeData} teams={activeData.tourTeams} />}
       {section === 'teams' && <GolfTeams teams={activeData.tourTeams} data={activeData} />}
@@ -92,13 +92,24 @@ function GolfTeeTimes({ selectedRound, matches, players, teams, participants }: 
 
 function GolfResults({ rounds, selectedRound, matches, data, teams }: { rounds: Round[]; selectedRound?: Round; matches: Match[]; data: Omit<PublicMatchesResponse, 'source'>; teams: TourTeam[] }) {
   const visibleRounds = selectedRound ? [selectedRound] : rounds;
-  if (matches.length === 0) return <section className="tour-detail-section card"><h3>Results</h3><p>Pairings and tee times will appear once published.</p></section>;
+  const hasPrizeResults = visibleRounds.some((round) => data.roundPrizeResults.some((prize) => prize.roundId === round.id));
+  if (matches.length === 0 && !hasPrizeResults) return <section className="tour-detail-section card"><h3>Results</h3><p>Pairings and tee times will appear once published.</p></section>;
   return <section className="tour-detail-section card"><h3>Results</h3>{visibleRounds.map((round, index) => {
     const roundMatches = matches.filter((match) => match.roundId === round.id);
     const score = roundTeamScore(roundMatches);
     const roundFormats = [...new Set(roundMatches.map((match) => formatMatchFormat(match.format)))].join(' / ');
-    return <div className="tour-round-block" key={round.id}><div className="tour-round-header"><div><strong>{formatRoundDisplayName(round, index)}</strong><span>{round.courseName ?? 'Course TBC'} · {formatShortDate(round.roundDate)}{roundFormats ? ` · ${roundFormats}` : ''}{round.teeTime ? ` · ${formatTeeTimeDisplay(round.teeTime)}` : ''}</span></div>{score && <b>{score}</b>}</div>{roundMatches.length === 0 ? <p>No results yet.</p> : roundMatches.map((match) => <MatchCard key={match.id} match={match} participants={data.matchParticipants.filter((p) => p.matchId === match.id)} players={data.players} teams={teams} />)}</div>;
+    return <div className="tour-round-block" key={round.id}><div className="tour-round-header"><div><strong>{formatRoundDisplayName(round, index)}</strong><span>{round.courseName ?? 'Course TBC'} · {formatShortDate(round.roundDate)} · {round.holes ?? 18} holes{roundFormats ? ` · ${roundFormats}` : ''}{round.teeTime ? ` · ${formatTeeTimeDisplay(round.teeTime)}` : ''}</span></div>{score && <b>{score}</b>}</div><SecondaryPrizeRows prizes={data.roundPrizeResults.filter((prize) => prize.roundId === round.id)} players={data.players} teams={teams} />{roundMatches.length === 0 ? <p>No results yet.</p> : roundMatches.map((match) => <MatchCard key={match.id} match={match} participants={data.matchParticipants.filter((p) => p.matchId === match.id)} players={data.players} teams={teams} />)}</div>;
   })}</section>;
+}
+
+
+function SecondaryPrizeRows({ prizes, players, teams }: { prizes: RoundPrizeResult[]; players: Player[]; teams: TourTeam[] }) {
+  if (prizes.length === 0) return null;
+  return <div className="premium-inset">{prizes.map((prize) => {
+    const winner = players.find((player) => player.id === prize.winnerPlayerId)?.displayName ?? teams.find((team) => team.id === prize.winnerTeamId)?.name ?? 'Winner TBC';
+    const score = prize.winningScoreText ?? [prize.scoreValue, prize.scoreUnit].filter(Boolean).join(' ');
+    return <p key={prize.id}><strong>Secondary prize:</strong> {prize.title} — {winner}{score ? `, ${score}` : ''}</p>;
+  })}</div>;
 }
 
 function GolfTeams({ teams, data }: { teams: TourTeam[]; data: Omit<PublicMatchesResponse, 'source'> }) {
@@ -112,7 +123,7 @@ function GolfTeams({ teams, data }: { teams: TourTeam[]; data: Omit<PublicMatche
 }
 
 function RoundMeta({ selectedRound, roundFormats, roundSessionLabel }: { selectedRound: Round; roundFormats: string; roundSessionLabel?: string }) {
-  return <div className="golf-info-grid"><span>Date <strong>{formatShortDate(selectedRound.roundDate)}</strong></span><span>Course <strong>{selectedRound.courseName ?? 'Course TBC'}</strong></span><span>Format <strong>{selectedRound.formatLabel ?? (roundFormats || 'Format TBC')}</strong></span><span>Session <strong>{roundSessionLabel ?? 'TBC'}</strong></span><span>First tee <strong>{formatTeeTimeDisplay(selectedRound.teeTime)}</strong></span>{publicWorkflowStatusLabel(selectedRound.status) ? <span>State <strong>{publicWorkflowStatusLabel(selectedRound.status)}</strong></span> : null}</div>;
+  return <div className="golf-info-grid"><span>Date <strong>{formatShortDate(selectedRound.roundDate)}</strong></span><span>Course <strong>{selectedRound.courseName ?? 'Course TBC'}</strong></span><span>Format <strong>{selectedRound.formatLabel ?? (roundFormats || 'Format TBC')}</strong></span><span>Holes <strong>{selectedRound.holes ?? 18}</strong></span><span>Session <strong>{roundSessionLabel ?? 'TBC'}</strong></span><span>First tee <strong>{formatTeeTimeDisplay(selectedRound.teeTime)}</strong></span>{publicWorkflowStatusLabel(selectedRound.status) ? <span>State <strong>{publicWorkflowStatusLabel(selectedRound.status)}</strong></span> : null}</div>;
 }
 
 function TeeSheetRow({ match, participants, players, teams }: { match: Match; participants: MatchParticipant[]; players: Player[]; teams: TourTeam[] }) {

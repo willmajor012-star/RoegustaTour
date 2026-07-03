@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from './_supabase';
-import { mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapTour, mapTourHandbookSection, mapTourItineraryItem, mapTourPlayer, mapTourTeam, mapTourTeamDayKit, mapTourTeamMember, mapTourTeamResult } from './_mappers';
+import { mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapRoundPrizeResult, mapTour, mapTourHandbookSection, mapTourItineraryItem, mapTourPlayer, mapTourTeam, mapTourTeamDayKit, mapTourTeamMember, mapTourTeamResult } from './_mappers';
 import type { Match, Round, Tour, TourTeam, TourTeamMember } from '../../src/lib/types';
 import { publicBetPuntoMatchIds, publicBetPuntoPlayerIds, publicBetPuntoRoundIds, publicBetPuntoTeamIds, visibleBetMarkets } from '../../src/lib/betPuntoRules';
 import { selectDefaultTour } from './_tourResolution';
@@ -143,15 +143,16 @@ export async function getCurrentTour(supabase: SupabaseClient) {
 
 export async function getPublicMatchBundle(supabase: SupabaseClient) {
   const tour = await getCurrentTour(supabase);
-  if (!tour) return { tour: undefined, rounds: [], matches: [], matchParticipants: [], players: [], tourPlayers: [], tourTeams: [], tourTeamMembers: [] };
+  if (!tour) return { tour: undefined, rounds: [], matches: [], matchParticipants: [], players: [], tourPlayers: [], tourTeams: [], tourTeamMembers: [], roundPrizeResults: [] };
 
-  const [roundRows, matchRows, playerRows, tourPlayerRows, teamRows, memberRows] = await Promise.all([
+  const [roundRows, matchRows, playerRows, tourPlayerRows, teamRows, memberRows, prizeRows] = await Promise.all([
     runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'public rounds'),
     runQuery(table(supabase, 'matches').select('*').eq('tour_id', tour.id).order('match_number', { ascending: true }), 'public matches'),
     runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'public players'),
     runQuery(table(supabase, 'tour_players').select('*').eq('tour_id', tour.id), 'public tour players'),
     runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'public tour teams'),
     runQuery(table(supabase, 'tour_team_members').select('*').eq('tour_id', tour.id), 'public tour team members'),
+    runQuery(table(supabase, 'round_prize_results').select('*').eq('tour_id', tour.id).eq('published', true), 'public round prize results').catch(() => []),
   ]);
 
   const rounds = publicRoundsOrLegacyCurrent(roundRows.map(mapRound), tour);
@@ -170,6 +171,7 @@ export async function getPublicMatchBundle(supabase: SupabaseClient) {
     tourPlayers: tourPlayerRows.map(mapTourPlayer),
     tourTeams,
     tourTeamMembers: filterPublicTeamMembers(memberRows.map(mapTourTeamMember), tourTeams),
+    roundPrizeResults: prizeRows.map(mapRoundPrizeResult).filter((prize) => roundById.has(prize.roundId)),
   };
 }
 
@@ -317,25 +319,31 @@ export async function getBettingBundle(supabase: SupabaseClient) {
 
 export async function getTourInfoBundle(supabase: SupabaseClient) {
   const tour = await getCurrentTour(supabase);
-  if (!tour) return { tour: undefined, rounds: [], handbookSections: [], itineraryItems: [], teamDayKit: [], tourTeams: [] };
+  if (!tour) return { tour: undefined, rounds: [], handbookSections: [], itineraryItems: [], teamDayKit: [], tourTeams: [], players: [], roundPrizeResults: [] };
 
-  const [roundRows, sectionRows, itineraryRows, kitRows, teamRows] = await Promise.all([
+  const [roundRows, sectionRows, itineraryRows, kitRows, teamRows, playerRows, prizeRows] = await Promise.all([
     runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'tour info rounds'),
     runQuery(table(supabase, 'tour_handbook_sections').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour handbook sections'),
     runQuery(table(supabase, 'tour_itinerary_items').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour itinerary items'),
     runQuery(table(supabase, 'tour_team_day_kit').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour team day kit'),
     runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour info teams'),
+    runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'tour info players'),
+    runQuery(table(supabase, 'round_prize_results').select('*').eq('tour_id', tour.id).eq('published', true), 'tour info prize results').catch(() => []),
   ]);
   const tourTeams = publicTeamsOrLegacyCurrent(teamRows.map(mapTourTeam), tour);
   const publicTeamIds = new Set(tourTeams.map((team) => team.id));
 
+  const rounds = publicRoundsOrLegacyCurrent(roundRows.map(mapRound), tour);
+  const roundById = rowsById(rounds);
   return {
     tour,
-    rounds: publicRoundsOrLegacyCurrent(roundRows.map(mapRound), tour),
+    rounds,
     handbookSections: sectionRows.map(mapTourHandbookSection),
     itineraryItems: itineraryRows.map(mapTourItineraryItem),
     teamDayKit: kitRows.map(mapTourTeamDayKit).filter((kit) => publicTeamIds.has(kit.teamId)),
     tourTeams,
+    players: playerRows.map(mapPlayer),
+    roundPrizeResults: prizeRows.map(mapRoundPrizeResult).filter((prize) => roundById.has(prize.roundId)),
   };
 }
 

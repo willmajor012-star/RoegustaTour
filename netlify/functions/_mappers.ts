@@ -1,4 +1,4 @@
-import type { Bet, BetMarket, BetOption, HistoricalPlayerStats, Match, MatchParticipant, Player, PlayerMatchResult, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from '../../src/lib/types';
+import type { Bet, BetMarket, BetOption, HistoricalPlayerStats, Match, MatchParticipant, Player, PlayerMatchResult, Round, RoundPrizeResult, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from '../../src/lib/types';
 import type { TourHandbookSection, TourItineraryItem, TourTeamDayKit } from '../../src/lib/publicApi';
 
 type Row = Record<string, unknown>;
@@ -120,9 +120,31 @@ export function mapRound(row: Row): Round {
     courseName: asString(row.course_name),
     teeTime: asString(row.tee_time),
     formatLabel: asString(row.format_label),
+    holes: (asNumber(row.holes) === 9 ? 9 : 18),
     notes: asString(row.notes),
     status: requiredString(row, 'status') as Round['status'],
     published: asBoolean(row.published),
+  };
+}
+
+
+export function mapRoundPrizeResult(row: Row): RoundPrizeResult {
+  return {
+    id: requiredString(row, 'id'),
+    tourId: requiredString(row, 'tour_id'),
+    roundId: requiredString(row, 'round_id'),
+    prizeType: requiredString(row, 'prize_type') as RoundPrizeResult['prizeType'],
+    title: requiredString(row, 'title'),
+    winnerPlayerId: asString(row.winner_player_id),
+    winnerTeamId: asString(row.winner_team_id),
+    winningScoreText: asString(row.winning_score_text),
+    scoreValue: asNumber(row.score_value),
+    scoreUnit: asString(row.score_unit),
+    notes: asString(row.notes),
+    linkedBetMarketId: asString(row.linked_bet_market_id),
+    published: asBoolean(row.published, true),
+    createdAt: requiredString(row, 'created_at'),
+    updatedAt: asString(row.updated_at),
   };
 }
 

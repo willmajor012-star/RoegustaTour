@@ -1,5 +1,5 @@
 import { clearStoredAdminSession, getAdminAuthorizationHeaders } from './adminSession';
-import type { Bet, BetMarket, BetOption, Match, MatchFormat, MatchParticipant, Player, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from './types';
+import type { Bet, BetMarket, BetOption, Match, MatchFormat, MatchParticipant, Player, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult, RoundPrizeResult } from './types';
 import type { TourHandbookSection, TourItineraryItem } from './publicApi';
 
 export type AdminDataResponse = {
@@ -21,6 +21,7 @@ export type AdminDataResponse = {
   bets: Bet[];
   handbookSections: TourHandbookSection[];
   itineraryItems: TourItineraryItem[];
+  roundPrizeResults: RoundPrizeResult[];
 };
 
 export type SavePlayerPayload = {
@@ -83,6 +84,7 @@ export type SaveRoundPayload = {
   formatLabel?: string | null;
   notes?: string | null;
   status: Round['status'];
+  holes?: 9 | 18;
 };
 
 export type SaveMatchPayload = {
@@ -146,6 +148,12 @@ export type SubmitResultPayload = {
   correctionReason?: string | null;
   clearResult?: boolean;
 };
+
+export type SaveRoundPrizeResultPayload = { id?: string; tourId: string; roundId: string; prizeType: RoundPrizeResult['prizeType']; title: string; winnerPlayerId?: string | null; winnerTeamId?: string | null; winningScoreText?: string | null; scoreValue?: number | null; scoreUnit?: string | null; notes?: string | null; linkedBetMarketId?: string | null; published: boolean };
+
+export type DeleteRoundPrizeResultPayload = { id: string; tourId: string };
+
+export type CreateDefaultRoundPrizeResultsPayload = { tourId: string };
 
 export type SaveHandbookSectionPayload = { id?: string; tourId: string; sectionKey: string; title: string; body?: string | null; sortOrder: number };
 export type SaveItineraryItemPayload = { id?: string; tourId: string; itemDate?: string | null; dayLabel?: string | null; timeLabel?: string | null; activity: string; location?: string | null; notes?: string | null; isPlaceholder: boolean; sortOrder: number; sourceType?: string | null; sourceId?: string | null };
@@ -222,6 +230,9 @@ export const saveTourTeam = (payload: SaveTourTeamPayload) => postAdminJson<{ ok
 export const updateTeamPublished = (payload: { tourId: string; teamId: string; published: boolean }) => postAdminJson<{ ok: true; tourTeam: TourTeam }>('/.netlify/functions/admin-update-team-published', payload);
 export const deleteTeam = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedTeamId: string }>('/.netlify/functions/admin-delete-team', payload);
 export const saveTourTeamMembers = (payload: SaveTourTeamMembersPayload) => postAdminJson<{ ok: true; tourTeamMembers: TourTeamMember[] }>('/.netlify/functions/admin-save-team-members', payload);
+export const saveRoundPrizeResult = (payload: SaveRoundPrizeResultPayload) => postAdminJson<{ ok: true; roundPrizeResult: RoundPrizeResult }>('/.netlify/functions/admin-save-round-prize-result', payload);
+export const deleteRoundPrizeResult = (payload: DeleteRoundPrizeResultPayload) => postAdminJson<{ ok: true; deletedRoundPrizeResultId: string }>('/.netlify/functions/admin-delete-round-prize-result', payload);
+export const createDefaultRoundPrizeResults = (payload: CreateDefaultRoundPrizeResultsPayload) => postAdminJson<{ ok: true; roundPrizeResults: RoundPrizeResult[]; createdCount: number }>('/.netlify/functions/admin-create-default-round-prize-results', payload);
 export const saveRound = (payload: SaveRoundPayload) => postAdminJson<{ ok: true; round: Round }>('/.netlify/functions/admin-save-round', payload);
 export const updateRoundPublished = (payload: { tourId: string; roundId: string; published: boolean }) => postAdminJson<{ ok: true; round: Round }>('/.netlify/functions/admin-update-round-published', payload);
 export const deleteRound = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedRoundId: string }>('/.netlify/functions/admin-delete-round', payload);

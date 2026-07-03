@@ -1,5 +1,5 @@
 import type { Match } from '../../src/lib/types';
-import { isValidMatchplayResult } from '../../src/lib/matchplay';
+import { isValidMatchplayResultForHoles } from '../../src/lib/matchplay';
 
 export function deriveWinningSide(pointsSideA: number, pointsSideB: number): NonNullable<Match['winningSide']> {
   if (pointsSideA > pointsSideB) return 'A';
@@ -19,6 +19,6 @@ export function validateResultPoints(pointsSideA: number, pointsSideB: number, p
   return null;
 }
 
-export function validateMatchplayResultText(resultText: string): string | null {
-  return isValidMatchplayResult(resultText) ? null : 'Choose a valid matchplay result.';
+export function validateMatchplayResultText(resultText: string, holes?: number | null): string | null {
+  return isValidMatchplayResultForHoles(resultText, holes) ? null : 'Choose a valid matchplay result.';
 }

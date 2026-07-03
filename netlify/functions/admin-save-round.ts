@@ -22,12 +22,14 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const name = optionalString(body.name);
   const status = optionalString(body.status) as Round['status'] | null;
   const format = (optionalString(body.format) ?? 'custom') as MatchFormat;
+  const holes = typeof body.holes === 'number' ? body.holes : Number(body.holes ?? 18);
 
   if (!tourId) return badRequest('Tour ID is required.');
   if (!Number.isInteger(roundNumber) || roundNumber < 1 || roundNumber > 99) return badRequest('Round number is invalid.');
   if (!name) return badRequest('Round name is required.');
   if (!status || !allowedStatuses.includes(status)) return badRequest('Round status is invalid.');
   if (!allowedFormats.includes(format)) return badRequest('Round format is invalid.');
+  if (![9, 18].includes(holes)) return badRequest('Round holes must be 9 or 18.');
 
   const tours = await runRows(supabase.from('tours').select('id').eq('id', tourId).limit(1), 'find round tour');
   if (tours.length === 0) return badRequest('Tour must exist.');
@@ -57,6 +59,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     format_label: optionalString(body.formatLabel) ?? formatLabels[format],
     notes: optionalString(body.notes),
     status,
+    holes,
   };
 
   const query = id
