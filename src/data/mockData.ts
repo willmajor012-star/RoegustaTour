@@ -53,11 +53,11 @@ export const tourTeamResults: TourTeamResult[] = [
 ];
 
 export const rounds: Round[] = [
-  { id: 'r1', tourId: currentTourId, roundNumber: 1, name: 'Friday Opening Matches', roundDate: '2026-11-06', courseName: 'Amendoeira, Portugal', teeTime: 'TBC', formatLabel: 'Captain picks / format TBC', status: 'planned' },
-  { id: 'r2', tourId: currentTourId, roundNumber: 2, name: 'Saturday Team Matches', roundDate: '2026-11-07', courseName: 'Amendoeira, Portugal', teeTime: 'TBC', formatLabel: 'Team format TBC', status: 'planned' },
-  { id: 'r3', tourId: currentTourId, roundNumber: 3, name: 'Sunday Singles / Team Matches', roundDate: '2026-11-08', courseName: 'Amendoeira, Portugal', teeTime: 'TBC', formatLabel: 'Singles / team mix TBC', status: 'planned' },
-  { id: 'r4', tourId: currentTourId, roundNumber: 4, name: 'Monday Final Matches', roundDate: '2026-11-09', courseName: 'Amendoeira, Portugal', teeTime: 'TBC', formatLabel: 'Final formats TBC', status: 'planned' },
-  { id: 'r2025', tourId: 'tour-2025', roundNumber: 1, name: 'Legacy Singles', roundDate: '2025-06-07', courseName: 'Dorset Heath', status: 'complete' },
+  { id: 'r1', tourId: currentTourId, roundNumber: 1, name: 'Friday Opening Matches', roundDate: '2026-11-06', courseName: 'Amendoeira, Portugal', teeTime: 'TBC', formatLabel: 'Captain picks / format TBC', holes: 18, status: 'planned' },
+  { id: 'r2', tourId: currentTourId, roundNumber: 2, name: 'Saturday Team Matches', roundDate: '2026-11-07', courseName: 'Amendoeira, Portugal', teeTime: 'TBC', formatLabel: 'Team format TBC', holes: 18, status: 'planned' },
+  { id: 'r3', tourId: currentTourId, roundNumber: 3, name: 'Sunday Singles / Team Matches', roundDate: '2026-11-08', courseName: 'Amendoeira, Portugal', teeTime: 'TBC', formatLabel: 'Singles / team mix TBC', holes: 18, status: 'planned' },
+  { id: 'r4', tourId: currentTourId, roundNumber: 4, name: 'Monday Final Matches', roundDate: '2026-11-09', courseName: 'Amendoeira, Portugal', teeTime: 'TBC', formatLabel: 'Final formats TBC', holes: 18, status: 'planned' },
+  { id: 'r2025', tourId: 'tour-2025', roundNumber: 1, name: 'Legacy Singles', roundDate: '2025-06-07', courseName: 'Dorset Heath', holes: 18, status: 'complete' },
 ];
 
 export const matches: Match[] = [

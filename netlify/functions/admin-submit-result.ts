@@ -12,6 +12,7 @@ type MatchRow = {
 };
 type ParticipantRow = { player_id: string; team_id: string; side: 'A' | 'B' };
 type TeamRow = { id: string };
+type RoundRow = { id: string; holes?: number | string | null };
 type CompletedMatchRow = { side_a_team_id: string; side_b_team_id: string; points_side_a: number | string | null; points_side_b: number | string | null; status: string };
 
 function asNumber(value: unknown): number {
@@ -60,13 +61,15 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (!matchId) return badRequest('Match ID is required.');
   if (!clearResult && (pointsSideA === null || pointsSideB === null)) return badRequest('Both result point values are required.');
   if (!clearResult && !resultText) return badRequest('Result text is required.');
-  if (!clearResult && resultText) {
-    const resultTextError = validateMatchplayResultText(resultText);
-    if (resultTextError) return badRequest(resultTextError);
-  }
 
   const match = await runSingle<MatchRow>(supabase.from('matches').select('*').eq('id', matchId).single(), 'find result match');
   if (match.tour_id !== tourId) return badRequest('Match does not belong to this tour.');
+  const round = await runSingle<RoundRow>(supabase.from('rounds').select('id, holes').eq('id', match.round_id).single(), 'find result round');
+  const roundHoles = asNumber(round.holes ?? 18);
+  if (!clearResult && resultText) {
+    const resultTextError = validateMatchplayResultText(resultText, roundHoles);
+    if (resultTextError) return badRequest(resultTextError);
+  }
   const pointsAvailable = asNumber(match.points_available);
   if (!clearResult) {
     const pointError = validateResultPoints(pointsSideA!, pointsSideB!, pointsAvailable);

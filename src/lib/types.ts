@@ -71,9 +71,29 @@ export type Round = {
   courseName?: string;
   teeTime?: string;
   formatLabel?: string;
+  holes: 9 | 18;
   notes?: string;
   status: 'draft' | 'planned' | 'active' | 'complete';
   published?: boolean;
+};
+
+
+export type RoundPrizeResult = {
+  id: string;
+  tourId: string;
+  roundId: string;
+  prizeType: 'individual_stableford' | 'team_gross' | 'custom';
+  title: string;
+  winnerPlayerId?: string;
+  winnerTeamId?: string;
+  winningScoreText?: string;
+  scoreValue?: number;
+  scoreUnit?: string;
+  notes?: string;
+  linkedBetMarketId?: string;
+  published: boolean;
+  createdAt: string;
+  updatedAt?: string;
 };
 
 export type MatchFormat = 'singles' | 'better_ball' | 'foursomes' | 'scramble' | 'custom';

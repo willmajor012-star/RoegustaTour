@@ -7,6 +7,15 @@ export const MATCHPLAY_RESULT_OPTIONS = [
 
 export type MatchplayResultCode = typeof MATCHPLAY_RESULT_OPTIONS[number];
 
+export const NINE_HOLE_MATCHPLAY_RESULT_OPTIONS = [
+  'AS', '1 Up', '2 Up', '2 & 1', '3 & 2', '3 & 1', '4 & 3', '4 & 2', '5 & 4',
+] as const;
+
+export function matchplayResultOptionsForHoles(holes?: number | null): readonly MatchplayResultCode[] {
+  return holes === 9 ? NINE_HOLE_MATCHPLAY_RESULT_OPTIONS : MATCHPLAY_RESULT_OPTIONS;
+}
+
+
 const NORMALIZED_TO_LABEL = new Map(MATCHPLAY_RESULT_OPTIONS.map((label) => [label.toLowerCase().replace(/\s+/g, '').replace('&', '&'), label]));
 
 export function normalizeMatchplayResult(value?: string | null): MatchplayResultCode | undefined {
@@ -19,6 +28,11 @@ export function normalizeMatchplayResult(value?: string | null): MatchplayResult
 
 export function isValidMatchplayResult(value?: string | null): value is MatchplayResultCode {
   return Boolean(normalizeMatchplayResult(value));
+}
+
+export function isValidMatchplayResultForHoles(value?: string | null, holes?: number | null): value is MatchplayResultCode {
+  const normalized = normalizeMatchplayResult(value);
+  return Boolean(normalized && matchplayResultOptionsForHoles(holes).includes(normalized));
 }
 
 export function deriveMatchPoints(winningSide: Match['winningSide'] | '' | null | undefined, pointsAvailable = 1) {
