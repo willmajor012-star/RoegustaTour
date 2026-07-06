@@ -1345,3 +1345,15 @@ main { padding: 14px; }
     grid-template-columns: 1fr;
   }
 }
+
+/* Visual consistency: team fallbacks are blue/red; app chrome remains green. */
+:root{--rt-team-blue:#1D4ED8;--rt-team-red:#7A1F2B}
+.info-logo-mark{align-self:center;justify-self:end}.info-logo-mark .brand-logo{width:100%;height:100%;object-fit:contain;display:block}@media(max-width:560px){.info-logo-mark{display:none}}
+.team-kit-chip-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.team-kit-chip{display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;border:1px solid color-mix(in srgb,var(--team-colour,var(--rt-team-blue)) 42%,var(--rt-stone));border-radius:999px;background:color-mix(in srgb,var(--team-colour,var(--rt-team-blue)) 12%,var(--rt-cream));color:var(--rt-green-900);padding:4px 9px;font-size:.78rem;font-weight:900}.team-kit-chip i{width:12px;height:12px;border-radius:50%;background:var(--team-colour,var(--rt-team-blue));box-shadow:0 0 0 2px rgba(255,255,255,.7)}
+.tee-sheet-row{border-left-color:var(--team-colour,var(--rt-team-blue));border-right:5px solid var(--team-colour-right,var(--rt-team-red))}.tee-team-chips{display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:6px;vertical-align:middle}.tee-team-chips i{display:inline-flex;border-radius:999px;background:var(--team-colour,var(--rt-team-blue));color:#fff;padding:2px 7px;font-style:normal;font-size:.68rem;font-weight:900;letter-spacing:0;text-transform:none}
+.profile-avatar.initials{background:var(--team-colour,var(--rt-team-blue));color:#fff}
+.match-side{background:linear-gradient(135deg,color-mix(in srgb,var(--team-colour,var(--rt-team-blue)) 92%,#000 8%),color-mix(in srgb,var(--team-colour,var(--rt-team-blue)) 72%,#fff 28%));border-color:color-mix(in srgb,var(--team-colour,var(--rt-team-blue)) 70%,var(--rt-gold) 30%)}
+.match-side.winner{background:linear-gradient(135deg,rgba(231,199,106,.18),rgba(212,160,23,.12)),linear-gradient(135deg,color-mix(in srgb,var(--team-colour,var(--rt-team-blue)) 92%,#000 8%),color-mix(in srgb,var(--team-colour,var(--rt-team-blue)) 72%,#fff 28%))}
+.score-team-block,.selected-tour-hero .tour-detail-score span{background:linear-gradient(135deg,color-mix(in srgb,var(--team-colour,var(--rt-team-blue)) 90%,#000 10%),color-mix(in srgb,var(--team-colour,var(--rt-team-blue)) 72%,#fff 28%));border-color:color-mix(in srgb,var(--team-colour,var(--rt-team-blue)) 62%,var(--rt-gold) 38%)}
+.team-display-card{border-top-color:var(--team-colour,var(--rt-team-blue))}
+@media(max-width:560px){.golf-hero-card{grid-template-columns:1fr}.golf-hero-card .tour-detail-score{width:100%;justify-content:stretch}.golf-hero-card .tour-detail-score span{min-width:0}.tee-team-chips{display:flex;margin:6px 0 0}}

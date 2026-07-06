@@ -6,7 +6,7 @@ import { fetchPublicMatches, fetchPublicScore, fetchPublicSummary, type PublicMa
 import type { Match, Round, TeamScoreRow, TourTeam } from '../lib/types';
 import { formatRoundDisplayName, formatTourDisplayName, getDateOnlyScheduledDate, getScheduledDate, getScheduleSortTime, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
 import { usePublicData } from '../lib/usePublicData';
-import { normalizeTeamColour } from '../lib/teamColours';
+import { TEAM_COLOUR_FALLBACKS, normalizeTeamColour } from '../lib/teamColours';
 import { awardedPoints, pointsRequiredToWinOutright, totalAvailablePoints } from '../lib/matchplay';
 
 type DashboardData = {
@@ -66,8 +66,8 @@ function roundScore(matches: Match[]) {
 function teamScoreRows(scores: TeamScoreRow[], teams: TourTeam[]): TeamScoreRow[] {
   const rows = scores.length > 0 ? scores : teams.slice(0, 2).map((team, index) => ({ teamId: team.id, teamName: team.name, colour: normalizeTeamColour(team.colour, index), points: 0, pointsByRound: {} }));
   return [
-    rows[0] ?? { teamId: 'score-left-unavailable', teamName: 'Team unavailable', colour: '#062B22', points: 0, pointsByRound: {} },
-    rows[1] ?? { teamId: 'score-right-unavailable', teamName: 'Team unavailable', colour: '#7A1E1E', points: 0, pointsByRound: {} },
+    rows[0] ?? { teamId: 'score-left-unavailable', teamName: 'Team TBC', colour: TEAM_COLOUR_FALLBACKS[0], points: 0, pointsByRound: {} },
+    rows[1] ?? { teamId: 'score-right-unavailable', teamName: 'Team TBC', colour: TEAM_COLOUR_FALLBACKS[1], points: 0, pointsByRound: {} },
   ];
 }
 
