@@ -3,6 +3,7 @@ import { routes } from './routes';
 import { BrandHeader } from '../components/BrandHeader';
 import { BottomNav } from '../components/BottomNav';
 import { RefreshButton } from '../components/RefreshButton';
+import { PublicPasswordGate } from '../components/PublicPasswordGate';
 
 function getCurrentPath() {
   return window.location.pathname === '/' ? '/' : window.location.pathname;
@@ -24,12 +25,18 @@ export function AppShell() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  if (route.path === '/admin') {
+    return <div className="app-shell"><RefreshButton /><main>{route.element}</main></div>;
+  }
+
   return (
-    <div className="app-shell">
-      <RefreshButton />
-      <BrandHeader />
-      <main>{route.element}</main>
-      <BottomNav currentPath={path} onNavigate={navigate} />
-    </div>
+    <PublicPasswordGate isAdminRoute={false}>
+      <div className="app-shell">
+        <RefreshButton />
+        <BrandHeader />
+        <main>{route.element}</main>
+        <BottomNav currentPath={path} onNavigate={navigate} />
+      </div>
+    </PublicPasswordGate>
   );
 }

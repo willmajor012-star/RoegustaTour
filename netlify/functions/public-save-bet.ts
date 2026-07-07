@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from './_supabase';
+import { requirePublicAccess } from './_publicAccess';
 
 type FunctionEvent = { httpMethod: string; body: string | null; headers?: Record<string, string | undefined> };
 type FunctionResponse = { statusCode: number; body: string };
@@ -114,6 +115,8 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
 
   try {
     const supabase = createServerSupabaseClient();
+    const accessError = await requirePublicAccess(event, supabase);
+    if (accessError) return accessError;
     const deviceId = event.headers?.['x-nf-client-connection-ip'] ?? null;
     let effectiveMarketId = marketId;
     let existingBet: Row | null = null;

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from './_supabase';
+import { requirePublicAccess, type PublicAccessEvent } from './_publicAccess';
 import { mapBetMarket, mapBetOption, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapRoundPrizeResult, mapTour, mapTourHandbookSection, mapTourItineraryItem, mapTourPlayer, mapTourTeam, mapTourTeamDayKit, mapTourTeamMember, mapTourTeamResult } from './_mappers';
 import type { Match, Round, Tour, TourTeam, TourTeamMember } from '../../src/lib/types';
 import { publicBetPuntoMatchIds, publicBetPuntoPlayerIds, publicBetPuntoRoundIds, publicBetPuntoTeamIds, visibleBetMarkets } from '../../src/lib/betPuntoRules';
@@ -26,9 +27,11 @@ function table<T = Row>(supabase: SupabaseClient, name: string): QueryBuilder<T>
   return supabase.from(name) as unknown as QueryBuilder<T>;
 }
 
-export async function withLiveData<T extends object>(read: (supabase: SupabaseClient) => Promise<T>): Promise<{ statusCode: number; headers: Record<string, string>; body: string }> {
+export async function withLiveData<T extends object>(event: PublicAccessEvent, read: (supabase: SupabaseClient) => Promise<T>): Promise<{ statusCode: number; headers: Record<string, string>; body: string }> {
   try {
     const supabase = createServerSupabaseClient();
+    const accessError = await requirePublicAccess(event, supabase);
+    if (accessError) return { ...accessError, headers: { 'content-type': 'application/json; charset=utf-8', ...(accessError.headers ?? {}) } };
     const data = await read(supabase);
     return { statusCode: 200, headers: { 'content-type': 'application/json; charset=utf-8' }, body: JSON.stringify({ ...data, source: 'supabase' }) };
   } catch (error) {

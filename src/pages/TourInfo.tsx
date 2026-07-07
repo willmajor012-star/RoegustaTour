@@ -5,6 +5,7 @@ import { fetchPublicTourInfo, type PublicTourInfoResponse, type TourTeamDayKit }
 import { usePublicData } from '../lib/usePublicData';
 import { normalizeTeamColour } from '../lib/teamColours';
 import type { TourTeam } from '../lib/types';
+import { logoutPublicAccess } from '../lib/publicAccess';
 
 const emptyTourInfo: Omit<PublicTourInfoResponse, 'source'> = { rounds: [], handbookSections: [], itineraryItems: [], teamDayKit: [], tourTeams: [], players: [], roundPrizeResults: [] };
 
@@ -21,7 +22,7 @@ export function TourInfo() {
     <section className="card"><div className="section-heading"><div><p className="eyebrow">Handbook</p><h2>Key notes</h2></div></div>{activeData.handbookSections.length === 0 ? <p>Tour handbook details will appear once added.</p> : <div className="handbook-section-grid">{activeData.handbookSections.map((section) => <article className="handbook-note" key={section.id}><h4>{section.title}</h4>{section.body && <p>{section.body}</p>}</article>)}</div>}</section>
     <section className="card"><div className="section-heading"><div><p className="eyebrow">Schedule</p><h2>Itinerary</h2></div></div>{activeData.itineraryItems.length === 0 ? <p>Itinerary TBC.</p> : <div className="timeline-list">{activeData.itineraryItems.map((item) => <article className="timeline-item" key={item.id}><span>{item.dayLabel ?? formatDate(item.itemDate)}</span><div><strong>{item.timeLabel ? `${item.timeLabel} · ` : ''}{item.activity}{item.isPlaceholder && !/tbc/i.test(`${item.timeLabel ?? ''} ${item.activity}`) ? ' · TBC' : ''}</strong>{item.location && <p>{item.location}</p>}{item.notes && <p>{item.notes}</p>}<TeamKitChips kits={activeData.teamDayKit.filter((kit) => kit.kitDate === item.itemDate)} teams={activeData.tourTeams} /></div></article>)}</div>}</section>
     <section className="card"><div className="section-heading"><div><p className="eyebrow">Rules</p><h2>Notes</h2></div></div><p>One match result is entered by admin. Team score and individual records are derived automatically from completed matches.</p></section>
-    <footer className="subtle-admin-link"><a href="/admin">Admin</a></footer>
+    <footer className="subtle-admin-link"><button type="button" onClick={() => { void logoutPublicAccess().finally(() => window.location.assign('/')); }}>Reset tour access</button><a href="/admin">Admin</a></footer>
   </div>;
 }
 
