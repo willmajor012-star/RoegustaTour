@@ -153,7 +153,9 @@ export type SaveRoundPrizeResultPayload = { id?: string; tourId: string; roundId
 
 export type DeleteRoundPrizeResultPayload = { id: string; tourId: string };
 
-export type CreateDefaultRoundPrizeResultsPayload = { tourId: string };
+export type CreateDefaultRoundPrizeResultsPayload = { tourId: string; template2026?: boolean };
+export type PublicAccessSettingsResponse = { ok: true; configured: boolean; sessionVersion: number };
+export type SavePublicAccessSettingsPayload = { password: string; forceExpire?: boolean };
 
 export type SaveHandbookSectionPayload = { id?: string; tourId: string; sectionKey: string; title: string; body?: string | null; sortOrder: number };
 export type SaveItineraryItemPayload = { id?: string; tourId: string; itemDate?: string | null; dayLabel?: string | null; timeLabel?: string | null; activity: string; location?: string | null; notes?: string | null; isPlaceholder: boolean; sortOrder: number; sourceType?: string | null; sourceId?: string | null };
@@ -219,6 +221,10 @@ async function fetchAdminJson<T>(path: string, init: RequestInit = {}): Promise<
 function postAdminJson<T>(path: string, payload: unknown): Promise<T> {
   return fetchAdminJson<T>(path, { method: 'POST', body: JSON.stringify(payload) });
 }
+
+export const fetchPublicAccessSettings = () => fetchAdminJson<PublicAccessSettingsResponse>('/.netlify/functions/admin-public-access-settings', { method: 'GET' });
+export const savePublicAccessSettings = (payload: SavePublicAccessSettingsPayload) => postAdminJson<PublicAccessSettingsResponse>('/.netlify/functions/admin-public-access-settings', payload);
+export const apply2026FormatTemplate = (payload: { tourId: string }) => postAdminJson<{ ok: true; rounds: Round[]; itineraryItems: TourItineraryItem[]; warnings?: string[] }>('/.netlify/functions/admin-apply-2026-format-template', payload);
 
 export const fetchAdminData = (tourId?: string) => fetchAdminJson<AdminDataResponse>(`/.netlify/functions/admin-data${tourId ? `?tourId=${encodeURIComponent(tourId)}` : ''}`, { method: 'GET' });
 export const savePlayer = (payload: SavePlayerPayload) => postAdminJson<{ ok: true; player: Player }>('/.netlify/functions/admin-save-player', payload);

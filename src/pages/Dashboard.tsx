@@ -4,9 +4,9 @@ import { Scoreboard } from '../components/Scoreboard';
 import { formatPoints, formatShortDate } from '../lib/formatting';
 import { fetchPublicMatches, fetchPublicScore, fetchPublicSummary, type PublicMatchesResponse, type PublicScoreResponse, type PublicSummaryResponse } from '../lib/publicApi';
 import type { Match, Round, TeamScoreRow, TourTeam } from '../lib/types';
-import { formatRoundDisplayName, formatTourDisplayName, getDateOnlyScheduledDate, getScheduledDate, getScheduleSortTime, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
+import { formatRoundDisplayName, formatTourDisplayName, formatTeeTimeDisplay, getDateOnlyScheduledDate, getScheduledDate, getScheduleSortTime, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
 import { usePublicData } from '../lib/usePublicData';
-import { normalizeTeamColour } from '../lib/teamColours';
+import { TEAM_COLOUR_FALLBACKS, normalizeTeamColour } from '../lib/teamColours';
 import { awardedPoints, pointsRequiredToWinOutright, totalAvailablePoints } from '../lib/matchplay';
 
 type DashboardData = {
@@ -63,11 +63,29 @@ function roundScore(matches: Match[]) {
   return `${formatPoints(sideA)}–${formatPoints(sideB)}`;
 }
 
+
+function roundSessionLabel(round: Round) {
+  return round.notes?.match(/^\[Session: (AM|PM|TBC)\]/)?.[1];
+}
+
+function roundSummaryLine(round: Round, index: number) {
+  const parts = [
+    `Round ${round.roundNumber || index + 1}`,
+    round.formatLabel ?? round.name,
+    formatShortDate(round.roundDate),
+    roundSessionLabel(round),
+    round.courseName ?? 'Course TBC',
+    `First tee ${formatTeeTimeDisplay(round.teeTime)}`,
+    `${round.holes ?? 18} holes`,
+  ].filter(Boolean);
+  return parts.join(' · ');
+}
+
 function teamScoreRows(scores: TeamScoreRow[], teams: TourTeam[]): TeamScoreRow[] {
   const rows = scores.length > 0 ? scores : teams.slice(0, 2).map((team, index) => ({ teamId: team.id, teamName: team.name, colour: normalizeTeamColour(team.colour, index), points: 0, pointsByRound: {} }));
   return [
-    rows[0] ?? { teamId: 'score-left-unavailable', teamName: 'Team unavailable', colour: '#062B22', points: 0, pointsByRound: {} },
-    rows[1] ?? { teamId: 'score-right-unavailable', teamName: 'Team unavailable', colour: '#7A1E1E', points: 0, pointsByRound: {} },
+    rows[0] ?? { teamId: 'score-left-unavailable', teamName: 'Team TBC', colour: TEAM_COLOUR_FALLBACKS[0], points: 0, pointsByRound: {} },
+    rows[1] ?? { teamId: 'score-right-unavailable', teamName: 'Team TBC', colour: TEAM_COLOUR_FALLBACKS[1], points: 0, pointsByRound: {} },
   ];
 }
 
@@ -115,6 +133,9 @@ export function Dashboard() {
       <div className="section-heading"><div><p className="eyebrow">Team score</p><h2>Team score</h2></div><span className="card-chevron" aria-hidden="true">›</span></div>
       <Scoreboard scores={teamRows} href="/matches" hideCentreScore />
     </section>
+
+
+    {rounds.length > 0 && <section className="card overview-round-summary"><div className="section-heading"><div><p className="eyebrow">Rounds</p><h2>Round structure</h2></div><span className="card-chevron" aria-hidden="true">›</span></div><div className="premium-list">{rounds.map((round, index) => <p key={round.id}>{roundSummaryLine(round, index)}</p>)}</div></section>}
 
     <section className="overview-highlight-grid">
       <a className="card tappable-card victory-card" href="/matches">

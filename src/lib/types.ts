@@ -62,6 +62,8 @@ export type TourTeamResult = {
   notes?: string;
 };
 
+export type MatchFormat = 'singles' | 'better_ball' | 'foursomes' | 'scramble' | 'custom';
+
 export type Round = {
   id: string;
   tourId: string;
@@ -70,6 +72,7 @@ export type Round = {
   roundDate?: string;
   courseName?: string;
   teeTime?: string;
+  format?: MatchFormat;
   formatLabel?: string;
   holes: 9 | 18;
   notes?: string;
@@ -95,8 +98,6 @@ export type RoundPrizeResult = {
   createdAt: string;
   updatedAt?: string;
 };
-
-export type MatchFormat = 'singles' | 'better_ball' | 'foursomes' | 'scramble' | 'custom';
 
 export type Match = {
   id: string;

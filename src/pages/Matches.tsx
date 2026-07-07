@@ -36,8 +36,8 @@ function pairingText(match: Match, participants: MatchParticipant[], players: Pl
   const nameFor = (playerId: string) => players.find((player) => player.id === playerId)?.displayName;
   const teamFor = (teamId: string) => teams.find((team) => team.id === teamId)?.name;
   const sidePlayers = (side: 'A' | 'B') => participants.filter((participant) => participant.side === side).map((participant) => nameFor(participant.playerId)).filter(Boolean).join(' / ');
-  const sideA = sidePlayers('A') || match.sideALabel || teamFor(match.sideATeamId) || 'Side A TBC';
-  const sideB = sidePlayers('B') || match.sideBLabel || teamFor(match.sideBTeamId) || 'Side B TBC';
+  const sideA = sidePlayers('A') || match.sideALabel || teamFor(match.sideATeamId) || 'Team 1 TBC';
+  const sideB = sidePlayers('B') || match.sideBLabel || teamFor(match.sideBTeamId) || 'Team 2 TBC';
   return `${sideA} v ${sideB}`;
 }
 
@@ -73,7 +73,7 @@ export function Matches() {
     {!loading && !error && <>
       <section className="selected-tour-hero card golf-hero-card">
         <div><span className="tour-status-badge">{tourStatusLabel(activeData.tour?.status, publicMatches)}</span><h2>{activeData.tour?.name ?? 'Current tour'}</h2><p>{activeData.tour?.location ?? 'Location TBC'} · {formatDate(activeData.tour?.startDate)} — {formatDate(activeData.tour?.endDate)}</p>{selectedRound && <strong>Current round: {formatRoundDisplayName(selectedRound)}</strong>}</div>
-        <div className="tour-detail-score">{scoreRows.length > 0 ? scoreRows.map((row, index) => <span key={row.teamId} style={{ '--team-colour': normalizeTeamColour(row.colour, index) } as CSSProperties}>{row.teamName} <b>{formatPoints(row.points)}</b></span>) : <span>Score TBC</span>}<span>Total <b>{formatPoints(totalAvailablePoints)}</b> available</span><span>To win <b>{formatPoints(pointsToWin)}</b></span></div>
+        <div className="tour-detail-score">{scoreRows.length >= 2 ? scoreRows.slice(0, 2).map((row, index) => <span key={row.teamId} style={{ '--team-colour': normalizeTeamColour(row.colour, index) } as CSSProperties}>{cleanScoreTeamName(row.teamName, index)} <b>{formatPoints(row.points)}</b></span>) : <span>Score TBC</span>}<span>Total <b>{formatPoints(totalAvailablePoints)}</b> available</span><span>To win <b>{formatPoints(pointsToWin)}</b></span></div>
       </section>
       <div className="segmented tour-detail-switch golf-section-switch" role="tablist" aria-label="Golf sections">{golfSections.map((item) => <button key={item.value} className={section === item.value ? 'active' : ''} onClick={() => setSection(item.value)}>{item.label}</button>)}</div>
       {activeData.rounds.length === 0 ? <p className="card">Pairings and tee times will appear once published.</p> : <label className="filters card golf-round-selector"><span>Round</span><select value={selectedRound?.id ?? ''} onChange={(event) => setRoundId(event.target.value)}>{activeData.rounds.map((round, index) => <option key={round.id} value={round.id}>{formatRoundContextLabel(round, index)}</option>)}</select></label>}
@@ -122,10 +122,19 @@ function GolfTeams({ teams, data }: { teams: TourTeam[]; data: Omit<PublicMatche
   })}</div>}</section>;
 }
 
+function cleanScoreTeamName(teamName: string | undefined, index: number) {
+  const name = teamName?.trim();
+  if (!name) return index === 0 ? 'Team 1 TBC' : 'Team 2 TBC';
+  if (/^tbc(?:\s*\d+)?$/i.test(name) || /^tbc\s+\d+$/i.test(name)) return index === 0 ? 'Team 1 TBC' : 'Team 2 TBC';
+  return name;
+}
+
 function RoundMeta({ selectedRound, roundFormats, roundSessionLabel }: { selectedRound: Round; roundFormats: string; roundSessionLabel?: string }) {
   return <div className="golf-info-grid"><span>Date <strong>{formatShortDate(selectedRound.roundDate)}</strong></span><span>Course <strong>{selectedRound.courseName ?? 'Course TBC'}</strong></span><span>Format <strong>{selectedRound.formatLabel ?? (roundFormats || 'Format TBC')}</strong></span><span>Holes <strong>{selectedRound.holes ?? 18}</strong></span><span>Session <strong>{roundSessionLabel ?? 'TBC'}</strong></span><span>First tee <strong>{formatTeeTimeDisplay(selectedRound.teeTime)}</strong></span>{publicWorkflowStatusLabel(selectedRound.status) ? <span>State <strong>{publicWorkflowStatusLabel(selectedRound.status)}</strong></span> : null}</div>;
 }
 
 function TeeSheetRow({ match, participants, players, teams }: { match: Match; participants: MatchParticipant[]; players: Player[]; teams: TourTeam[] }) {
-  return <div className="tee-sheet-row"><strong>{formatTeeTimeDisplay(match.teeTime)}</strong><span>Match {match.matchNumber}</span><p>{pairingText(match, participants, players, teams)}</p></div>;
+  const sideATeam = teams.find((team) => team.id === match.sideATeamId);
+  const sideBTeam = teams.find((team) => team.id === match.sideBTeamId);
+  return <div className="tee-sheet-row" style={{ '--team-colour': normalizeTeamColour(sideATeam?.colour, 0), '--team-colour-right': normalizeTeamColour(sideBTeam?.colour, 1) } as CSSProperties}><strong>{formatTeeTimeDisplay(match.teeTime)}</strong><span>Match {match.matchNumber}</span><p>{pairingText(match, participants, players, teams)} <span className="tee-team-chips"><i style={{ '--team-colour': normalizeTeamColour(sideATeam?.colour, 0) } as CSSProperties}>{sideATeam?.name ?? 'Team 1 TBC'}</i><i style={{ '--team-colour': normalizeTeamColour(sideBTeam?.colour, 1) } as CSSProperties}>{sideBTeam?.name ?? 'Team 2 TBC'}</i></span></p></div>;
 }

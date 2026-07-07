@@ -119,6 +119,7 @@ export function mapRound(row: Row): Round {
     roundDate: asString(row.round_date),
     courseName: asString(row.course_name),
     teeTime: asString(row.tee_time),
+    format: asString(row.format) as Round['format'],
     formatLabel: asString(row.format_label),
     holes: (asNumber(row.holes) === 9 ? 9 : 18),
     notes: asString(row.notes),
