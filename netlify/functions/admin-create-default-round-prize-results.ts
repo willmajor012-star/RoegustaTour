@@ -3,18 +3,19 @@ import { badRequest, optionalString, runRows, withAdminSupabase } from './_admin
 import { mapRoundPrizeResult } from './_mappers';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
-type RoundRow = { id: string; tour_id: string; format_label?: string | null };
+type RoundRow = { id: string; tour_id: string; format?: string | null; format_label?: string | null };
 function defaultForRound(round: RoundRow) {
+  const format = round.format ?? '';
   const label = (round.format_label ?? '').toLowerCase();
-  if (label.includes('scramble')) return { prize_type: 'team_gross', title: 'Team lowest gross' };
-  if (label.includes('better') || label.includes('singles')) return { prize_type: 'individual_stableford', title: 'Individual Stableford' };
+  if (format === 'scramble' || label.includes('scramble')) return { prize_type: 'team_gross', title: 'Team lowest gross' };
+  if (format === 'better_ball' || format === 'singles' || label.includes('better') || label.includes('4bbb') || label.includes('singles')) return { prize_type: 'individual_stableford', title: 'Individual Stableford' };
   return undefined;
 }
 export const handler: Handler = (event) => withAdminSupabase(event, 'POST', async (supabase, body) => {
   const tourId = optionalString(body.tourId);
   const template2026 = body.template2026 === true;
   if (!tourId) return badRequest('Tour ID is required.');
-  const rounds = await runRows<RoundRow>(supabase.from('rounds').select('id, tour_id, format_label').eq('tour_id', tourId), 'default prize rounds');
+  const rounds = await runRows<RoundRow>(supabase.from('rounds').select('id, tour_id, format, format_label').eq('tour_id', tourId), 'default prize rounds');
   const existing = await runRows<{ round_id: string; prize_type: string; title: string }>(supabase.from('round_prize_results').select('round_id, prize_type, title').eq('tour_id', tourId), 'existing prize results');
   const rows = rounds.map((round, index) => ({ round, draft: template2026 ? ([
     { prize_type: 'individual_stableford', title: 'Individual Stableford', score_unit: 'points' },

@@ -56,6 +56,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     round_date: optionalString(body.roundDate),
     course_name: optionalString(body.courseName),
     tee_time: optionalString(body.teeTime),
+    format,
     format_label: optionalString(body.formatLabel) ?? formatLabels[format],
     notes: optionalString(body.notes),
     status,

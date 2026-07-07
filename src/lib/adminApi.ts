@@ -224,7 +224,7 @@ function postAdminJson<T>(path: string, payload: unknown): Promise<T> {
 
 export const fetchPublicAccessSettings = () => fetchAdminJson<PublicAccessSettingsResponse>('/.netlify/functions/admin-public-access-settings', { method: 'GET' });
 export const savePublicAccessSettings = (payload: SavePublicAccessSettingsPayload) => postAdminJson<PublicAccessSettingsResponse>('/.netlify/functions/admin-public-access-settings', payload);
-export const apply2026FormatTemplate = (payload: { tourId: string }) => postAdminJson<{ ok: true; rounds: Round[]; itineraryItems: TourItineraryItem[] }>('/.netlify/functions/admin-apply-2026-format-template', payload);
+export const apply2026FormatTemplate = (payload: { tourId: string }) => postAdminJson<{ ok: true; rounds: Round[]; itineraryItems: TourItineraryItem[]; warnings?: string[] }>('/.netlify/functions/admin-apply-2026-format-template', payload);
 
 export const fetchAdminData = (tourId?: string) => fetchAdminJson<AdminDataResponse>(`/.netlify/functions/admin-data${tourId ? `?tourId=${encodeURIComponent(tourId)}` : ''}`, { method: 'GET' });
 export const savePlayer = (payload: SavePlayerPayload) => postAdminJson<{ ok: true; player: Player }>('/.netlify/functions/admin-save-player', payload);

@@ -42,6 +42,14 @@ test('2026 helper creates agreed rounds and no Friday golf', () => {
   assert.match(templateSource, /Course TBC/);
   assert.match(templateSource, /round_date: '2026-11-07'/);
   assert.match(templateSource, /holes: 9/);
+  assert.match(templateSource, /format: 'better_ball'/);
+  assert.match(templateSource, /format: 'scramble'/);
+  assert.match(templateSource, /format: 'singles'/);
+  assert.match(templateSource, /tee_time: existing\?\.tee_time \|\| null/);
+  assert.match(templateSource, /published: existing\?\.published \?\? false/);
+  assert.match(templateSource, /Extra non-complete rounds remain/);
+  assert.doesNotMatch(templateSource, /tee_time: existing\?\.tee_time \|\| 'TBC'/);
+  assert.doesNotMatch(templateSource, /published: true/);
   assert.doesNotMatch(templateSource, /2026-11-06[\s\S]{0,120}Course/);
 });
 
@@ -49,6 +57,8 @@ test('2026 secondary prize slots and overview round summary are present', () => 
   assert.match(prizesSource, /template2026/);
   assert.match(prizesSource, /Team lowest gross/);
   assert.match(prizesSource, /score_unit: 'gross'/);
+  assert.match(prizesSource, /format === 'scramble'/);
+  assert.match(prizesSource, /format === 'better_ball'/);
   assert.match(dashboardSource, /Round structure/);
   assert.match(dashboardSource, /First tee/);
   assert.match(dashboardSource, /roundSessionLabel/);
