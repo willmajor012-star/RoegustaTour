@@ -26,7 +26,7 @@ export function AppShell() {
   };
 
   if (route.path === '/admin') {
-    return <div className="app-shell"><RefreshButton /><main>{route.element}</main></div>;
+    return <div className="app-shell"><RefreshButton /><BrandHeader /><main>{route.element}</main><BottomNav currentPath={path} onNavigate={navigate} /></div>;
   }
 
   return (
