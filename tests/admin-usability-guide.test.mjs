@@ -5,14 +5,23 @@ import assert from 'node:assert/strict';
 const adminSource = await readFile(new URL('../src/pages/Admin.tsx', import.meta.url), 'utf8');
 const appShellSource = await readFile(new URL('../src/app/AppShell.tsx', import.meta.url), 'utf8');
 const navSource = await readFile(new URL('../src/app/navigation.ts', import.meta.url), 'utf8');
+const adminHeaderSource = await readFile(new URL('../src/components/AdminBrandHeader.tsx', import.meta.url), 'utf8');
 
 test('Admin route keeps app navigation context without exposing Admin as a public tab', () => {
   assert.match(appShellSource, /route\.path === '\/admin'/);
-  assert.match(appShellSource, /<BrandHeader \/>/);
+  assert.match(appShellSource, /<AdminBrandHeader \/>/);
   assert.match(appShellSource, /<BottomNav currentPath=\{path\} onNavigate=\{navigate\} \/>/);
   assert.match(adminSource, /Back to app/);
   assert.match(adminSource, /End admin session/);
   assert.doesNotMatch(navSource, /label: 'Admin'|path: '\/admin'/);
+});
+
+test('Admin header is static and does not require public password data', () => {
+  assert.match(adminHeaderSource, /Admin mode/);
+  assert.match(adminHeaderSource, /Roegusta Tour/);
+  assert.match(adminHeaderSource, /Public password access remains separate/);
+  assert.doesNotMatch(adminHeaderSource, /fetchPublicSummary|usePublicData|publicApi/);
+  assert.doesNotMatch(appShellSource.slice(appShellSource.indexOf("route.path === '/admin'"), appShellSource.indexOf('return (', appShellSource.indexOf("route.path === '/admin'"))), /PublicPasswordGate|<BrandHeader/);
 });
 
 test('Admin operating manual includes required workflow headings and separation guidance', () => {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { routes } from './routes';
+import { AdminBrandHeader } from '../components/AdminBrandHeader';
 import { BrandHeader } from '../components/BrandHeader';
 import { BottomNav } from '../components/BottomNav';
 import { RefreshButton } from '../components/RefreshButton';
@@ -26,7 +27,7 @@ export function AppShell() {
   };
 
   if (route.path === '/admin') {
-    return <div className="app-shell"><RefreshButton /><BrandHeader /><main>{route.element}</main><BottomNav currentPath={path} onNavigate={navigate} /></div>;
+    return <div className="app-shell"><RefreshButton /><AdminBrandHeader /><main>{route.element}</main><BottomNav currentPath={path} onNavigate={navigate} /></div>;
   }
 
   return (
