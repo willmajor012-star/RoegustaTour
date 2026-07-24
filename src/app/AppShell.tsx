@@ -40,6 +40,7 @@ export function AppShell() {
     if (!anchor || anchor.target || anchor.hasAttribute('download')) return;
     const url = new URL(anchor.href, window.location.href);
     if (url.origin !== window.location.origin || (!routes.some((item) => item.path === url.pathname) && url.pathname !== '/players')) return;
+    if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) return;
     event.preventDefault();
     navigate(`${url.pathname}${url.search}${url.hash}`);
   };

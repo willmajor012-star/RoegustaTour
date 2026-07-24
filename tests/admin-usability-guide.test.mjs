@@ -16,6 +16,10 @@ test('Admin route keeps app navigation context without exposing Admin as a publi
   assert.doesNotMatch(navSource, /label: 'Admin'|path: '\/admin'/);
 });
 
+test('SPA link handling preserves same-page admin guide hash jumps', () => {
+  assert.match(appShellSource, /url\.pathname === window\.location\.pathname && url\.search === window\.location\.search && url\.hash\) return/);
+});
+
 test('Admin header is static and does not require public password data', () => {
   assert.match(adminHeaderSource, /Admin mode/);
   assert.match(adminHeaderSource, /Roegusta Tour/);
