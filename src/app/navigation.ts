@@ -1,14 +1,20 @@
 export type PublicNavigationItem = {
   path: string;
   label: string;
-  icon: 'home' | 'golf' | 'tours' | 'chart' | 'coin' | 'info';
+  icon: 'home' | 'golf' | 'score' | 'coin' | 'more';
 };
 
 export const navigationItems: PublicNavigationItem[] = [
-  { path: '/', label: 'Overview', icon: 'home' },
+  { path: '/', label: 'Home', icon: 'home' },
   { path: '/matches', label: 'Golf', icon: 'golf' },
-  { path: '/tours', label: 'Tours', icon: 'tours' },
-  { path: '/stats', label: 'Stats', icon: 'chart' },
+  { path: '/score', label: 'Score', icon: 'score' },
   { path: '/betting', label: 'Bet Punto', icon: 'coin' },
-  { path: '/info', label: 'Info', icon: 'info' },
+  { path: '#more', label: 'More', icon: 'more' },
+];
+
+export const moreNavigationItems = [
+  { path: '/teams', label: 'Teams & players', description: 'Squads, captains and player profiles' },
+  { path: '/stats', label: 'Stats', description: 'Standings, records and head-to-head' },
+  { path: '/tours', label: 'Previous tours', description: 'Results and history from every tour' },
+  { path: '/info', label: 'Tour information', description: 'Schedule, courses, kit and key notes' },
 ];
