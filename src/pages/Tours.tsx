@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { MatchCard } from '../components/MatchCard';
 import { LeaderboardTable } from '../components/LeaderboardTable';
+import { PageHeader } from '../components/PageHeader';
 import { TeamRosterCards } from '../components/PlayerProfileCards';
 import { calculatePlayerAdvancedSummaries, type AdvancedStatsData } from '../lib/advancedStats';
 import { formatDate, formatMatchFormat, formatPercent, formatPoints, formatShortDate } from '../lib/formatting';
@@ -117,14 +118,35 @@ export function Tours() {
   if (selectedTour) return <TourDetail tour={selectedTour} data={activeData} dataForStats={dataForStats} onBack={() => setSelectedTourId(undefined)} />;
 
   return <div className="page-stack tours-page tour-archive-landing">
-    <section className="page-title premium-title"><h2>Tours</h2></section>
+    <PageHeader title="Tours" eyebrow="Current tour & archive" description="Everything for this tour first, with previous years kept underneath." />
     {loading && <p className="card">Loading tours…</p>}
     {error && <p className="card form-error">Tours could not be loaded. Please refresh.</p>}
     {!loading && !error && sortedTours.length === 0 && <p className="card">Tours will appear once published.</p>}
 
-    {activeTour && <section className="tour-archive-section"><div className="stats-section-title"><h3>Current tour</h3></div><TourCard tour={activeTour} data={activeData} onSelect={setSelectedTourId} /></section>}
-    {previousTours.length > 0 && <section className="tour-archive-section"><div className="stats-section-title"><h3>Previous tours</h3></div><div className="tour-card-list">{previousTours.map((tour) => <TourCard key={tour.id} tour={tour} data={activeData} onSelect={setSelectedTourId} />)}</div></section>}
+    {activeTour && <CurrentTourHub tour={activeTour} data={activeData} onOpenTour={setSelectedTourId} />}
+    {previousTours.length > 0 && <section className="tour-archive-section previous-tour-section"><div className="stats-section-title"><div><p className="eyebrow">Archive</p><h3>Previous tours</h3></div><span>{previousTours.length}</span></div><div className="tour-card-list">{previousTours.map((tour) => <TourCard key={tour.id} tour={tour} data={activeData} onSelect={setSelectedTourId} />)}</div></section>}
   </div>;
+}
+
+function CurrentTourHub({ tour, data, onOpenTour }: { tour: Tour; data: Omit<PublicAdvancedStatsResponse, 'source'>; onOpenTour: (tourId: string) => void }) {
+  const scores = scoreForTour(data, tour);
+  return <section className="current-tour-hub">
+    <button className="current-tour-feature" type="button" onClick={() => onOpenTour(tour.id)}>
+      <span className="tour-status-badge">{statusLabel(tour)}</span>
+      <span className="current-tour-copy">
+        <small>This tour</small>
+        <strong>{formatTourDisplayName(tour)}</strong>
+        <span>{tour.location ?? 'Location TBC'} · {formatDate(tour.startDate)} — {formatDate(tour.endDate)}</span>
+        <b>{scoreLine(scores)}</b>
+      </span>
+      <i aria-hidden="true">›</i>
+    </button>
+    <div className="tour-hub-links">
+      <a href="/teams"><span>Squads</span><strong>Teams & players</strong><small>Captains, handicaps and profiles</small><b aria-hidden="true">›</b></a>
+      <a href="/courses"><span>Prepare</span><strong>Course guides</strong><small>Faldo, O’Connor and Old Course</small><b aria-hidden="true">›</b></a>
+      <a href="/info"><span>Plan</span><strong>Schedule & tour info</strong><small>Itinerary, kit and key notes</small><b aria-hidden="true">›</b></a>
+    </div>
+  </section>;
 }
 
 function TourCard({ tour, data, onSelect }: { tour: Tour; data: Omit<PublicAdvancedStatsResponse, 'source'>; onSelect: (tourId: string) => void }) {

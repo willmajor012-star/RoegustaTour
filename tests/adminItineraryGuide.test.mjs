@@ -50,7 +50,7 @@ const round = (overrides = {}) => ({
 
 test('Admin guide tab and itinerary editor are present with key workflow topics', async () => {
   const admin = await readFile(new URL('../src/pages/Admin.tsx', import.meta.url), 'utf8');
-  for (const topic of ['Admin guide', 'Build draft itinerary from tour dates and rounds', 'tour_itinerary_items', 'Do not assume Friday golf', 'player-photos', 'Current public tour', 'planned, active, complete or archived', 'Tee Times, Results, Teams', 'manual admin bet entry', 'Reset Bet Punto']) {
+  for (const topic of ['Admin guide', 'Build draft itinerary from tour dates and rounds', 'tour_itinerary_items', 'Do not assume Friday golf', 'player-photos', 'Current public tour', 'planned, active, complete or archived', 'Tee sheet, Results or Prizes', 'manual admin bet entry', 'Reset Bet Punto']) {
     assert.match(admin, new RegExp(topic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
   }
 });

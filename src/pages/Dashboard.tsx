@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MatchCard } from '../components/MatchCard';
+import { CourseRail } from '../components/CourseRail';
 import { Scoreboard } from '../components/Scoreboard';
-import { formatPoints, formatShortDate } from '../lib/formatting';
+import { formatMatchFormat, formatPoints, formatShortDate } from '../lib/formatting';
 import { fetchPublicMatches, fetchPublicScore, fetchPublicSummary, type PublicMatchesResponse, type PublicScoreResponse, type PublicSummaryResponse } from '../lib/publicApi';
 import type { Match, Round, TeamScoreRow, TourTeam } from '../lib/types';
-import { formatRoundDisplayName, formatTourDisplayName, formatTeeTimeDisplay, getDateOnlyScheduledDate, getScheduledDate, getScheduleSortTime, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
+import { formatRoundDisplayName, formatTourDisplayName, getDateOnlyScheduledDate, getScheduledDate, getScheduleSortTime, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
 import { usePublicData } from '../lib/usePublicData';
 import { TEAM_COLOUR_FALLBACKS, normalizeTeamColour } from '../lib/teamColours';
 import { awardedPoints, pointsRequiredToWinOutright, totalAvailablePoints } from '../lib/matchplay';
@@ -64,23 +65,6 @@ function roundScore(matches: Match[]) {
 }
 
 
-function roundSessionLabel(round: Round) {
-  return round.notes?.match(/^\[Session: (AM|PM|TBC)\]/)?.[1];
-}
-
-function roundSummaryLine(round: Round, index: number) {
-  const parts = [
-    `Round ${round.roundNumber || index + 1}`,
-    round.formatLabel ?? round.name,
-    formatShortDate(round.roundDate),
-    roundSessionLabel(round),
-    round.courseName ?? 'Course TBC',
-    `First tee ${formatTeeTimeDisplay(round.teeTime)}`,
-    `${round.holes ?? 18} holes`,
-  ].filter(Boolean);
-  return parts.join(' · ');
-}
-
 function teamScoreRows(scores: TeamScoreRow[], teams: TourTeam[]): TeamScoreRow[] {
   const rows = scores.length > 0 ? scores : teams.slice(0, 2).map((team, index) => ({ teamId: team.id, teamName: team.name, colour: normalizeTeamColour(team.colour, index), points: 0, pointsByRound: {} }));
   return [
@@ -106,20 +90,34 @@ export function Dashboard() {
     .map((match) => ({ match, round: roundById.get(match.roundId) }))
     .sort((a, b) => getScheduleSortTime(a.round?.roundDate, a.match.teeTime ?? a.round?.teeTime) - getScheduleSortTime(b.round?.roundDate, b.match.teeTime ?? b.round?.teeTime) || a.match.matchNumber - b.match.matchNumber);
   const nextTee = scheduled[0];
+  const sortedRounds = [...rounds].sort((a, b) => getScheduleSortTime(a.roundDate, a.teeTime) - getScheduleSortTime(b.roundDate, b.teeTime) || a.roundNumber - b.roundNumber);
+  const nextRound = nextTee?.round ?? sortedRounds.find((round) => round.status === 'active') ?? sortedRounds.find((round) => getScheduleSortTime(round.roundDate, round.teeTime) >= Date.now()) ?? sortedRounds[0];
   const latestRound = latestCompletedRound(rounds, visibleMatches);
   const latestResult = latestRound ? undefined : ([...visibleMatches].filter((match) => match.status === 'complete').sort((a, b) => (getScheduledDate(roundById.get(b.roundId)?.roundDate, b.teeTime)?.getTime() ?? 0) - (getScheduledDate(roundById.get(a.roundId)?.roundDate, a.teeTime)?.getTime() ?? 0) || b.matchNumber - a.matchNumber)[0] ?? activeData.summary.recentResults[0]);
   const countdown = countdownParts(tour?.startDate, tour?.endDate, tour?.status);
+  const tourStart = getDateOnlyScheduledDate(tour?.startDate);
+  const tourEnd = getDateOnlyScheduledDate(tour?.endDate, '23:59:59');
+  const tourComplete = tour?.status === 'complete' || tour?.status === 'archived' || Boolean(tourEnd && Date.now() > tourEnd.getTime());
+  const tourLive = !tourComplete && (tour?.status === 'active' || Boolean(tourStart && tourEnd && Date.now() >= tourStart.getTime() && Date.now() <= tourEnd.getTime()));
+  const upNextFormat = nextRound?.formatLabel ?? (nextTee?.match.format ? formatMatchFormat(nextTee.match.format) : undefined) ?? 'Format TBC';
+  const upNextTime = normalizeTeeTime(nextTee?.match.teeTime) ?? normalizeTeeTime(nextRound?.teeTime) ?? 'TBC';
+
   useEffect(() => {
     const interval = window.setInterval(() => setTick((value) => value + 1), 1000);
     return () => window.clearInterval(interval);
   }, []);
 
-  return <div className="page-stack dashboard-page">
+  const latestResultCard = <a className="card tappable-card latest-result-card" href="/matches">
+    <div className="section-heading"><div><p className="eyebrow">{tourComplete ? 'Tour results' : 'Latest result'}</p><h2>{tourComplete ? 'Final results' : 'Latest result'}</h2></div><span className="card-chevron" aria-hidden="true">›</span></div>
+    {latestRound ? <div className="latest-round-results"><p><strong>{formatRoundDisplayName(latestRound.round)}</strong>{latestRound.round.roundDate ? ` · ${formatShortDate(latestRound.round.roundDate)}` : ''} · {roundScore(latestRound.matches)}</p>{latestRound.matches.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />)}</div> : !latestResult ? <p>No results yet</p> : <MatchCard match={latestResult} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === latestResult.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />}
+  </a>;
+
+  return <div className={`page-stack dashboard-page ${tourLive ? 'tour-is-live' : tourComplete ? 'tour-is-complete' : 'tour-is-upcoming'}`}>
     {loading && <p className="card">Loading…</p>}
     {error && <p className="card form-error">Data could not be loaded. Please refresh.</p>}
 
-    <section className="countdown-card card">
-      <p className="eyebrow">Tour countdown</p>
+    {!tourComplete && <section className="countdown-card card home-intro-card">
+      <p className="eyebrow">{tourLive ? 'Live now' : 'Tour countdown'}</p>
       {'state' in countdown ? <strong>{countdown.state}</strong> : <div className="countdown-grid">
         <span><b>{countdown.days}</b><small>days</small></span>
         <span><b>{countdown.hours}</b><small>hours</small></span>
@@ -127,35 +125,42 @@ export function Dashboard() {
         <span><b>{countdown.seconds}</b><small>seconds</small></span>
       </div>}
       <span>{formatTourDisplayName(tour)}</span>
-    </section>
+    </section>}
 
     <section className="score-feature card">
-      <div className="section-heading"><div><p className="eyebrow">Team score</p><h2>Team score</h2></div><span className="card-chevron" aria-hidden="true">›</span></div>
-      <Scoreboard scores={teamRows} href="/matches" hideCentreScore />
+      <div className="section-heading"><div><p className="eyebrow">{tourComplete ? 'Final score' : tourLive ? 'Live team score' : 'Team score'}</p><h2>{tourComplete ? 'Final score' : 'Team score'}</h2></div><span className="card-chevron" aria-hidden="true">›</span></div>
+      <Scoreboard scores={teamRows} href="/score" />
     </section>
 
+    {!tourComplete && <a className="card tappable-card home-up-next" href="/matches">
+      <div className="up-next-copy">
+        <p className="eyebrow">{tourLive ? 'On course' : 'Up next'}</p>
+        <h2>{nextRound ? formatRoundDisplayName(nextRound) : 'Next round TBC'}</h2>
+        <p>{nextRound?.courseName ?? 'Course TBC'}{nextRound?.roundDate ? ` · ${formatShortDate(nextRound.roundDate)}` : ''}</p>
+        <div className="up-next-meta"><span>{upNextFormat}</span><span>{nextRound?.holes ?? 18} holes</span></div>
+      </div>
+      <div className="up-next-time"><small>First tee</small><strong>{upNextTime}</strong><span className="card-chevron" aria-hidden="true">›</span></div>
+    </a>}
 
-    {rounds.length > 0 && <section className="card overview-round-summary"><div className="section-heading"><div><p className="eyebrow">Rounds</p><h2>Round structure</h2></div><span className="card-chevron" aria-hidden="true">›</span></div><div className="premium-list">{rounds.map((round, index) => <p key={round.id}>{roundSummaryLine(round, index)}</p>)}</div></section>}
+    {tourComplete && latestResultCard}
 
-    <section className="overview-highlight-grid">
-      <a className="card tappable-card victory-card" href="/matches">
-        <p className="eyebrow">Points to victory</p>
-        <h3>{pointsToWinOutright === undefined ? 'Points target TBC' : `${formatPoints(pointsToWinOutright)} to win`}</h3>
+    <CourseRail compact title="Know the courses" eyebrow="Faldo · O'Connor · Old Course" />
+
+    <a className="card tappable-card home-this-tour-card" href="/tours">
+      <div><p className="eyebrow">This tour</p><h2>Teams, schedule & tour info</h2><p>Players, course guides and the full itinerary now live together under Tours.</p></div>
+      <span className="card-chevron" aria-hidden="true">›</span>
+    </a>
+
+    {!tourComplete && <section className="overview-highlight-grid">
+      <a className="card tappable-card victory-card" href="/score">
+        <p className="eyebrow">Points target</p>
+        <h3>{pointsToWinOutright === undefined ? 'Target TBC' : `${formatPoints(pointsToWinOutright)} to win`}</h3>
         {pointsToWinOutright !== undefined && <p>{formatPoints(totalPointsAvailable)} available · {formatPoints(remainingPoints)} remaining</p>}
         <span className="card-chevron" aria-hidden="true">›</span>
       </a>
-      <a className="next-tee-card card tappable-card" href="/matches">
-        <p className="eyebrow">Next tee</p>
-        <h3>{nextTee?.round ? formatRoundDisplayName(nextTee.round) : 'Next tee TBC'}</h3>
-        {nextTee?.round ? <p>{nextTee.round.courseName ?? 'Course TBC'} · {formatShortDate(nextTee.round.roundDate)}</p> : <p>Next tee TBC</p>}
-        <div className="tee-time-lockup"><strong>{normalizeTeeTime(nextTee?.match.teeTime) ?? normalizeTeeTime(nextTee?.round?.teeTime) ?? 'TBC'}</strong><span className="card-chevron" aria-hidden="true">›</span></div>
-      </a>
-    </section>
+    </section>}
 
-    <a className="card tappable-card latest-result-card" href="/matches">
-      <div className="section-heading"><div><p className="eyebrow">Latest result</p><h2>Latest result</h2></div><span className="card-chevron" aria-hidden="true">›</span></div>
-      {latestRound ? <div className="latest-round-results"><p><strong>{formatRoundDisplayName(latestRound.round)}</strong>{latestRound.round.roundDate ? ` · ${formatShortDate(latestRound.round.roundDate)}` : ''} · {roundScore(latestRound.matches)}</p>{latestRound.matches.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />)}</div> : !latestResult ? <p>No results yet</p> : <MatchCard match={latestResult} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === latestResult.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />}
-    </a>
+    {!tourComplete && latestResultCard}
 
   </div>;
 }

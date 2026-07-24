@@ -61,10 +61,10 @@ describe('secondary prize result support', () => {
   });
 
   it('public display hides via published API query and renders published rows', () => {
-    assert.match(publicSource, /SecondaryPrizeRows/);
-    assert.match(publicSource, /hasPrizeResults/);
-    assert.match(publicSource, /matches\.length === 0 && !hasPrizeResults/);
-    assert.match(publicSource, /Secondary prize:/);
+    assert.match(publicSource, /function GolfPrizes/);
+    assert.match(publicSource, /selectedPrizes/);
+    assert.match(publicSource, /section === 'prizes'/);
+    assert.match(publicSource, /Secondary prizes/);
   });
 
   it('Tour Info secondary prize rows include winner plus score fallbacks', () => {

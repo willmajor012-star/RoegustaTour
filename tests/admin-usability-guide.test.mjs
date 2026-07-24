@@ -7,13 +7,13 @@ const appShellSource = await readFile(new URL('../src/app/AppShell.tsx', import.
 const navSource = await readFile(new URL('../src/app/navigation.ts', import.meta.url), 'utf8');
 const adminHeaderSource = await readFile(new URL('../src/components/AdminBrandHeader.tsx', import.meta.url), 'utf8');
 
-test('Admin route keeps app navigation context without exposing Admin as a public tab', () => {
+test('Admin route keeps app navigation context without occupying a primary tab', () => {
   assert.match(appShellSource, /route\.path === '\/admin'/);
   assert.match(appShellSource, /<AdminBrandHeader \/>/);
   assert.match(appShellSource, /<BottomNav currentPath=\{path\} onNavigate=\{navigate\} \/>/);
   assert.match(adminSource, /Back to app/);
   assert.match(adminSource, /End admin session/);
-  assert.doesNotMatch(navSource, /label: 'Admin'|path: '\/admin'/);
+  assert.doesNotMatch(navSource, /label: 'Admin'|path: '\/admin'|moreNavigationItems/);
 });
 
 test('SPA link handling preserves same-page admin guide hash jumps', () => {

@@ -53,13 +53,13 @@ test('2026 helper creates agreed rounds and no Friday golf', () => {
   assert.doesNotMatch(templateSource, /2026-11-06[\s\S]{0,120}Course/);
 });
 
-test('2026 secondary prize slots and overview round summary are present', () => {
+test('2026 secondary prize slots and focused home next-round summary are present', () => {
   assert.match(prizesSource, /template2026/);
   assert.match(prizesSource, /Team lowest gross/);
   assert.match(prizesSource, /score_unit: 'gross'/);
   assert.match(prizesSource, /format === 'scramble'/);
   assert.match(prizesSource, /format === 'better_ball'/);
-  assert.match(dashboardSource, /Round structure/);
+  assert.match(dashboardSource, /Up next/);
   assert.match(dashboardSource, /First tee/);
-  assert.match(dashboardSource, /roundSessionLabel/);
+  assert.match(dashboardSource, /nextRound/);
 });

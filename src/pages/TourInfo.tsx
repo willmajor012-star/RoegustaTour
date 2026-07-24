@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { PageHeader } from '../components/PageHeader';
 import { formatDate } from '../lib/formatting';
 import { formatRoundDisplayName, formatTeeTimeDisplay } from '../lib/display';
 import { fetchPublicTourInfo, type PublicTourInfoResponse, type TourTeamDayKit } from '../lib/publicApi';
@@ -14,7 +15,7 @@ export function TourInfo() {
   const activeData = data ?? emptyTourInfo;
   const tour = activeData.tour;
 
-  return <div className="page-stack handbook-page"><section className="page-title premium-title"><p className="eyebrow">Tour handbook</p><h2>{tour?.name ?? 'Handbook'}</h2></section>
+  return <div className="page-stack handbook-page"><PageHeader title="Tour information" eyebrow={tour?.name ?? 'Tour handbook'} description="The schedule, rounds, kit and key information in one place." />
     {loading && <p className="card">Loading tour handbook…</p>}
     {error && <p className="card form-error">{error}</p>}
     <section className="handbook-hero card"><div><p className="eyebrow">Details</p><h3>{tour?.location ?? 'Location TBC'}</h3><p>{formatDate(tour?.startDate)} — {formatDate(tour?.endDate)}</p>{tour?.description && <p>{tour.description}</p>}{!loading && !error && !tour && <p>Tour details TBC.</p>}</div><span className="brand-logo-roundel info-logo-mark"><img className="brand-logo" src="/brand/roegusta-logo-mark.png" alt="Roegusta Tour mark" /></span></section>
