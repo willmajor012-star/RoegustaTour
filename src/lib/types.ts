@@ -100,6 +100,7 @@ export type CourseGuide = {
   holes: CourseHole[];
   sortOrder?: number;
   published?: boolean;
+  showOnHome?: boolean;
 };
 
 export type Round = {

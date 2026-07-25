@@ -63,6 +63,7 @@ export type TourScheduleEntry = {
   sortOrder: number;
   kind: ManualItineraryKind | 'golf';
   roundNumber?: number;
+  courseId?: string;
 };
 
 function itineraryClock(value?: string | null) {
@@ -95,6 +96,7 @@ export function buildTourSchedule(tourId: string, rounds: Round[], items: TourIt
       sortOrder: round.roundNumber,
       kind: 'golf' as const,
       roundNumber: round.roundNumber,
+      courseId: round.courseId,
     }));
   return [...manualEntries, ...golfEntries].sort(compareScheduleEntries);
 }

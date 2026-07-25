@@ -181,6 +181,7 @@ export function mapCourseGuide(row: Row): CourseGuide {
     holes: asArray(row.holes).map(mapCourseHole).filter((hole): hole is CourseHole => Boolean(hole)).sort((a, b) => a.number - b.number),
     sortOrder: asNumber(row.sort_order) ?? 0,
     published: asBoolean(row.published),
+    showOnHome: asBoolean(row.show_on_home),
   };
 }
 

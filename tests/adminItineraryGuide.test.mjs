@@ -70,6 +70,25 @@ test('golf schedule entries come directly from the selected tour rounds', async 
   assert.equal(schedule.filter((entry) => entry.kind === 'golf').length, 1);
   assert.equal(schedule.find((entry) => entry.kind === 'golf')?.location, 'Faldo Course');
   assert.equal(schedule.find((entry) => entry.kind === 'golf')?.timeLabel, '09:20');
+  assert.equal(schedule.find((entry) => entry.kind === 'golf')?.courseId, undefined);
+});
+
+test('itinerary headings always generate the full weekday and date', async () => {
+  const info = await readFile(new URL('../src/pages/TourInfo.tsx', import.meta.url), 'utf8');
+  const formatting = await readFile(new URL('../src/lib/formatting.ts', import.meta.url), 'utf8');
+  assert.match(info, /formatLongDate\(date\)/);
+  assert.doesNotMatch(info, /entries\.find\(\(entry\) => entry\.dayLabel\)/);
+  assert.match(formatting, /weekday: 'long'/);
+  assert.match(formatting, /month: 'long'/);
+});
+
+test('itinerary course-guide links require the saved round course id', async () => {
+  const itinerary = await readFile(new URL('../src/pages/TourInfo.tsx', import.meta.url), 'utf8');
+  const publicData = await readFile(new URL('../netlify/functions/_publicData.ts', import.meta.url), 'utf8');
+  assert.match(itinerary, /entry\.courseId \? courses\.find/);
+  assert.match(itinerary, /courseGuidePath\(guide\)/);
+  assert.match(publicData, /tour info courses/);
+  assert.match(publicData, /tourCourses: courseRows\.map\(mapCourseGuide\)/);
 });
 
 test('archived and future tour itinerary records remain isolated', async () => {

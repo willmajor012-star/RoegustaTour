@@ -123,6 +123,7 @@ async function postPublicJson<T>(path: string, payload: unknown): Promise<T> {
 export type PublicTourInfoResponse = PublicResponse<{
   tour?: Tour;
   rounds: Round[];
+  tourCourses: CourseGuide[];
   handbookSections: TourHandbookSection[];
   itineraryItems: TourItineraryItem[];
   teamDayKit: TourTeamDayKit[];

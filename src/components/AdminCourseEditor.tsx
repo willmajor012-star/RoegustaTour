@@ -38,6 +38,7 @@ function emptyCourse(tourId: string, sortOrder = 0): CourseGuide {
     holes: [],
     sortOrder,
     published: false,
+    showOnHome: false,
   };
 }
 
@@ -48,6 +49,7 @@ function copyCourse(course: CourseGuide, tourId: string, sortOrder: number): Cou
     tourId,
     sortOrder,
     published: false,
+    showOnHome: false,
   };
 }
 
@@ -171,7 +173,7 @@ export function AdminCourseEditor({ data, tour, onRefresh }: { data: AdminDataRe
 
   return <section className="admin-course-editor">
     <div className="card course-admin-heading">
-      <div><p className="eyebrow">Tour course library</p><h3>Course guides & scorecards</h3><p>Every guide belongs to the selected tour, so archived tours keep their own courses. Copy an existing guide to avoid re-entering a scorecard when a course is played again.</p></div>
+      <div><p className="eyebrow">Tour course library</p><h3>Course guides & scorecards</h3><p>Every public guide must first be saved to this tour. Start from a library template or a previous-tour guide, check it, save it, then link it to the relevant round. A round such as the Par 3 can deliberately have no guide.</p></div>
       <div className="course-admin-pickers">
         <label>Edit course
           <select value={draft.id ?? ''} onChange={(event) => setDraft(orderedCourses.find((course) => course.id === event.target.value) ?? emptyCourse(tour.id, orderedCourses.length))}>
@@ -179,14 +181,15 @@ export function AdminCourseEditor({ data, tour, onRefresh }: { data: AdminDataRe
             {orderedCourses.map((course) => <option value={course.id} key={course.id}>{course.name}{course.published ? ' · public' : ' · private'}</option>)}
           </select>
         </label>
-        <label>Copy a saved guide
+        <label>Add from course library
           <select value="" onChange={(event) => {
             const source = reusableCourses.find((course, index) => `${course.id ?? 'built-in'}:${index}` === event.target.value);
             if (source) setDraft(copyCourse(source, tour.id, orderedCourses.length));
           }}>
-            <option value="">Choose a course to copy</option>
+            <option value="">Choose a template or previous guide</option>
             {reusableCourses.map((course, index) => <option value={`${course.id ?? 'built-in'}:${index}`} key={`${course.id ?? 'built-in'}:${index}`}>{course.name} · {course.holes.length} holes</option>)}
           </select>
+          <small>This loads a copy into the form. Review it and press Save course guide to add it to this tour.</small>
         </label>
         <button type="button" onClick={() => setDraft(emptyCourse(tour.id, orderedCourses.length))}>New blank course</button>
       </div>
@@ -209,6 +212,8 @@ export function AdminCourseEditor({ data, tour, onRefresh }: { data: AdminDataRe
         <label>Sort order<input inputMode="numeric" value={draft.sortOrder ?? 0} onChange={(event) => setDraft({ ...draft, sortOrder: Number(event.target.value) || 0 })} /></label>
         <label className="admin-full-span">Official overview<textarea value={draft.overview} onChange={(event) => setDraft({ ...draft, overview: event.target.value })} /></label>
         <label className="publish-toggle admin-full-span"><input type="checkbox" checked={draft.published ?? false} onChange={(event) => setDraft({ ...draft, published: event.target.checked })} /> Publish this course with the selected tour</label>
+        <label className="publish-toggle admin-full-span"><input type="checkbox" checked={draft.showOnHome ?? false} onChange={(event) => setDraft({ ...draft, showOnHome: event.target.checked })} /> Show this guide in the Home course section</label>
+        <small className="admin-full-span">A guide must be published before it can appear publicly. Home visibility is separate so Admin can publish a guide for Golf/Courses without featuring it on Home.</small>
       </div>
     </div>
 
@@ -234,7 +239,7 @@ export function AdminCourseEditor({ data, tour, onRefresh }: { data: AdminDataRe
     </div>
 
     <div className="card course-admin-actions">
-      <div><strong>{draft.id ? `Editing ${draft.name}` : 'New course guide'}</strong><small>Publishing makes the guide available on Golf and Tours for this tour only.</small></div>
+      <div><strong>{draft.id ? `Editing ${draft.name}` : 'New course guide'}</strong><small>Publishing makes the saved guide available to this tour. “Show on Home” controls only the Home course rail.</small></div>
       {draft.id && <button type="button" disabled={state.saving} onClick={() => void remove()}>Delete safe course</button>}
       <button type="button" disabled={state.saving} onClick={() => void submit()}>{state.saving ? 'Saving…' : 'Save course guide'}</button>
       {state.message && <p className="form-success">{state.message}</p>}

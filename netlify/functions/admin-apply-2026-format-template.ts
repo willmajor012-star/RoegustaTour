@@ -11,7 +11,7 @@ type TemplateRound = { round_number: number; name: string; round_date: string; s
 
 const template: TemplateRound[] = [
   { round_number: 1, name: 'Saturday AM 4BBB', round_date: '2026-11-07', session: 'AM', course_name: 'Faldo Course', format: 'better_ball', format_label: '4BBB', holes: 18, status: 'planned' },
-  { round_number: 2, name: "Saturday PM O'Connor Scramble", round_date: '2026-11-07', session: 'PM', course_name: "O'Connor Jnr. Course", format: 'scramble', format_label: 'Scramble', holes: 9, status: 'planned' },
+  { round_number: 2, name: 'Saturday PM Par 3 Scramble', round_date: '2026-11-07', session: 'PM', course_name: 'Amendoeira Par 3', format: 'scramble', format_label: 'Scramble', holes: 9, status: 'planned' },
   { round_number: 3, name: 'Sunday Singles', round_date: '2026-11-08', session: 'AM', course_name: 'Old Course', format: 'singles', format_label: 'Singles', holes: 18, status: 'planned' },
   { round_number: 4, name: 'Monday 9-hole 4BBB', round_date: '2026-11-09', session: 'AM', course_name: 'Course TBC', format: 'better_ball', format_label: '4BBB', holes: 9, status: 'planned' },
 ];

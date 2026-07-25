@@ -163,51 +163,19 @@ export function totalYards(course: CourseGuide, teeKey: string) {
   return course.holes.reduce((sum, hole) => sum + (hole.yards[teeKey] ?? 0), 0);
 }
 
-export function findCourseGuide(slug?: string, courses: CourseGuide[] = courseGuides) {
+export function findCourseGuide(slug?: string, courses: CourseGuide[] = []) {
   return courses.find((course) => course.slug === slug);
 }
 
-function normalizeCourseLabel(value?: string | null) {
-  return value?.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, ' ').trim() ?? '';
-}
-
-export function courseGuideForName(courseName?: string | null, courses: CourseGuide[] = courseGuides) {
-  const normalized = normalizeCourseLabel(courseName);
-  if (!normalized) return undefined;
-  return courses.find((course) => {
-    const candidates = [course.name, course.shortName, course.slug].map(normalizeCourseLabel);
-    return candidates.some((candidate) => candidate === normalized || normalized.includes(candidate) || candidate.includes(normalized));
-  });
-}
-
 export function courseGuideForRound(round: Pick<Round, 'courseId' | 'courseName'> | undefined, courses: CourseGuide[]) {
-  if (!round) return undefined;
-  return (round.courseId ? courses.find((course) => course.id === round.courseId) : undefined) ?? courseGuideForName(round.courseName, courses);
+  if (!round?.courseId) return undefined;
+  return courses.find((course) => course.id === round.courseId);
 }
 
-function matchesBuiltInCourse(savedCourse: CourseGuide, builtInCourse: CourseGuide) {
-  const savedIdentities = new Set([savedCourse.slug, savedCourse.name, savedCourse.shortName].map(normalizeCourseLabel).filter(Boolean));
-  return [builtInCourse.slug, builtInCourse.name, builtInCourse.shortName]
-    .map(normalizeCourseLabel)
-    .some((identity) => savedIdentities.has(identity));
-}
-
-export function courseGuidesForTour(tour: Tour | undefined, _rounds: Round[], savedCourses: CourseGuide[]) {
-  const publishedCourses = savedCourses.filter((course) => course.published !== false).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-  if (tour?.year !== 2026) return publishedCourses;
-
-  const usedSavedCourses = new Set<number>();
-  const required2026Courses = courseGuides.map((builtInCourse) => {
-    const savedIndex = publishedCourses.findIndex((savedCourse, index) => !usedSavedCourses.has(index) && matchesBuiltInCourse(savedCourse, builtInCourse));
-    if (savedIndex < 0) return builtInCourse;
-    usedSavedCourses.add(savedIndex);
-    return publishedCourses[savedIndex];
-  });
-
-  return [
-    ...required2026Courses,
-    ...publishedCourses.filter((_, index) => !usedSavedCourses.has(index)),
-  ];
+export function courseGuidesForTour(_tour: Tour | undefined, _rounds: Round[], savedCourses: CourseGuide[]) {
+  return savedCourses
+    .filter((course) => course.published !== false)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 }
 
 export function courseGuidePath(course: Pick<CourseGuide, 'slug'>) {

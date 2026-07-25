@@ -48,6 +48,7 @@ create table tour_teams (
   captain_player_id uuid references players(id) on delete set null,
   sort_order integer not null default 0,
   published boolean not null default false,
+  show_on_home boolean not null default true,
   created_at timestamptz not null default now(),
   unique (tour_id, name)
 );
@@ -150,6 +151,7 @@ create table tour_courses (
 );
 create index tour_courses_tour_order_idx on tour_courses(tour_id, sort_order);
 create index tour_courses_public_idx on tour_courses(tour_id, published, sort_order);
+create index tour_courses_home_visibility_idx on tour_courses(tour_id, published, show_on_home, sort_order);
 
 create table rounds (
   id uuid primary key default gen_random_uuid(),

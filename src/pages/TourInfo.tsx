@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react';
 import { PageHeader } from '../components/PageHeader';
+import { courseGuidePath } from '../data/courseGuides';
 import { formatTeeTimeDisplay } from '../lib/display';
-import { formatDate } from '../lib/formatting';
+import { formatDate, formatLongDate } from '../lib/formatting';
 import { logoutPublicAccess } from '../lib/publicAccess';
 import { fetchPublicTourInfo, type PublicTourInfoResponse, type TourTeamDayKit } from '../lib/publicApi';
 import { normalizeTeamColour } from '../lib/teamColours';
@@ -17,6 +18,7 @@ const emptyTourInfo: Omit<PublicTourInfoResponse, 'source'> = {
   tourTeams: [],
   players: [],
   roundPrizeResults: [],
+  tourCourses: [],
 };
 
 export function TourInfo() {
@@ -46,23 +48,24 @@ export function TourInfo() {
           <h3>{group.label}</h3>
           <TeamKitChips kits={group.kits} teams={activeData.tourTeams} />
         </header>
-        {group.entries.length > 0 ? <div className="itinerary-event-list">{group.entries.map((entry) => <ScheduleEntry entry={entry} key={entry.id} />)}</div> : <p className="muted">No timed activity added.</p>}
+        {group.entries.length > 0 ? <div className="itinerary-event-list">{group.entries.map((entry) => <ScheduleEntry entry={entry} courses={activeData.tourCourses} key={entry.id} />)}</div> : <p className="muted">No timed activity added.</p>}
       </section>)}</div>}
     </section>
     <footer className="subtle-admin-link"><button type="button" onClick={() => { void logoutPublicAccess().finally(() => window.location.assign('/')); }}>Reset tour access</button><a href="/admin">Admin</a></footer>
   </div>;
 }
 
-function ScheduleEntry({ entry }: { entry: TourScheduleEntry }) {
+function ScheduleEntry({ entry, courses }: { entry: TourScheduleEntry; courses: PublicTourInfoResponse['tourCourses'] }) {
   const label = entry.kind === 'golf' ? 'Golf' : manualItineraryKindLabels[entry.kind];
   const time = entry.kind === 'golf'
     ? `First tee ${formatTeeTimeDisplay(entry.timeLabel)}`
     : entry.timeLabel ?? (entry.kind === 'accommodation' ? 'Stay' : 'Time TBC');
+  const guide = entry.courseId ? courses.find((course) => course.id === entry.courseId) : undefined;
   return <article className={`itinerary-event itinerary-event-${entry.kind}`}>
     <div className="itinerary-event-time"><span>{time}</span><small>{label}</small></div>
     <div>
       <strong>{entry.activity}{entry.kind !== 'golf' && entry.isPlaceholder && !/tbc/i.test(entry.activity) ? ' · TBC' : ''}</strong>
-      {entry.location ? <p>{entry.location}</p> : null}
+      {entry.location ? <p>{entry.location}{guide ? <> · <a href={courseGuidePath(guide)}>Course guide</a></> : null}</p> : null}
       {entry.notes ? <p>{entry.notes}</p> : null}
     </div>
   </article>;
@@ -77,7 +80,7 @@ function scheduleGroups(schedule: TourScheduleEntry[], kit: TourTeamDayKit[]) {
     const entries = schedule.filter((entry) => (entry.itemDate ?? 'date-tbc') === date);
     return {
       date,
-      label: entries.find((entry) => entry.dayLabel)?.dayLabel ?? (date === 'date-tbc' ? 'Date TBC' : formatDate(date)),
+      label: date === 'date-tbc' ? 'Date TBC' : formatLongDate(date),
       entries,
       kits: kit.filter((item) => item.kitDate === date),
     };
