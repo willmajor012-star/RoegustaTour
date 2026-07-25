@@ -62,6 +62,9 @@ test('2026 setup installs all library guides and links only matching rounds by s
   const setup = await source(
     'netlify/functions/admin-apply-2026-format-template.ts',
   );
+  const migration = await source(
+    'supabase/migrations/202607250003_tour_readiness_repair.sql',
+  );
   const editor = await source('src/components/AdminCourseEditor.tsx');
   const installer = await source(
     'netlify/functions/admin-install-course-templates.ts',
@@ -90,6 +93,13 @@ test('2026 setup installs all library guides and links only matching rounds by s
   assert.match(editor, /Install missing 2026 guide set/);
   assert.match(editor, /Existing saved guides were preserved/);
   assert.match(installer, /installCourseTemplatesForTour/);
+  for (const slug of ['faldo', 'oconnor', 'old-course']) {
+    assert.match(migration, new RegExp(`"slug":"${slug}"`));
+  }
+  assert.match(migration, /on conflict \(tour_id, slug\) do nothing/);
+  assert.match(migration, /round_row\.round_number = 1 and course\.slug = 'faldo'/);
+  assert.match(migration, /round_row\.round_number = 3 and course\.slug = 'old-course'/);
+  assert.doesNotMatch(migration, /delete from public\.tour_courses/);
 });
 
 test('library templates become complete tour-owned rows with independent Home visibility', async () => {
