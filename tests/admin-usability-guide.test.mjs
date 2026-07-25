@@ -7,13 +7,13 @@ const appShellSource = await readFile(new URL('../src/app/AppShell.tsx', import.
 const navSource = await readFile(new URL('../src/app/navigation.ts', import.meta.url), 'utf8');
 const adminHeaderSource = await readFile(new URL('../src/components/AdminBrandHeader.tsx', import.meta.url), 'utf8');
 
-test('Admin route keeps app navigation context without exposing Admin as a public tab', () => {
-  assert.match(appShellSource, /route\.path === '\/admin'/);
+test('Admin route keeps app navigation context without occupying a primary tab', () => {
+  assert.match(appShellSource, /path === '\/admin'/);
   assert.match(appShellSource, /<AdminBrandHeader \/>/);
   assert.match(appShellSource, /<BottomNav currentPath=\{path\} onNavigate=\{navigate\} \/>/);
   assert.match(adminSource, /Back to app/);
   assert.match(adminSource, /End admin session/);
-  assert.doesNotMatch(navSource, /label: 'Admin'|path: '\/admin'/);
+  assert.doesNotMatch(navSource, /label: 'Admin'|path: '\/admin'|moreNavigationItems/);
 });
 
 test('SPA link handling preserves same-page admin guide hash jumps', () => {
@@ -25,11 +25,11 @@ test('Admin header is static and does not require public password data', () => {
   assert.match(adminHeaderSource, /Roegusta Tour/);
   assert.match(adminHeaderSource, /Public password access remains separate/);
   assert.doesNotMatch(adminHeaderSource, /fetchPublicSummary|usePublicData|publicApi/);
-  assert.doesNotMatch(appShellSource.slice(appShellSource.indexOf("route.path === '/admin'"), appShellSource.indexOf('return (', appShellSource.indexOf("route.path === '/admin'"))), /PublicPasswordGate|<BrandHeader/);
+  assert.doesNotMatch(appShellSource.slice(appShellSource.indexOf("path === '/admin'"), appShellSource.indexOf('return (', appShellSource.indexOf("path === '/admin'"))), /PublicPasswordGate|<BrandHeader/);
 });
 
 test('Admin operating manual includes required workflow headings and separation guidance', () => {
-  for (const heading of ['Admin access', 'Public password access', 'Creating or selecting a tour', '2026 format setup', 'Rounds', 'Teams and rosters', 'Player profiles and photos', 'Pairings and tee times', 'Match results', 'Secondary prize results', 'Bet Punto', 'Info page / handbook / itinerary', 'Publishing and visibility', 'Archiving and next year setup', 'Troubleshooting centre']) {
+  for (const heading of ['Admin access', 'Public password access', 'Creating or selecting a tour', '2026 format setup', 'Rounds', 'Teams and rosters', 'Player profiles and photos', 'Pairings and tee times', 'Match results', 'Secondary prize results', 'Bet Punto', 'Tour itinerary', 'Publishing and visibility', 'Archiving and next year setup', 'Troubleshooting centre']) {
     assert.match(adminSource, new RegExp(heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
   assert.match(adminSource, /public password is not the Admin PIN/i);

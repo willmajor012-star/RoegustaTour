@@ -21,7 +21,10 @@ export function RefreshButton() {
       aria-label="Refresh live tour data"
       title="Refresh live tour data"
     >
-      ↻
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+        <path d="M20 7v5h-5" />
+        <path d="M18.2 16.2A8 8 0 1 1 19.4 9" />
+      </svg>
     </button>
   );
 }

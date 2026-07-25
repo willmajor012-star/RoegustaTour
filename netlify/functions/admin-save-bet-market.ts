@@ -4,6 +4,8 @@ import { mapBetMarket, mapBetOption } from './_mappers';
 import { settleBetMarketRows } from './_betSettlement';
 import { normalizeMarketTitle } from '../../src/lib/betPuntoRules';
 import { writeAuditLog } from './_audit';
+import { requiredMarketDeadlineForRound } from './_betMarketDeadline';
+import { applyAutomaticBetDefaultsForMarket } from './_betDefaults';
 import type { BetMarket, BetOption } from '../../src/lib/types';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
@@ -53,6 +55,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const options = parseOptions(body.options);
   const resultOptionId = optionalString(body.resultOptionId);
   const required = Boolean(body.required);
+  let closesAt = optionalString(body.closesAt);
 
   if (!tourId) return badRequest('Tour ID is required.');
   if (!title) return badRequest('Market title is required.');
@@ -65,6 +68,8 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (options.some((option) => option.linkedMatchSide && !sides.includes(option.linkedMatchSide))) return badRequest('Linked match side is invalid.');
   if (status === 'settled' && !resultOptionId) return badRequest('Settled markets require a result option.');
   if (resultOptionId && !options.some((option) => option.id === resultOptionId)) return badRequest('Result option must be one of this market\'s saved options.');
+  if (required && !roundId) return badRequest('Required Bet Punto markets must be linked to a round.');
+  if (required && !['player_performance', 'team_result'].includes(marketType)) return badRequest('Required Bet Punto markets must be highest Stableford or lowest scramble gross.');
 
   const duplicateRows = await runRows<{ id: string; title: string; market_scope: string; round_id: string | null; match_id: string | null; status: string }>(
     supabase.from('bet_markets').select('id, title, market_scope, round_id, match_id, status').eq('tour_id', tourId).eq('status', 'open').eq('market_scope', marketScope),
@@ -81,6 +86,11 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (roundId) {
     const rounds = await runRows<{ id: string; tour_id: string }>(supabase.from('rounds').select('id, tour_id').eq('id', roundId).limit(1), 'find bet market round');
     if (rounds.length === 0 || rounds[0].tour_id !== tourId) return badRequest('Round must belong to this tour.');
+    if (required) {
+      const deadline = await requiredMarketDeadlineForRound(supabase, roundId);
+      if (!deadline.closesAt) return badRequest(deadline.warning ?? 'Set a valid first tee time before saving this required market.');
+      closesAt = deadline.closesAt;
+    }
   }
   if (matchId) {
     const matches = await runRows<{ id: string; tour_id: string }>(supabase.from('matches').select('id, tour_id').eq('id', matchId).limit(1), 'find bet market match');
@@ -104,7 +114,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     market_type: marketType,
     market_scope: marketScope,
     status,
-    closes_at: optionalString(body.closesAt),
+    closes_at: closesAt,
     result_option_id: null,
     result_text: optionalString(body.resultText),
     required,
@@ -160,6 +170,14 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     updatedMarket = await runSingle<Record<string, unknown>>(supabase.from('bet_markets').update({ result_option_id: resultOptionId }).eq('id', marketId).select('*').single(), 'save bet result option');
     optionRows = await runRows<Record<string, unknown>>(supabase.from('bet_options').select('*').eq('market_id', marketId).order('sort_order', { ascending: true }), 'saved bet options');
     if (status === 'settled' && resultOptionId) {
+      if (required) {
+        if (!closesAt || Date.parse(closesAt) > Date.now()) return badRequest('This market cannot settle before its fixed first-tee close time.');
+        const defaults = await applyAutomaticBetDefaultsForMarket(supabase, marketId);
+        if (defaults.unresolved.length > 0) {
+          await supabase.from('bet_markets').update({ status: 'closed' }).eq('id', marketId);
+          return badRequest('Automatic defaults could not be assigned for every attending player. Check player options and team assignments before settling.');
+        }
+      }
       const settlementSummary = await settleBetMarketRows(supabase, marketId, marketScope, resultOptionId);
       await writeAuditLog(supabase, session, 'bet_market.settled_via_save', 'bet_market', marketId, { tourId, resultOptionId, settlementSummary });
     }

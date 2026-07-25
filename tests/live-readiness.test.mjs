@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { readFileSync } from 'node:fs';
+
+const bettingPageSource = readFileSync('src/pages/Betting.tsx', 'utf8');
 
 function deriveWinningSide(pointsSideA, pointsSideB) {
   if (pointsSideA > pointsSideB) return 'A';
@@ -47,10 +50,6 @@ function adminSaveBetRow(previousBet, nextStatus) {
   };
 }
 
-
-function playerSummaryExpandedByDefault() {
-  return false;
-}
 
 function optionStakeRows(options, bets) {
   return options.map((option) => {
@@ -154,8 +153,9 @@ describe('Bet Punto payout and duplicate rules', () => {
 
 
 describe('Bet Punto live market public layout and settlement rules', () => {
-  it('keeps the player betting summary collapsed by default', () => {
-    assert.equal(playerSummaryExpandedByDefault(), false);
+  it('keeps the whole-tour player ledger permanently visible', () => {
+    assert.match(bettingPageSource, /Bet Punto leaderboard/);
+    assert.doesNotMatch(bettingPageSource, /showLedger|Show player ledger/);
   });
 
   it('uses Supabase HH:mm:ss tee times when defaulting round market close time', () => {

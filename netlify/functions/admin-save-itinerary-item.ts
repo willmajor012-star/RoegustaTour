@@ -9,9 +9,11 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const tourId = optionalString(body.tourId);
   const id = optionalString(body.id);
   const activity = optionalString(body.activity);
+  const sourceType = optionalString(body.sourceType);
   const sortOrder = Number(body.sortOrder ?? 0);
   if (!tourId) return badRequest('Tour ID is required.');
   if (!activity) return badRequest('Activity is required.');
+  if (!sourceType || !['travel', 'accommodation', 'dinner'].includes(sourceType)) return badRequest('Itinerary type must be travel, accommodation or dinner.');
   if (!Number.isFinite(sortOrder)) return badRequest('Sort order must be numeric.');
   const values = {
     tour_id: tourId,
@@ -23,7 +25,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     notes: optionalString(body.notes) || null,
     is_placeholder: Boolean(body.isPlaceholder),
     sort_order: sortOrder,
-    source_type: optionalString(body.sourceType) || null,
+    source_type: sourceType,
     source_id: optionalString(body.sourceId) || null,
   };
   const query = id

@@ -1,6 +1,6 @@
 import { clearStoredAdminSession, getAdminAuthorizationHeaders } from './adminSession';
-import type { Bet, BetMarket, BetOption, Match, MatchFormat, MatchParticipant, Player, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult, RoundPrizeResult } from './types';
-import type { TourHandbookSection, TourItineraryItem } from './publicApi';
+import type { Bet, BetMarket, BetOption, CourseGuide, Match, MatchFormat, MatchParticipant, Player, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult, RoundPrizeResult } from './types';
+import type { TourHandbookSection, TourItineraryItem, TourTeamDayKit } from './publicApi';
 
 export type AdminDataResponse = {
   ok: true;
@@ -21,7 +21,10 @@ export type AdminDataResponse = {
   bets: Bet[];
   handbookSections: TourHandbookSection[];
   itineraryItems: TourItineraryItem[];
+  teamDayKit: TourTeamDayKit[];
   roundPrizeResults: RoundPrizeResult[];
+  tourCourses: CourseGuide[];
+  courseLibrary: CourseGuide[];
 };
 
 export type SavePlayerPayload = {
@@ -39,6 +42,7 @@ export type SaveTourPayload = {
   name: string;
   year: number;
   location?: string;
+  timezone?: string;
   startDate?: string;
   endDate?: string;
   status: Tour['status'];
@@ -78,6 +82,7 @@ export type SaveRoundPayload = {
   roundNumber: number;
   name: string;
   roundDate?: string | null;
+  courseId?: string | null;
   courseName?: string | null;
   teeTime?: string | null;
   format?: MatchFormat;
@@ -159,6 +164,8 @@ export type SavePublicAccessSettingsPayload = { password: string; forceExpire?: 
 
 export type SaveHandbookSectionPayload = { id?: string; tourId: string; sectionKey: string; title: string; body?: string | null; sortOrder: number };
 export type SaveItineraryItemPayload = { id?: string; tourId: string; itemDate?: string | null; dayLabel?: string | null; timeLabel?: string | null; activity: string; location?: string | null; notes?: string | null; isPlaceholder: boolean; sortOrder: number; sourceType?: string | null; sourceId?: string | null };
+export type SaveTeamDayKitPayload = { id?: string; tourId: string; teamId: string; kitDate: string; colourLabel: string; sortOrder: number };
+export type SaveCoursePayload = Omit<CourseGuide, 'id' | 'tourId'> & { id?: string; tourId: string };
 
 export type SettleBetMarketPayload = {
   marketId: string;
@@ -242,6 +249,8 @@ export const createDefaultRoundPrizeResults = (payload: CreateDefaultRoundPrizeR
 export const saveRound = (payload: SaveRoundPayload) => postAdminJson<{ ok: true; round: Round }>('/.netlify/functions/admin-save-round', payload);
 export const updateRoundPublished = (payload: { tourId: string; roundId: string; published: boolean }) => postAdminJson<{ ok: true; round: Round }>('/.netlify/functions/admin-update-round-published', payload);
 export const deleteRound = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedRoundId: string }>('/.netlify/functions/admin-delete-round', payload);
+export const saveCourse = (payload: SaveCoursePayload) => postAdminJson<{ ok: true; course: CourseGuide }>('/.netlify/functions/admin-save-course', payload);
+export const deleteCourse = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedCourseId: string }>('/.netlify/functions/admin-delete-course', payload);
 export const saveMatch = (payload: SaveMatchPayload) => postAdminJson<{ ok: true; match: Match; matchParticipants: MatchParticipant[] }>('/.netlify/functions/admin-save-match', payload);
 export const updateMatchPublished = (payload: { tourId: string; matchId: string; published: boolean }) => postAdminJson<{ ok: true; match: Match }>('/.netlify/functions/admin-update-match-published', payload);
 export const submitResult = (payload: SubmitResultPayload) => postAdminJson<{ ok: true; match: Match }>('/.netlify/functions/admin-submit-result', payload);
@@ -258,3 +267,5 @@ export const deleteHandbookSection = (payload: { id: string; tourId: string }) =
 
 export const saveItineraryItem = (payload: SaveItineraryItemPayload) => postAdminJson<{ ok: true; itineraryItem: TourItineraryItem }>('/.netlify/functions/admin-save-itinerary-item', payload);
 export const deleteItineraryItem = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedItineraryItemId: string }>('/.netlify/functions/admin-delete-itinerary-item', payload);
+export const saveTeamDayKit = (payload: SaveTeamDayKitPayload) => postAdminJson<{ ok: true; teamDayKit: TourTeamDayKit }>('/.netlify/functions/admin-save-team-day-kit', payload);
+export const deleteTeamDayKit = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedTeamDayKitId: string }>('/.netlify/functions/admin-delete-team-day-kit', payload);

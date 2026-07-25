@@ -1,6 +1,7 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { withAdminSupabase, runRows } from './_adminSupabase';
-import { mapBet, mapBetMarket, mapBetOption, mapMatch, mapMatchParticipant, mapPlayer, mapRound, mapTour, mapTourPlayer, mapTourTeam, mapTourTeamMember, mapTourHandbookSection, mapTourItineraryItem, mapTourTeamResult, mapRoundPrizeResult } from './_mappers';
+import { mapBet, mapBetMarket, mapBetOption, mapCourseGuide, mapMatch, mapMatchParticipant, mapPlayer, mapRound, mapTour, mapTourPlayer, mapTourTeam, mapTourTeamMember, mapTourHandbookSection, mapTourItineraryItem, mapTourTeamDayKit, mapTourTeamResult, mapRoundPrizeResult } from './_mappers';
+import { applyAutomaticBetDefaultsForTour } from './_betDefaults';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -11,7 +12,11 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
   const currentTour = tours.find((tour) => tour.isCurrentPublic) ?? tours.find((tour) => tour.status === 'active') ?? tours.find((tour) => tour.status === 'complete') ?? tours[0];
   const selectedTour = (requestedTourId ? tours.find((tour) => tour.id === requestedTourId) : undefined) ?? currentTour;
 
-  const playerRows = await runRows(supabase.from('players').select('*').order('display_name', { ascending: true }), 'admin players');
+  const [playerRows, courseLibraryRows] = await Promise.all([
+    runRows(supabase.from('players').select('*').order('display_name', { ascending: true }), 'admin players'),
+    runRows(supabase.from('tour_courses').select('*').order('sort_order', { ascending: true }), 'admin course library').catch(() => []),
+  ]);
+  const courseLibrary = courseLibraryRows.map(mapCourseGuide);
 
   if (!selectedTour) {
     return jsonResponse(200, {
@@ -33,11 +38,16 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
       bets: [],
       handbookSections: [],
       itineraryItems: [],
+      teamDayKit: [],
       roundPrizeResults: [],
+      tourCourses: [],
+      courseLibrary,
     });
   }
 
-  const [tourPlayerRows, teamRows, memberRows, roundRows, matchRows, marketRows, handbookRows, itineraryRows] = await Promise.all([
+  await applyAutomaticBetDefaultsForTour(supabase, selectedTour.id);
+
+  const [tourPlayerRows, teamRows, memberRows, roundRows, matchRows, marketRows, handbookRows, itineraryRows, kitRows] = await Promise.all([
     runRows(supabase.from('tour_players').select('*').eq('tour_id', selectedTour.id), 'admin tour players'),
     runRows(supabase.from('tour_teams').select('*').eq('tour_id', selectedTour.id).order('sort_order', { ascending: true }), 'admin tour teams'),
     runRows(supabase.from('tour_team_members').select('*').eq('tour_id', selectedTour.id), 'admin team members'),
@@ -46,6 +56,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
     runRows(supabase.from('bet_markets').select('*').eq('tour_id', selectedTour.id).order('created_at', { ascending: true }), 'admin bet markets'),
     runRows(supabase.from('tour_handbook_sections').select('*').eq('tour_id', selectedTour.id).order('sort_order', { ascending: true }), 'admin handbook sections'),
     runRows(supabase.from('tour_itinerary_items').select('*').eq('tour_id', selectedTour.id).order('sort_order', { ascending: true }), 'admin itinerary items'),
+    runRows(supabase.from('tour_team_day_kit').select('*').eq('tour_id', selectedTour.id).order('sort_order', { ascending: true }), 'admin team day kit'),
   ]);
 
   const matchIds = matchRows.map((row) => String(row.id));
@@ -89,6 +100,9 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
     bets: betRows.map(mapBet),
     handbookSections: handbookRows.map(mapTourHandbookSection),
     itineraryItems: itineraryRows.map(mapTourItineraryItem),
+    teamDayKit: kitRows.map(mapTourTeamDayKit),
     roundPrizeResults: prizeRows.map(mapRoundPrizeResult),
+    tourCourses: courseLibrary.filter((course) => course.tourId === selectedTour.id),
+    courseLibrary,
   });
 });

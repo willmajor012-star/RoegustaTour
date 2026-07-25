@@ -52,26 +52,24 @@ describe('points to win target', () => {
 });
 
 describe('secondary prize result support', () => {
-  it('adds admin CRUD and default prize helper without changing tabs', () => {
+  it('adds admin CRUD, a course library and the default prize helper', () => {
     assert.match(adminSource, /Secondary prize results/);
     assert.match(adminSource, /saveRoundPrizeResult/);
     assert.match(adminSource, /deleteRoundPrizeResult/);
     assert.match(adminSource, /createDefaultRoundPrizeResults/);
-    assert.match(adminSource, /const tabs = \['Overview', 'Tour setup', 'Player library', 'Squads & teams', 'Rounds & tee times', 'Matches & pairings', 'Result entry'/);
+    assert.match(adminSource, /const tabs = \['Overview', 'Tour setup', 'Player library', 'Squads & teams', 'Courses', 'Rounds & tee times', 'Matches & pairings', 'Result entry'/);
   });
 
   it('public display hides via published API query and renders published rows', () => {
-    assert.match(publicSource, /SecondaryPrizeRows/);
-    assert.match(publicSource, /hasPrizeResults/);
-    assert.match(publicSource, /matches\.length === 0 && !hasPrizeResults/);
-    assert.match(publicSource, /Secondary prize:/);
+    assert.match(publicSource, /function GolfPrizes/);
+    assert.match(publicSource, /selectedPrizes/);
+    assert.match(publicSource, /section === 'prizes'/);
+    assert.match(publicSource, /Secondary prizes/);
   });
 
-  it('Tour Info secondary prize rows include winner plus score fallbacks', () => {
-    assert.match(tourInfoSource, /Winner TBC/);
-    assert.match(tourInfoSource, /scoreValue/);
-    assert.match(tourInfoSource, /winnerPlayerId/);
-    assert.match(tourInfoSource, /winnerTeamId/);
+  it('Tour itinerary does not duplicate secondary prize information from Golf', () => {
+    assert.doesNotMatch(tourInfoSource, /winnerPlayerId|winnerTeamId|scoreValue|Secondary prize/);
+    assert.match(tourInfoSource, /Tour itinerary/);
   });
 
   it('backend validates secondary prize linked IDs', () => {

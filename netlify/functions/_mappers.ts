@@ -1,4 +1,4 @@
-import type { Bet, BetMarket, BetOption, HistoricalPlayerStats, Match, MatchParticipant, Player, PlayerMatchResult, Round, RoundPrizeResult, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from '../../src/lib/types';
+import type { Bet, BetMarket, BetOption, CourseGuide, CourseHole, CourseTee, HistoricalPlayerStats, Match, MatchParticipant, Player, PlayerMatchResult, Round, RoundPrizeResult, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from '../../src/lib/types';
 import type { TourHandbookSection, TourItineraryItem, TourTeamDayKit } from '../../src/lib/publicApi';
 
 type Row = Record<string, unknown>;
@@ -32,6 +32,36 @@ function asBoolean(value: unknown, fallback = false): boolean {
   return typeof value === 'boolean' ? value : fallback;
 }
 
+function asArray(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function mapCourseTee(value: unknown): CourseTee | undefined {
+  const row = value && typeof value === 'object' ? value as Row : {};
+  const key = asString(row.key);
+  const label = asString(row.label);
+  if (!key || !label) return undefined;
+  return { key, label, colour: asString(row.colour) ?? '#0f2f24', textColour: asString(row.textColour) };
+}
+
+function mapCourseHole(value: unknown): CourseHole | undefined {
+  const row = value && typeof value === 'object' ? value as Row : {};
+  const number = asNumber(row.number);
+  const par = asNumber(row.par);
+  const strokeIndex = asNumber(row.strokeIndex);
+  const rawYards = row.yards && typeof row.yards === 'object' ? row.yards as Row : {};
+  if (number === undefined || par === undefined || strokeIndex === undefined) return undefined;
+  const yards = Object.fromEntries(Object.entries(rawYards).map(([key, distance]) => [key, asNumber(distance) ?? 0]));
+  return { number, par, strokeIndex, yards, officialNote: asString(row.officialNote) };
+}
+
 export function mapPlayer(row: Row): Player {
   return {
     id: requiredString(row, 'id'),
@@ -52,6 +82,7 @@ export function mapTour(row: Row): Tour {
     name: requiredString(row, 'name'),
     year: requiredNumber(row, 'year'),
     location: asString(row.location),
+    timezone: asString(row.timezone) ?? 'Europe/London',
     startDate: asString(row.start_date),
     endDate: asString(row.end_date),
     status: requiredString(row, 'status') as Tour['status'],
@@ -117,6 +148,7 @@ export function mapRound(row: Row): Round {
     roundNumber: requiredNumber(row, 'round_number'),
     name: requiredString(row, 'name'),
     roundDate: asString(row.round_date),
+    courseId: asString(row.course_id),
     courseName: asString(row.course_name),
     teeTime: asString(row.tee_time),
     format: asString(row.format) as Round['format'],
@@ -124,6 +156,30 @@ export function mapRound(row: Row): Round {
     holes: (asNumber(row.holes) === 9 ? 9 : 18),
     notes: asString(row.notes),
     status: requiredString(row, 'status') as Round['status'],
+    published: asBoolean(row.published),
+  };
+}
+
+export function mapCourseGuide(row: Row): CourseGuide {
+  return {
+    id: requiredString(row, 'id'),
+    tourId: requiredString(row, 'tour_id'),
+    slug: requiredString(row, 'slug'),
+    name: requiredString(row, 'name'),
+    shortName: requiredString(row, 'short_name'),
+    resort: asString(row.resort) ?? '',
+    location: asString(row.location) ?? '',
+    architect: asString(row.architect) ?? '',
+    opened: asString(row.opened),
+    overview: asString(row.overview) ?? '',
+    noteAvailability: (asString(row.note_availability) ?? 'course-only') as CourseGuide['noteAvailability'],
+    officialPageUrl: asString(row.official_page_url),
+    scorecardUrl: asString(row.scorecard_url),
+    heroImageUrl: asString(row.hero_image_url),
+    heroPosition: asString(row.hero_position),
+    tees: asArray(row.tees).map(mapCourseTee).filter((tee): tee is CourseTee => Boolean(tee)),
+    holes: asArray(row.holes).map(mapCourseHole).filter((hole): hole is CourseHole => Boolean(hole)).sort((a, b) => a.number - b.number),
+    sortOrder: asNumber(row.sort_order) ?? 0,
     published: asBoolean(row.published),
   };
 }
@@ -262,6 +318,7 @@ export function mapBet(row: Row): Bet {
     comment: asString(row.comment),
     bettorPlayerId: asString(row.bettor_player_id),
     adminEntered: Boolean(row.admin_entered),
+    entrySource: (asString(row.entry_source) ?? (row.admin_entered ? 'admin' : 'public')) as Bet['entrySource'],
     adminNotes: asString(row.admin_notes),
     voidReason: asString(row.void_reason),
     createdAt: requiredString(row, 'created_at'),

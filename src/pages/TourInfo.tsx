@@ -1,36 +1,93 @@
 import type { CSSProperties } from 'react';
+import { PageHeader } from '../components/PageHeader';
+import { formatTeeTimeDisplay } from '../lib/display';
 import { formatDate } from '../lib/formatting';
-import { formatRoundDisplayName, formatTeeTimeDisplay } from '../lib/display';
-import { fetchPublicTourInfo, type PublicTourInfoResponse, type TourTeamDayKit } from '../lib/publicApi';
-import { usePublicData } from '../lib/usePublicData';
-import { normalizeTeamColour } from '../lib/teamColours';
-import type { TourTeam } from '../lib/types';
 import { logoutPublicAccess } from '../lib/publicAccess';
+import { fetchPublicTourInfo, type PublicTourInfoResponse, type TourTeamDayKit } from '../lib/publicApi';
+import { normalizeTeamColour } from '../lib/teamColours';
+import { buildTourSchedule, manualItineraryKindLabels, type TourScheduleEntry } from '../lib/tourItinerary';
+import type { TourTeam } from '../lib/types';
+import { usePublicData } from '../lib/usePublicData';
 
-const emptyTourInfo: Omit<PublicTourInfoResponse, 'source'> = { rounds: [], handbookSections: [], itineraryItems: [], teamDayKit: [], tourTeams: [], players: [], roundPrizeResults: [] };
+const emptyTourInfo: Omit<PublicTourInfoResponse, 'source'> = {
+  rounds: [],
+  handbookSections: [],
+  itineraryItems: [],
+  teamDayKit: [],
+  tourTeams: [],
+  players: [],
+  roundPrizeResults: [],
+};
 
 export function TourInfo() {
   const { data, loading, error } = usePublicData(fetchPublicTourInfo);
   const activeData = data ?? emptyTourInfo;
   const tour = activeData.tour;
+  const schedule = tour ? buildTourSchedule(tour.id, activeData.rounds, activeData.itineraryItems) : [];
+  const datedGroups = scheduleGroups(schedule, activeData.teamDayKit);
 
-  return <div className="page-stack handbook-page"><section className="page-title premium-title"><p className="eyebrow">Tour handbook</p><h2>{tour?.name ?? 'Handbook'}</h2></section>
-    {loading && <p className="card">Loading tour handbook…</p>}
-    {error && <p className="card form-error">{error}</p>}
-    <section className="handbook-hero card"><div><p className="eyebrow">Details</p><h3>{tour?.location ?? 'Location TBC'}</h3><p>{formatDate(tour?.startDate)} — {formatDate(tour?.endDate)}</p>{tour?.description && <p>{tour.description}</p>}{!loading && !error && !tour && <p>Tour details TBC.</p>}</div><span className="brand-logo-roundel info-logo-mark"><img className="brand-logo" src="/brand/roegusta-logo-mark.png" alt="Roegusta Tour mark" /></span></section>
-    <section className="card"><div className="section-heading"><div><p className="eyebrow">Course guide</p><h2>Rounds</h2></div></div>{activeData.rounds.length === 0 ? <p>Round details will appear once added.</p> : <div className="premium-list">{activeData.rounds.map((round, index) => <div className="premium-list-row" key={round.id}><strong>{formatRoundDisplayName(round, index)}</strong><span>{round.courseName ?? 'Course TBC'} · {round.holes ?? 18} holes · {formatTeeTimeDisplay(round.teeTime)}</span><TeamKitChips kits={activeData.teamDayKit.filter((kit) => kit.kitDate === round.roundDate)} teams={activeData.tourTeams} />{activeData.roundPrizeResults.filter((prize) => prize.roundId === round.id).map((prize) => { const winner = activeData.players.find((player) => player.id === prize.winnerPlayerId)?.displayName ?? activeData.tourTeams.find((team) => team.id === prize.winnerTeamId)?.name ?? 'Winner TBC'; const score = prize.winningScoreText ?? [prize.scoreValue, prize.scoreUnit].filter(Boolean).join(' '); return <small key={prize.id}>Secondary prize: {prize.title} — {winner}{score ? `, ${score}` : ''}</small>; }) }</div>)}</div>}</section>
-    <section className="card"><div className="section-heading"><div><p className="eyebrow">Handbook</p><h2>Key notes</h2></div></div>{activeData.handbookSections.length === 0 ? <p>Tour handbook details will appear once added.</p> : <div className="handbook-section-grid">{activeData.handbookSections.map((section) => <article className="handbook-note" key={section.id}><h4>{section.title}</h4>{section.body && <p>{section.body}</p>}</article>)}</div>}</section>
-    <section className="card"><div className="section-heading"><div><p className="eyebrow">Schedule</p><h2>Itinerary</h2></div></div>{activeData.itineraryItems.length === 0 ? <p>Itinerary TBC.</p> : <div className="timeline-list">{activeData.itineraryItems.map((item) => <article className="timeline-item" key={item.id}><span>{item.dayLabel ?? formatDate(item.itemDate)}</span><div><strong>{item.timeLabel ? `${item.timeLabel} · ` : ''}{item.activity}{item.isPlaceholder && !/tbc/i.test(`${item.timeLabel ?? ''} ${item.activity}`) ? ' · TBC' : ''}</strong>{item.location && <p>{item.location}</p>}{item.notes && <p>{item.notes}</p>}<TeamKitChips kits={activeData.teamDayKit.filter((kit) => kit.kitDate === item.itemDate)} teams={activeData.tourTeams} /></div></article>)}</div>}</section>
-    <section className="card"><div className="section-heading"><div><p className="eyebrow">Rules</p><h2>Notes</h2></div></div><p>One match result is entered by admin. Team score and individual records are derived automatically from completed matches.</p></section>
+  return <div className="page-stack handbook-page">
+    <PageHeader title="Tour itinerary" eyebrow={tour?.name ?? 'Tour schedule'} />
+    {loading ? <p className="card">Loading tour itinerary…</p> : null}
+    {error ? <p className="card form-error">{error}</p> : null}
+    <section className="handbook-hero card">
+      <div>
+        <p className="eyebrow">Where to be and when</p>
+        <h3>{tour?.location ?? 'Location TBC'}</h3>
+        <p>{formatDate(tour?.startDate)} — {formatDate(tour?.endDate)}</p>
+        {!loading && !error && !tour ? <p>Tour details TBC.</p> : null}
+      </div>
+      <span className="brand-logo-roundel info-logo-mark"><img className="brand-logo" src="/brand/roegusta-logo-mark.png" alt="Roegusta Tour mark" /></span>
+    </section>
+    <section className="card tour-itinerary-card">
+      <div className="section-heading"><div><p className="eyebrow">Schedule</p><h2>Tour itinerary</h2></div></div>
+      {datedGroups.length === 0 ? <p>Itinerary TBC.</p> : <div className="itinerary-day-list">{datedGroups.map((group) => <section className="itinerary-day" key={group.date}>
+        <header className="itinerary-day-header">
+          <h3>{group.label}</h3>
+          <TeamKitChips kits={group.kits} teams={activeData.tourTeams} />
+        </header>
+        {group.entries.length > 0 ? <div className="itinerary-event-list">{group.entries.map((entry) => <ScheduleEntry entry={entry} key={entry.id} />)}</div> : <p className="muted">No timed activity added.</p>}
+      </section>)}</div>}
+    </section>
     <footer className="subtle-admin-link"><button type="button" onClick={() => { void logoutPublicAccess().finally(() => window.location.assign('/')); }}>Reset tour access</button><a href="/admin">Admin</a></footer>
   </div>;
 }
 
+function ScheduleEntry({ entry }: { entry: TourScheduleEntry }) {
+  const label = entry.kind === 'golf' ? 'Golf' : manualItineraryKindLabels[entry.kind];
+  const time = entry.kind === 'golf'
+    ? `First tee ${formatTeeTimeDisplay(entry.timeLabel)}`
+    : entry.timeLabel ?? (entry.kind === 'accommodation' ? 'Stay' : 'Time TBC');
+  return <article className={`itinerary-event itinerary-event-${entry.kind}`}>
+    <div className="itinerary-event-time"><span>{time}</span><small>{label}</small></div>
+    <div>
+      <strong>{entry.activity}{entry.kind !== 'golf' && entry.isPlaceholder && !/tbc/i.test(entry.activity) ? ' · TBC' : ''}</strong>
+      {entry.location ? <p>{entry.location}</p> : null}
+      {entry.notes ? <p>{entry.notes}</p> : null}
+    </div>
+  </article>;
+}
+
+function scheduleGroups(schedule: TourScheduleEntry[], kit: TourTeamDayKit[]) {
+  const dates = [...new Set([
+    ...schedule.map((entry) => entry.itemDate ?? 'date-tbc'),
+    ...kit.map((item) => item.kitDate),
+  ])].sort((a, b) => (a === 'date-tbc' ? 1 : b === 'date-tbc' ? -1 : a.localeCompare(b)));
+  return dates.map((date) => {
+    const entries = schedule.filter((entry) => (entry.itemDate ?? 'date-tbc') === date);
+    return {
+      date,
+      label: entries.find((entry) => entry.dayLabel)?.dayLabel ?? (date === 'date-tbc' ? 'Date TBC' : formatDate(date)),
+      entries,
+      kits: kit.filter((item) => item.kitDate === date),
+    };
+  });
+}
 
 function TeamKitChips({ kits, teams }: { kits: TourTeamDayKit[]; teams: TourTeam[] }) {
   if (kits.length === 0) return null;
-  return <div className="team-kit-chip-list" aria-label="Team colours">{kits.map((kit, index) => {
+  return <div className="team-kit-chip-list" aria-label="Team shirt colours">{kits.map((kit, index) => {
     const team = teams.find((candidate) => candidate.id === kit.teamId);
-    return <span className="team-kit-chip" key={kit.id} style={{ '--team-colour': normalizeTeamColour(team?.colour, index) } as CSSProperties}><i aria-hidden="true" />{team?.name ?? 'Team TBC'} {kit.colourLabel}</span>;
+    return <span className="team-kit-chip" key={kit.id} style={{ '--team-colour': normalizeTeamColour(team?.colour, index) } as CSSProperties}><i aria-hidden="true" />{team?.name ?? 'Team TBC'} · {kit.colourLabel}</span>;
   })}</div>;
 }

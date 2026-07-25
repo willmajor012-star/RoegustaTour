@@ -4,7 +4,7 @@ import { formatPoints } from '../lib/formatting';
 import { TEAM_COLOUR_FALLBACKS, normalizeTeamColourPair } from '../lib/teamColours';
 
 
-type Props = { scores: TeamScoreRow[]; href?: string; rounds?: unknown[]; hideCentreScore?: boolean };
+type Props = { scores: TeamScoreRow[]; href?: string; rounds?: unknown[] };
 
 function safeRows(scores: TeamScoreRow[]) {
   const left = scores[0] ?? { teamId: 'score-left-unavailable', teamName: 'Team TBC', colour: TEAM_COLOUR_FALLBACKS[0], points: 0, pointsByRound: {} };
@@ -13,16 +13,12 @@ function safeRows(scores: TeamScoreRow[]) {
   return [{ ...left, colour: leftColour }, { ...right, colour: rightColour }];
 }
 
-export function Scoreboard({ scores, href, hideCentreScore = false }: Props) {
+export function Scoreboard({ scores, href }: Props) {
   const rows = safeRows(scores);
   const [left, right] = rows;
   const content = (
-    <section className={`scoreboard ${hideCentreScore ? 'no-centre-score' : ''}`} aria-label="Team score">
+    <section className="scoreboard" aria-label="Team score">
       <TeamBlock score={left} side="left" fallbackColour={TEAM_COLOUR_FALLBACKS[0]} />
-      {!hideCentreScore && <div className="scoreboard-centre" aria-hidden="true">
-        <span>Score</span>
-        <strong>{formatPoints(left.points)}–{formatPoints(right.points)}</strong>
-      </div>}
       <TeamBlock score={right} side="right" fallbackColour={TEAM_COLOUR_FALLBACKS[1]} />
     </section>
   );
