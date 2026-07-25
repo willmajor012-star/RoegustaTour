@@ -1,6 +1,7 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { badRequest, optionalString, runRows, runSingle, withAdminSupabase } from './_adminSupabase';
 import { mapRound } from './_mappers';
+import { syncRequiredMarketDeadlinesForRound } from './_betMarketDeadline';
 import type { MatchFormat, Round } from '../../src/lib/types';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
@@ -18,6 +19,7 @@ const formatLabels: Record<MatchFormat, string> = {
 export const handler: Handler = (event) => withAdminSupabase(event, 'POST', async (supabase, body) => {
   const id = optionalString(body.id);
   const tourId = optionalString(body.tourId);
+  const courseId = optionalString(body.courseId);
   const roundNumber = typeof body.roundNumber === 'number' ? body.roundNumber : Number(body.roundNumber);
   const name = optionalString(body.name);
   const status = optionalString(body.status) as Round['status'] | null;
@@ -33,6 +35,12 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
 
   const tours = await runRows(supabase.from('tours').select('id').eq('id', tourId).limit(1), 'find round tour');
   if (tours.length === 0) return badRequest('Tour must exist.');
+  let courseName = optionalString(body.courseName);
+  if (courseId) {
+    const courses = await runRows<{ id: string; tour_id: string; name: string }>(supabase.from('tour_courses').select('id, tour_id, name').eq('id', courseId).limit(1), 'find round course');
+    if (courses.length === 0 || courses[0].tour_id !== tourId) return badRequest('Selected course guide must belong to this tour.');
+    courseName = courses[0].name;
+  }
 
   if (id) {
     const rounds = await runRows(supabase.from('rounds').select('id, tour_id').eq('id', id).limit(1), 'find round');
@@ -54,7 +62,8 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     round_number: roundNumber,
     name,
     round_date: optionalString(body.roundDate),
-    course_name: optionalString(body.courseName),
+    course_id: courseId,
+    course_name: courseName,
     tee_time: optionalString(body.teeTime),
     format,
     format_label: optionalString(body.formatLabel) ?? formatLabels[format],
@@ -67,6 +76,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     ? supabase.from('rounds').update(row).eq('id', id).select('*').single()
     : supabase.from('rounds').insert(row).select('*').single();
   const saved = await runSingle<Record<string, unknown>>(query, 'save round');
+  await syncRequiredMarketDeadlinesForRound(supabase, String(saved.id));
 
   return jsonResponse(200, { ok: true, round: mapRound(saved) });
 });

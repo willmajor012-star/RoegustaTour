@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { fetchPublicAdvancedStats, type PublicAdvancedStatsResponse } from '../lib/publicApi';
 import { usePublicData } from '../lib/usePublicData';
@@ -47,8 +47,6 @@ export function Teams() {
       return player && player.active !== false ? [{ player: tourDisplayPlayer(player, tourPlayer), attendance: tourPlayer, isCaptain: false }] : [];
     })
     .sort((a, b) => a.player.displayName.localeCompare(b.player.displayName, undefined, { sensitivity: 'base' }));
-  const totalPlayers = useMemo(() => teams.reduce((total, team) => total + membersForTeam(team, currentMembers, activeData.players, currentTourPlayers).length, 0) + unassigned.length, [activeData.players, currentMembers, currentTourPlayers, teams, unassigned.length]);
-
   useEffect(() => {
     if (!selectedPlayer) return;
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -59,7 +57,7 @@ export function Teams() {
   }, [selectedPlayer]);
 
   return <div className="page-stack teams-page">
-    <PageHeader title="Teams & players" eyebrow={activeData.currentTour?.name ?? 'Current tour'} description={`${teams.length || 'No'} team${teams.length === 1 ? '' : 's'} · ${totalPlayers || 'No'} player${totalPlayers === 1 ? '' : 's'}`} />
+    <PageHeader title="Teams & players" eyebrow={activeData.currentTour?.name ?? 'Current tour'} />
     {loading && <p className="card">Loading teams…</p>}
     {error && <p className="card form-error">{error}</p>}
     {!loading && !error && teams.length === 0 && <p className="card">Teams will appear once captains publish squads.</p>}

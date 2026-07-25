@@ -3,10 +3,11 @@ import { badRequest, optionalString, runRows, runSingle, withAdminSupabase } fro
 import { mapBet, mapBetMarket } from './_mappers';
 import { writeAuditLog } from './_audit';
 import { settleBetMarketRows } from './_betSettlement';
+import { applyAutomaticBetDefaultsForMarket } from './_betDefaults';
 import type { BetMarket } from '../../src/lib/types';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
-type MarketRow = { id: string; status: BetMarket['status']; market_scope: BetMarket['marketScope']; result_option_id?: string | null; result_text?: string | null };
+type MarketRow = { id: string; status: BetMarket['status']; market_scope: BetMarket['marketScope']; result_option_id?: string | null; result_text?: string | null; required?: boolean | null; closes_at?: string | null };
 
 export const handler: Handler = (event) => withAdminSupabase(event, 'POST', async (supabase, body, session) => {
   const marketId = optionalString(body.marketId);
@@ -19,6 +20,13 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const market = await runSingle<MarketRow>(supabase.from('bet_markets').select('*').eq('id', marketId).single(), 'find settlement market');
   if (market.status === 'void') return badRequest('Void markets cannot be settled.');
   if (market.status === 'settled' && !correction) return badRequest('Market is already settled. Confirm correction mode to resettle it.');
+  if (market.required) {
+    const closeTime = market.closes_at ? Date.parse(market.closes_at) : Number.NaN;
+    if (!Number.isFinite(closeTime)) return badRequest('Required markets need a valid fixed first-tee close time before settlement.');
+    if (closeTime > Date.now()) return badRequest('This market cannot settle before its fixed first-tee close time.');
+    const defaults = await applyAutomaticBetDefaultsForMarket(supabase, marketId);
+    if (defaults.unresolved.length > 0) return badRequest('Automatic defaults could not be assigned for every attending player. Check player options and team assignments before settling.');
+  }
 
   const options = await runRows<{ id: string }>(supabase.from('bet_options').select('id').eq('market_id', marketId), 'settlement market options');
   if (options.length === 0) return badRequest('Market must have options before settlement.');

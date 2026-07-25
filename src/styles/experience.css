@@ -8,6 +8,62 @@
   position: relative;
 }
 
+.app-back-button {
+  width: max-content;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 12px;
+  border: 1px solid rgba(184, 154, 93, .42);
+  border-radius: 999px;
+  background: var(--rt-cream);
+  color: var(--rt-green-900);
+  padding: 8px 14px 8px 11px;
+  font-weight: 900;
+  box-shadow: 0 8px 20px rgba(15, 47, 36, .12);
+}
+
+.app-back-button span {
+  font-size: 1.45rem;
+  line-height: .8;
+}
+
+.golf-section-switch {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  overflow: visible;
+  padding: 4px;
+}
+
+.golf-section-switch button {
+  min-width: 0;
+  padding-inline: 5px;
+}
+
+.page-landing-header {
+  min-height: 94px;
+  align-items: center;
+  border: 1px solid rgba(184, 154, 93, .38);
+  border-radius: 22px;
+  background: linear-gradient(180deg, #fffaf0, #f3ead7);
+  padding: 16px 18px;
+  box-shadow: 0 14px 34px rgba(15, 47, 36, .12);
+}
+
+.page-landing-header h2 {
+  color: var(--rt-green-900);
+}
+
+.page-landing-header .eyebrow {
+  color: var(--rt-gold);
+}
+
+.scoreboard {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
 .manual-refresh-button {
   position: absolute;
 }
@@ -22,6 +78,26 @@
 
 .bottom-nav button {
   min-height: 54px;
+}
+
+.golf-teams-panel,
+.golf-team-card-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.golf-team-member > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.golf-team-member small {
+  color: var(--rt-ink-muted, #6f6a5d);
+}
+
+.golf-team-member > b {
+  color: var(--rt-green-900);
 }
 
 .current-tour-hub,
@@ -1099,6 +1175,194 @@
   margin-bottom: 0;
 }
 
+.bet-tour-ledger {
+  display: grid;
+  gap: 16px;
+  overflow: hidden;
+  border-top: 5px solid var(--rt-gold);
+}
+
+.bet-ledger-totals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bet-ledger-totals > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--rt-green-900);
+  color: var(--rt-cream);
+}
+
+.bet-ledger-totals span,
+.bet-ledger-row dt {
+  color: inherit;
+  font-size: .65rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  opacity: .72;
+}
+
+.bet-ledger-totals strong {
+  font-family: var(--rt-serif);
+  font-size: clamp(1.15rem, 4vw, 1.7rem);
+}
+
+.bet-ledger-list {
+  display: grid;
+  gap: 8px;
+}
+
+.bet-ledger-row {
+  display: grid;
+  grid-template-columns: 30px minmax(120px, 1fr) minmax(270px, 1.35fr);
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid rgba(15, 47, 36, .12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .46);
+}
+
+.bet-ledger-rank {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--rt-green-900);
+  color: var(--rt-cream);
+  font-weight: 900;
+}
+
+.bet-ledger-player {
+  display: grid;
+  min-width: 0;
+}
+
+.bet-ledger-player strong,
+.bet-ledger-player small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bet-ledger-row dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0;
+}
+
+.bet-ledger-row dl > div {
+  display: grid;
+  gap: 2px;
+}
+
+.bet-ledger-row dd {
+  margin: 0;
+  font-weight: 900;
+}
+
+.bet-ledger-net.positive dd {
+  color: #187344;
+}
+
+.bet-ledger-net.negative dd {
+  color: #9c3039;
+}
+
+.bet-ledger-net.neutral dd {
+  color: var(--rt-ink-muted, #6f6a5d);
+}
+
+.admin-course-editor {
+  display: grid;
+  gap: 16px;
+}
+
+.course-admin-heading,
+.course-admin-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, .55fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.course-admin-pickers,
+.course-tee-admin-list {
+  display: grid;
+  gap: 10px;
+}
+
+.course-admin-pickers label,
+.course-tee-admin-list label {
+  display: grid;
+  gap: 5px;
+  font-weight: 800;
+}
+
+.course-tee-admin-list > div {
+  display: grid;
+  grid-template-columns: minmax(100px, .7fr) minmax(120px, 1fr) 70px auto;
+  align-items: end;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(15, 47, 36, .12);
+  border-radius: 12px;
+}
+
+.course-hole-admin-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.course-hole-admin-table {
+  width: max(100%, 760px);
+  border-collapse: collapse;
+}
+
+.course-hole-admin-table th,
+.course-hole-admin-table td {
+  padding: 6px;
+  border-bottom: 1px solid rgba(15, 47, 36, .1);
+  text-align: left;
+}
+
+.course-hole-admin-table input {
+  width: 70px;
+  min-width: 0;
+}
+
+.course-hole-admin-table textarea {
+  width: 240px;
+  min-height: 52px;
+}
+
+.course-admin-actions {
+  position: sticky;
+  z-index: 4;
+  bottom: 12px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  box-shadow: 0 16px 42px rgba(15, 47, 36, .2);
+}
+
+.course-admin-actions > div {
+  display: grid;
+}
+
+.course-admin-actions .form-success,
+.course-admin-actions .form-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 @media (hover: hover) {
   .course-launch-card,
   .tour-hub-links a,
@@ -1198,6 +1462,10 @@
   .live-prize-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .course-admin-heading {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 460px) {
@@ -1277,5 +1545,30 @@
 
   .live-prize-form {
     grid-template-columns: 1fr;
+  }
+
+  .bet-ledger-totals {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bet-ledger-totals > div {
+    padding: 10px 8px;
+  }
+
+  .bet-ledger-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .bet-ledger-row dl {
+    grid-column: 2;
+  }
+
+  .course-tee-admin-list > div,
+  .course-admin-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .course-admin-actions {
+    position: static;
   }
 }

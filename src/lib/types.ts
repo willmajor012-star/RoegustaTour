@@ -15,6 +15,7 @@ export type Tour = {
   name: string;
   year: number;
   location?: string;
+  timezone?: string;
   startDate?: string;
   endDate?: string;
   status: 'planned' | 'active' | 'complete' | 'archived';
@@ -64,12 +65,50 @@ export type TourTeamResult = {
 
 export type MatchFormat = 'singles' | 'better_ball' | 'foursomes' | 'scramble' | 'custom';
 
+export type CourseTee = {
+  key: string;
+  label: string;
+  colour: string;
+  textColour?: string;
+};
+
+export type CourseHole = {
+  number: number;
+  par: number;
+  strokeIndex: number;
+  yards: Record<string, number>;
+  officialNote?: string;
+};
+
+export type CourseGuide = {
+  id?: string;
+  tourId?: string;
+  slug: string;
+  name: string;
+  shortName: string;
+  resort: string;
+  location: string;
+  architect: string;
+  opened?: string;
+  overview: string;
+  noteAvailability: 'course-only' | 'hole-by-hole';
+  officialPageUrl?: string;
+  scorecardUrl?: string;
+  heroImageUrl?: string;
+  heroPosition?: string;
+  tees: CourseTee[];
+  holes: CourseHole[];
+  sortOrder?: number;
+  published?: boolean;
+};
+
 export type Round = {
   id: string;
   tourId: string;
   roundNumber: number;
   name: string;
   roundDate?: string;
+  courseId?: string;
   courseName?: string;
   teeTime?: string;
   format?: MatchFormat;
@@ -199,6 +238,7 @@ export type Bet = {
   comment?: string;
   bettorPlayerId?: string;
   adminEntered?: boolean;
+  entrySource?: 'public' | 'admin' | 'automatic_default';
   adminNotes?: string;
   voidReason?: string;
   createdAt: string;

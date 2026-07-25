@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { routes } from './routes';
+import { isRoutePath, routeForPath } from './routes';
 import { AdminBrandHeader } from '../components/AdminBrandHeader';
 import { BrandHeader } from '../components/BrandHeader';
 import { BottomNav } from '../components/BottomNav';
@@ -14,11 +14,26 @@ function getCurrentPath() {
   return window.location.pathname === '/' ? '/' : window.location.pathname;
 }
 
+type AppHistoryState = {
+  roegustaApp?: boolean;
+  backPath?: string;
+};
+
+function backFallback(path: string) {
+  if (path.startsWith('/courses/')) return '/courses';
+  if (path === '/courses' || path === '/teams' || path === '/info') return '/tours';
+  return '/';
+}
+
 export function AppShell() {
   const [path, setPath] = useState(getCurrentPath);
-  const route = useMemo(() => routes.find((item) => item.path === path) ?? routes[0], [path]);
+  const route = useMemo(() => routeForPath(path), [path]);
 
   useEffect(() => {
+    const currentState = (window.history.state ?? {}) as AppHistoryState;
+    if (!currentState.roegustaApp) {
+      window.history.replaceState({ ...currentState, roegustaApp: true }, '', window.location.href);
+    }
     const handlePopState = () => setPath(getCurrentPath());
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -28,9 +43,19 @@ export function AppShell() {
     const nextUrl = new URL(nextPath, window.location.href);
     const normalizedPath = nextUrl.pathname === '/players' ? '/teams' : nextUrl.pathname;
     const normalizedUrl = `${normalizedPath}${nextUrl.search}${nextUrl.hash}`;
-    window.history.pushState(null, '', normalizedUrl);
+    const backPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.history.pushState({ roegustaApp: true, backPath }, '', normalizedUrl);
     setPath(normalizedPath);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const goBack = () => {
+    const state = (window.history.state ?? {}) as AppHistoryState;
+    if (state.backPath) {
+      window.history.back();
+      return;
+    }
+    navigate(backFallback(path));
   };
 
   const handleInternalLink = (event: ReactMouseEvent<HTMLDivElement>) => {
@@ -39,13 +64,13 @@ export function AppShell() {
     const anchor = target.closest<HTMLAnchorElement>('a[href]');
     if (!anchor || anchor.target || anchor.hasAttribute('download')) return;
     const url = new URL(anchor.href, window.location.href);
-    if (url.origin !== window.location.origin || (!routes.some((item) => item.path === url.pathname) && url.pathname !== '/players')) return;
+    if (url.origin !== window.location.origin || (!isRoutePath(url.pathname) && url.pathname !== '/players')) return;
     if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) return;
     event.preventDefault();
     navigate(`${url.pathname}${url.search}${url.hash}`);
   };
 
-  if (route.path === '/admin') {
+  if (path === '/admin') {
     return <div className="app-shell" onClick={handleInternalLink}><RefreshButton /><AdminBrandHeader /><main>{route.element}</main><BottomNav currentPath={path} onNavigate={navigate} /></div>;
   }
 
@@ -54,7 +79,10 @@ export function AppShell() {
       <div className="app-shell" onClick={handleInternalLink}>
         <RefreshButton />
         <BrandHeader />
-        <main>{route.element}</main>
+        <main>
+          {path !== '/' && <button className="app-back-button" type="button" onClick={goBack}><span aria-hidden="true">‹</span> Back</button>}
+          {route.element}
+        </main>
         <BottomNav currentPath={path} onNavigate={navigate} />
       </div>
     </PublicPasswordGate>

@@ -8,15 +8,16 @@ import { compareTeeTimeValues, formatRoundDisplayName, formatTeeTimeDisplay, get
 import { tourPointsTarget } from '../lib/golf';
 import { calculateTeamScoreByTour } from '../lib/scoring';
 import { normalizeTeamColour } from '../lib/teamColours';
-import type { Match, MatchParticipant, Player, Round, RoundPrizeResult, TourTeam } from '../lib/types';
-import { courseGuideForName, courseGuidePath } from '../data/courseGuides';
+import type { Match, MatchParticipant, Player, Round, RoundPrizeResult, TourPlayer, TourTeam, TourTeamMember } from '../lib/types';
+import { courseGuideForRound, courseGuidePath, courseGuidesForTour } from '../data/courseGuides';
 
-const emptyMatchesData: Omit<PublicMatchesResponse, 'source'> = { tour: undefined, rounds: [], matches: [], matchParticipants: [], players: [], tourPlayers: [], tourTeams: [], tourTeamMembers: [], roundPrizeResults: [] };
-type GolfSection = 'tee-sheet' | 'results' | 'prizes';
+const emptyMatchesData: Omit<PublicMatchesResponse, 'source'> = { tour: undefined, rounds: [], matches: [], matchParticipants: [], players: [], tourPlayers: [], tourTeams: [], tourTeamMembers: [], roundPrizeResults: [], tourCourses: [] };
+type GolfSection = 'tee-sheet' | 'results' | 'prizes' | 'teams';
 const golfSections: Array<{ value: GolfSection; label: string }> = [
   { value: 'tee-sheet', label: 'Tee sheet' },
   { value: 'results', label: 'Results' },
   { value: 'prizes', label: 'Prizes' },
+  { value: 'teams', label: 'Teams' },
 ];
 
 function pairingText(match: Match, participants: MatchParticipant[], players: Player[], teams: TourTeam[]) {
@@ -56,9 +57,10 @@ export function Matches() {
   const activeData = data ?? emptyMatchesData;
   const publicMatches = activeData.matches.filter(isPublicVisibleMatch);
   const orderedRounds = useMemo(() => [...activeData.rounds].sort((a, b) => getScheduleSortTime(a.roundDate, a.teeTime) - getScheduleSortTime(b.roundDate, b.teeTime) || a.roundNumber - b.roundNumber), [activeData.rounds]);
+  const tourCourses = courseGuidesForTour(activeData.tour, orderedRounds, activeData.tourCourses);
   const selectedRound = orderedRounds.find((round) => round.id === roundId) ?? firstUsefulRound(orderedRounds, publicMatches);
   const selectedRoundMatches = selectedRound ? publicMatches.filter((match) => match.roundId === selectedRound.id) : [];
-  const selectedCourseGuide = courseGuideForName(selectedRound?.courseName);
+  const selectedCourseGuide = courseGuideForRound(selectedRound, tourCourses);
   const teeSheetMatches = [...selectedRoundMatches].sort((a, b) => compareTeeTimeValues(a.teeTime, b.teeTime) || a.matchNumber - b.matchNumber);
   const selectedPrizes = selectedRound ? activeData.roundPrizeResults.filter((prize) => prize.roundId === selectedRound.id) : [];
   const scoreRows = activeData.tour ? calculateTeamScoreByTour(activeData.tour.id, activeData.tourTeams, activeData.rounds, publicMatches) : [];
@@ -70,7 +72,7 @@ export function Matches() {
   }, [orderedRounds, publicMatches, roundId, selectedRound]);
 
   return <div className="page-stack results-page golf-page">
-    <PageHeader title="Golf" eyebrow={activeData.tour?.name ?? 'Current tour'} description="Choose a round, then view its tee sheet, results or prizes." />
+    <PageHeader title="Golf" eyebrow={activeData.tour?.name ?? 'Current tour'} />
     {loading && <p className="card">Loading golf schedule...</p>}
     {error && <p className="card form-error">{error}</p>}
     {!loading && !error && <>
@@ -107,6 +109,7 @@ export function Matches() {
         {section === 'tee-sheet' && selectedRound && <GolfTeeTimes selectedRound={selectedRound} matches={teeSheetMatches} players={activeData.players} teams={activeData.tourTeams} participants={activeData.matchParticipants} />}
         {section === 'results' && selectedRound && <GolfResults selectedRound={selectedRound} matches={selectedRoundMatches} data={activeData} teams={activeData.tourTeams} />}
         {section === 'prizes' && selectedRound && <GolfPrizes selectedRound={selectedRound} prizes={selectedPrizes} players={activeData.players} teams={activeData.tourTeams} />}
+        {section === 'teams' && <GolfTeams teams={activeData.tourTeams} members={activeData.tourTeamMembers} players={activeData.players} tourPlayers={activeData.tourPlayers} />}
       </>}
     </>}
   </div>;
@@ -134,6 +137,34 @@ function GolfPrizes({ selectedRound, prizes, players, teams }: { selectedRound: 
       const winner = players.find((player) => player.id === prize.winnerPlayerId)?.displayName ?? teams.find((team) => team.id === prize.winnerTeamId)?.name ?? 'Winner TBC';
       const score = prize.winningScoreText ?? [prize.scoreValue, prize.scoreUnit].filter(Boolean).join(' ');
       return <article key={prize.id}><span>Prize</span><h4>{prize.title}</h4><strong>{winner}</strong>{score && <small>{score}</small>}</article>;
+    })}</div>}
+  </section>;
+}
+
+function GolfTeams({ teams, members, players, tourPlayers }: { teams: TourTeam[]; members: TourTeamMember[]; players: Player[]; tourPlayers: TourPlayer[] }) {
+  const playerById = new Map(players.map((player) => [player.id, player]));
+  const tourPlayerById = new Map(tourPlayers.map((tourPlayer) => [tourPlayer.playerId, tourPlayer]));
+  const orderedTeams = [...teams].sort((a, b) => a.sortOrder - b.sortOrder);
+
+  return <section className="golf-teams-panel">
+    <div className="section-heading"><div><p className="eyebrow">Tour squads</p><h2>Teams & players</h2></div><a className="text-link" href="/teams">Player profiles ›</a></div>
+    {orderedTeams.length === 0 ? <p className="card">Teams will appear once the published squads are ready.</p> : <div className="team-card-grid golf-team-card-grid">{orderedTeams.map((team, index) => {
+      const teamMembers = members.filter((member) => member.teamId === team.id).map((member) => {
+        const player = playerById.get(member.playerId);
+        const tourPlayer = tourPlayerById.get(member.playerId);
+        return player ? { player, tourPlayer } : undefined;
+      }).filter((entry): entry is { player: Player; tourPlayer: TourPlayer | undefined } => Boolean(entry));
+      const captain = team.captainPlayerId ? playerById.get(team.captainPlayerId) : undefined;
+      return <article className="team-display-card card golf-team-card" key={team.id} style={{ '--team-colour': normalizeTeamColour(team.colour, index) } as CSSProperties}>
+        <div className="team-card-topline"><span className="team-dot" /><p className="eyebrow">Team</p></div>
+        <h3>{team.name}</h3>
+        {captain && <div className="captain-strip"><span>Captain</span><strong>{captain.displayName}</strong></div>}
+        <div className="team-member-list">{teamMembers.length === 0 ? <p>Players TBC</p> : teamMembers.map(({ player, tourPlayer }) => <div className="team-member-row golf-team-member" key={player.id}>
+          <span className="avatar small">{player.initials ?? player.displayName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2)}</span>
+          <span><strong>{tourPlayer?.nickname || player.nickname || player.displayName}</strong>{(tourPlayer?.nickname || player.nickname) && <small>{player.displayName}</small>}</span>
+          {tourPlayer?.tourHandicap !== undefined && <b>{tourPlayer.tourHandicap}</b>}
+        </div>)}</div>
+      </article>;
     })}</div>}
   </section>;
 }

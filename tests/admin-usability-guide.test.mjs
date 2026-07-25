@@ -8,7 +8,7 @@ const navSource = await readFile(new URL('../src/app/navigation.ts', import.meta
 const adminHeaderSource = await readFile(new URL('../src/components/AdminBrandHeader.tsx', import.meta.url), 'utf8');
 
 test('Admin route keeps app navigation context without occupying a primary tab', () => {
-  assert.match(appShellSource, /route\.path === '\/admin'/);
+  assert.match(appShellSource, /path === '\/admin'/);
   assert.match(appShellSource, /<AdminBrandHeader \/>/);
   assert.match(appShellSource, /<BottomNav currentPath=\{path\} onNavigate=\{navigate\} \/>/);
   assert.match(adminSource, /Back to app/);
@@ -25,7 +25,7 @@ test('Admin header is static and does not require public password data', () => {
   assert.match(adminHeaderSource, /Roegusta Tour/);
   assert.match(adminHeaderSource, /Public password access remains separate/);
   assert.doesNotMatch(adminHeaderSource, /fetchPublicSummary|usePublicData|publicApi/);
-  assert.doesNotMatch(appShellSource.slice(appShellSource.indexOf("route.path === '/admin'"), appShellSource.indexOf('return (', appShellSource.indexOf("route.path === '/admin'"))), /PublicPasswordGate|<BrandHeader/);
+  assert.doesNotMatch(appShellSource.slice(appShellSource.indexOf("path === '/admin'"), appShellSource.indexOf('return (', appShellSource.indexOf("path === '/admin'"))), /PublicPasswordGate|<BrandHeader/);
 });
 
 test('Admin operating manual includes required workflow headings and separation guidance', () => {

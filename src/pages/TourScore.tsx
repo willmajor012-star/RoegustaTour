@@ -15,7 +15,7 @@ export function TourScore() {
   const leader = activeData.scores[0];
   const tied = activeData.scores.length > 1 && activeData.scores[0]?.points === activeData.scores[1]?.points;
 
-  return <div className="page-stack score-page"><PageHeader title="Tour score" eyebrow={activeData.tour?.name ?? 'Current tour'} description="Live team totals and the round-by-round position." />
+  return <div className="page-stack score-page"><PageHeader title="Tour score" eyebrow={activeData.tour?.name ?? 'Current tour'} />
     {loading && <p className="card">Loading score…</p>}
     {error && <p className="card form-error">{error}</p>}
     {!loading && !error && activeData.scores.length === 0 ? <p className="card">Team score will build as results are entered.</p> : <Scoreboard scores={activeData.scores} rounds={activeData.rounds} />}

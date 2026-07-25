@@ -1,5 +1,5 @@
 import type { AdvancedStatsData, MvpLeaderboardRow, PlayerAdvancedSummary, TourSummary } from './advancedStats';
-import type { Bet, BetMarket, BetOption, Match, MatchParticipant, Player, Round, RoundPrizeResult, TeamScoreRow, Tour, TourPlayer, TourTeam, TourTeamMember } from './types';
+import type { Bet, BetMarket, BetOption, CourseGuide, Match, MatchParticipant, Player, Round, RoundPrizeResult, TeamScoreRow, Tour, TourPlayer, TourTeam, TourTeamMember } from './types';
 
 export type PublicDataSource = 'supabase';
 export type PublicResponse<T> = T & { source: PublicDataSource };
@@ -9,6 +9,7 @@ export type PublicSummaryResponse = PublicResponse<{
   rounds: Round[];
   recentResults: Match[];
   openMarkets: BetMarket[];
+  tourCourses: CourseGuide[];
 }>;
 
 export type PublicScoreResponse = PublicResponse<{
@@ -29,13 +30,21 @@ export type PublicMatchesResponse = PublicResponse<{
   tourTeams: TourTeam[];
   tourTeamMembers: TourTeamMember[];
   roundPrizeResults: RoundPrizeResult[];
+  tourCourses: CourseGuide[];
 }>;
 
 export type PublicPlayersResponse = PublicResponse<{
   players: Player[];
 }>;
 
+export type PublicCoursesResponse = PublicResponse<{
+  tour?: Tour;
+  rounds: Round[];
+  tourCourses: CourseGuide[];
+}>;
+
 export type PublicBetMarketsResponse = PublicResponse<{
+  tour?: Tour;
   rounds: Round[];
   players: Player[];
   tourPlayers: TourPlayer[];
@@ -133,6 +142,7 @@ export const fetchPublicSummary = () => fetchPublicJson<PublicSummaryResponse>('
 export const fetchPublicScore = () => fetchPublicJson<PublicScoreResponse>('/.netlify/functions/public-score');
 export const fetchPublicMatches = () => fetchPublicJson<PublicMatchesResponse>('/.netlify/functions/public-matches');
 export const fetchPublicPlayers = () => fetchPublicJson<PublicPlayersResponse>('/.netlify/functions/public-players');
+export const fetchPublicCourses = () => fetchPublicJson<PublicCoursesResponse>('/.netlify/functions/public-courses');
 export const fetchPublicBetMarkets = () => fetchPublicJson<PublicBetMarketsResponse>('/.netlify/functions/public-bet-markets');
 export const fetchPublicAdvancedStats = () => fetchPublicJson<PublicAdvancedStatsResponse>('/.netlify/functions/public-advanced-stats');
 export const fetchPublicTourInfo = () => fetchPublicJson<PublicTourInfoResponse>('/.netlify/functions/public-tour-info');

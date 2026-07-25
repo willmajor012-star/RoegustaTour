@@ -2,6 +2,7 @@ import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_admi
 import { badRequest, optionalString, runSingle, withAdminSupabase } from './_adminSupabase';
 import { mapTour } from './_mappers';
 import type { Tour } from '../../src/lib/types';
+import { isValidTimeZone } from '../../src/lib/tourTime';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -12,16 +13,19 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const name = optionalString(body.name);
   const year = typeof body.year === 'number' ? body.year : Number(body.year);
   const status = optionalString(body.status) as Tour['status'] | null;
+  const timezone = optionalString(body.timezone) ?? 'Europe/London';
 
   if (!name) return badRequest('Tour name is required.');
   if (!Number.isInteger(year) || year < 2000 || year > 2100) return badRequest('Tour year must be a sensible number.');
   if (!status || !allowedStatuses.includes(status)) return badRequest('Tour status is invalid.');
+  if (!isValidTimeZone(timezone)) return badRequest('Tour timezone must be a valid IANA timezone, for example Europe/Lisbon.');
 
   const row = {
     id: id ?? crypto.randomUUID(),
     name,
     year,
     location: optionalString(body.location),
+    timezone,
     start_date: optionalString(body.startDate),
     end_date: optionalString(body.endDate),
     status,

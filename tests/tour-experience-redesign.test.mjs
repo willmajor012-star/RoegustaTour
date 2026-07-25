@@ -12,14 +12,16 @@ const bettingPage = readFileSync('src/pages/Betting.tsx', 'utf8');
 const bettingCard = readFileSync('src/components/BetMarketCard.tsx', 'utf8');
 const adminPage = readFileSync('src/pages/Admin.tsx', 'utf8');
 const liveDesk = readFileSync('src/components/AdminLiveDesk.tsx', 'utf8');
+const savePrize = readFileSync('netlify/functions/admin-save-round-prize-result.ts', 'utf8');
 const refreshButton = readFileSync('src/components/RefreshButton.tsx', 'utf8');
 const experienceCss = readFileSync('src/styles/experience.css', 'utf8');
 
 test('course library contains only Faldo, O’Connor and Old Course with 18 verified scorecard rows each', () => {
   for (const slug of ['faldo', 'oconnor', 'old-course']) {
     assert.match(courseData, new RegExp(`slug: '${slug}'`));
-    assert.match(routes, new RegExp(`path: '/courses/${slug}'`));
   }
+  assert.match(routes, /path: '\/courses\/:slug'/);
+  assert.match(routes, /\^\\\/courses\\\/\[\^\/\]\+\$/);
   assert.doesNotMatch(courseData, /Academy|Par 3 course/i);
   assert.equal((courseData.slice(courseData.indexOf('const faldoHoles'), courseData.indexOf('const oconnorHoles')).match(/\{ number:/g) ?? []).length, 18);
   assert.equal((courseData.slice(courseData.indexOf('const oconnorHoles'), courseData.indexOf('const oldCourseHoles')).match(/\{ number:/g) ?? []).length, 18);
@@ -33,8 +35,8 @@ test('course guides show yards and preserve the official-commentary boundary', (
   assert.match(courseData, /slug: 'faldo'[\s\S]*noteAvailability: 'course-only'/);
   assert.match(courseData, /slug: 'oconnor'[\s\S]*noteAvailability: 'course-only'/);
   assert.match(courseData, /slug: 'old-course'[\s\S]*noteAvailability: 'hole-by-hole'/);
-  assert.match(coursePage, /does not currently publish an official note for this individual hole/);
-  assert.match(coursesPage, /do not contain invented hole strategy/);
+  assert.match(coursePage, /No official note is saved for this hole/);
+  assert.match(coursesPage, /without invented strategy/);
   assert.match(courseData, /AGR_Faldo_13Tee_2_amendoeira\.jpg/);
   assert.match(courseData, /AGR_Oconner_Tee_18_Amendoeira\.jpg/);
   assert.doesNotMatch(courseData, /Designer%20/);
@@ -43,7 +45,7 @@ test('course guides show yards and preserve the official-commentary boundary', (
 test('course guides are reachable from Tours, Home and a matching Golf round', () => {
   assert.match(toursPage, /href="\/courses"/);
   assert.match(toursPage, /Faldo, O’Connor and Old Course/);
-  assert.match(golfPage, /courseGuideForName/);
+  assert.match(golfPage, /courseGuideForRound/);
   assert.match(golfPage, /courseGuidePath/);
 });
 
@@ -52,7 +54,10 @@ test('Bet Punto puts the two daily market types and four quick stakes first', ()
   assert.match(bettingPage, /market\.marketType === 'player_performance'[\s\S]*round\?\.format !== 'scramble'/);
   assert.match(bettingPage, /Who are you\?/);
   assert.match(bettingPage, /<select value=\{selectedBettorPlayer\?\.displayName/);
-  assert.match(bettingPage, /Tour accounting/);
+  assert.match(bettingPage, /Bet Punto leaderboard/);
+  assert.match(bettingPage, /Total staked/);
+  assert.match(bettingPage, /Payouts/);
+  assert.match(bettingPage, /netPositionLabel/);
   assert.match(bettingCard, /Highest Stableford/);
   assert.match(bettingCard, /Lowest scramble score/);
   assert.match(bettingCard, /const stakeChoices = \[500, 1000, 1500, 2000\]/);
@@ -69,7 +74,9 @@ test('Admin defaults to a live desk while retaining the full setup tools', () =>
   assert.match(liveDesk, /Save draft/);
   assert.match(liveDesk, /Publish round/);
   assert.match(liveDesk, /Publish & settle bets/);
-  assert.match(liveDesk, /await settleBetMarket/);
+  assert.doesNotMatch(liveDesk, /await settleBetMarket/);
+  assert.match(savePrize, /settleBetMarketRows/);
+  assert.match(savePrize, /applyAutomaticBetDefaultsForMarket/);
   assert.match(liveDesk, /if \(publish && incomplete\.length > 0\)/);
   assert.match(liveDesk, /if \(!publish && \(!draft\.winningSide/);
 });

@@ -21,7 +21,7 @@ test('public data functions require a signed 180-day password session', () => {
 });
 
 test('public app shows a password gate and keeps admin separate', () => {
-  assert.match(appShellSource, /route\.path === '\/admin'/);
+  assert.match(appShellSource, /path === '\/admin'/);
   assert.match(appShellSource, /PublicPasswordGate/);
   assert.match(gateSource, /Private golf tour/);
   assert.match(gateSource, /type="password"/);
@@ -37,7 +37,7 @@ test('admin can change public password without showing current password', () => 
 
 test('2026 helper creates agreed rounds and no Friday golf', () => {
   assert.match(templateSource, /Faldo Course/);
-  assert.match(templateSource, /Par 3 Course/);
+  assert.match(templateSource, /O'Connor Jnr\. Course/);
   assert.match(templateSource, /Old Course/);
   assert.match(templateSource, /Course TBC/);
   assert.match(templateSource, /round_date: '2026-11-07'/);
@@ -48,6 +48,7 @@ test('2026 helper creates agreed rounds and no Friday golf', () => {
   assert.match(templateSource, /tee_time: existing\?\.tee_time \|\| null/);
   assert.match(templateSource, /published: existing\?\.published \?\? false/);
   assert.match(templateSource, /Extra non-complete rounds remain/);
+  assert.doesNotMatch(templateSource, /Academy|Par 3 Course/i);
   assert.doesNotMatch(templateSource, /tee_time: existing\?\.tee_time \|\| 'TBC'/);
   assert.doesNotMatch(templateSource, /published: true/);
   assert.doesNotMatch(templateSource, /2026-11-06[\s\S]{0,120}Course/);

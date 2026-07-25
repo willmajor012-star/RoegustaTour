@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { courseGuidePath, courseGuides, findCourseGuide, metresToYards, totalPar, totalYards, type CourseGuide } from '../data/courseGuides';
+import { courseGuidePath, courseGuidesForTour, findCourseGuide, totalPar, totalYards, type CourseGuide } from '../data/courseGuides';
+import { fetchPublicCourses, type PublicCoursesResponse } from '../lib/publicApi';
+import { usePublicData } from '../lib/usePublicData';
 
 type Props = {
-  slug: CourseGuide['slug'];
+  slug?: CourseGuide['slug'];
 };
 
 export function CourseGuidePage({ slug }: Props) {
-  const course = findCourseGuide(slug);
+  const { data, loading, error } = usePublicData(fetchPublicCourses);
+  const activeData: Omit<PublicCoursesResponse, 'source'> = data ?? { tour: undefined, rounds: [], tourCourses: [] };
+  const courses = courseGuidesForTour(activeData.tour, activeData.rounds, activeData.tourCourses);
+  const pathParts = window.location.pathname.split('/').filter(Boolean);
+  const routeSlug = slug ?? decodeURIComponent(pathParts[pathParts.length - 1] ?? '');
+  const course = findCourseGuide(routeSlug, courses);
   const [selectedTee, setSelectedTee] = useState('yellow');
   const [selectedHoleNumber, setSelectedHoleNumber] = useState(1);
 
@@ -21,7 +28,9 @@ export function CourseGuidePage({ slug }: Props) {
   const frontNine = useMemo(() => course?.holes.slice(0, 9) ?? [], [course]);
   const backNine = useMemo(() => course?.holes.slice(9) ?? [], [course]);
 
-  if (!course) return <div className="page-stack"><p className="card">Course guide unavailable.</p></div>;
+  if (loading && !course) return <div className="page-stack"><p className="card">Loading course guide…</p></div>;
+  if (error && !course) return <div className="page-stack"><p className="card form-error">Course guide could not be loaded. Please refresh.</p></div>;
+  if (!course) return <div className="page-stack"><p className="card">This course guide is not published for the current tour.</p></div>;
 
   const moveHole = (direction: -1 | 1) => {
     const next = Math.min(course.holes.length, Math.max(1, selectedHoleNumber + direction));
@@ -33,13 +42,13 @@ export function CourseGuidePage({ slug }: Props) {
       <nav className="course-guide-topbar" aria-label="Course guide navigation">
         <a href="/courses">‹ All courses</a>
         <div className="course-switcher">
-          {courseGuides.map((candidate) => <a className={candidate.slug === course.slug ? 'active' : ''} href={courseGuidePath(candidate)} key={candidate.slug}>{candidate.shortName}</a>)}
+          {courses.map((candidate) => <a className={candidate.slug === course.slug ? 'active' : ''} href={courseGuidePath(candidate)} key={candidate.slug}>{candidate.shortName}</a>)}
         </div>
       </nav>
 
       <header
         className="course-guide-hero"
-        style={{ '--course-image': `url("${course.heroImageUrl}")`, '--course-position': course.heroPosition ?? 'center' } as CSSProperties}
+        style={{ '--course-image': course.heroImageUrl ? `url("${course.heroImageUrl}")` : 'none', '--course-position': course.heroPosition ?? 'center' } as CSSProperties}
       >
         <span className="course-hero-shade" aria-hidden="true" />
         <div className="course-hero-copy">
@@ -61,8 +70,8 @@ export function CourseGuidePage({ slug }: Props) {
           <p>{course.overview}</p>
         </div>
         <div className="course-source-links">
-          <a href={course.officialPageUrl} target="_blank" rel="noreferrer">Official course page ↗</a>
-          <a href={course.scorecardUrl} target="_blank" rel="noreferrer">Official scorecard ↗</a>
+          {course.officialPageUrl && <a href={course.officialPageUrl} target="_blank" rel="noreferrer">Official course page ↗</a>}
+          {course.scorecardUrl && <a href={course.scorecardUrl} target="_blank" rel="noreferrer">Official scorecard ↗</a>}
         </div>
       </section>
 
@@ -108,9 +117,9 @@ export function CourseGuidePage({ slug }: Props) {
             <div><small>Stroke index</small><strong>{selectedHole.strokeIndex}</strong></div>
           </div>
           <div className="hole-yardage-grid">
-            {course.tees.map((tee) => <span key={tee.key} style={{ '--tee-colour': tee.colour } as CSSProperties}><i aria-hidden="true" /><small>{tee.label}</small><strong>{metresToYards(selectedHole.metres[tee.key])}</strong><b>yds</b></span>)}
+            {course.tees.map((tee) => <span key={tee.key} style={{ '--tee-colour': tee.colour } as CSSProperties}><i aria-hidden="true" /><small>{tee.label}</small><strong>{selectedHole.yards[tee.key] ?? '—'}</strong><b>yds</b></span>)}
           </div>
-          {selectedHole.officialNote ? <div className="official-hole-note"><p className="eyebrow">From the official course guide</p><p>{selectedHole.officialNote}</p></div> : <div className="official-hole-note unavailable"><p className="eyebrow">Official commentary</p><p>Amendoeira does not currently publish an official note for this individual hole. The verified scorecard is shown without adding third-party or invented strategy.</p></div>}
+          {selectedHole.officialNote ? <div className="official-hole-note"><p className="eyebrow">From the official course guide</p><p>{selectedHole.officialNote}</p></div> : <div className="official-hole-note unavailable"><p className="eyebrow">Official commentary</p><p>No official note is saved for this hole. The verified scorecard is shown without adding third-party or invented strategy.</p></div>}
           <div className="hole-guide-actions">
             <button type="button" disabled={selectedHole.number === 1} onClick={() => moveHole(-1)}>‹ Previous</button>
             <span>Hole {selectedHole.number} of {course.holes.length}</span>
@@ -124,7 +133,7 @@ export function CourseGuidePage({ slug }: Props) {
 
 function ScorecardNine({ title, holes, teeKey, onSelectHole, selectedHole }: { title: string; holes: CourseGuide['holes']; teeKey: string; onSelectHole: (hole: number) => void; selectedHole: number }) {
   const par = holes.reduce((sum, hole) => sum + hole.par, 0);
-  const yards = holes.reduce((sum, hole) => sum + metresToYards(hole.metres[teeKey] ?? 0), 0);
+  const yards = holes.reduce((sum, hole) => sum + (hole.yards[teeKey] ?? 0), 0);
   return (
     <article className="course-nine-card card">
       <div className="course-nine-heading"><h3>{title}</h3><span>Par {par} · {yards.toLocaleString('en-GB')} yds</span></div>
@@ -135,7 +144,7 @@ function ScorecardNine({ title, holes, teeKey, onSelectHole, selectedHole }: { t
             <strong>{hole.number}</strong>
             <span>{hole.par}</span>
             <span>{hole.strokeIndex}</span>
-            <b>{metresToYards(hole.metres[teeKey] ?? 0)}</b>
+            <b>{hole.yards[teeKey] ?? '—'}</b>
           </button>
         ))}
       </div>

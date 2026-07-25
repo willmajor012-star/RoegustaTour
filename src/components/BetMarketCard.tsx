@@ -7,6 +7,7 @@ import { formatTeeTimeDisplay } from '../lib/display';
 type Props = {
   market: BetMarket;
   round?: Round;
+  timeZone?: string;
   options: BetOption[];
   bets: Bet[];
   bettorName: string;
@@ -23,14 +24,19 @@ function marketTypeLabel(market: BetMarket) {
   return 'Other market';
 }
 
-function closeLabel(closesAt?: string | null) {
+function closeLabel(closesAt?: string | null, timeZone?: string) {
   if (!closesAt) return 'Close time TBC';
   const date = new Date(closesAt);
   if (!Number.isFinite(date.getTime())) return 'Close time TBC';
-  return `Closes ${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} · ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+  try {
+    const formatOptions = timeZone ? { timeZone } : {};
+    return `Closes ${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', ...formatOptions })} · ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', ...formatOptions })}`;
+  } catch {
+    return `Closes ${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} · ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+  }
 }
 
-export function BetMarketCard({ market, round, options, bets, bettorName, onSubmit, submitMessage }: Props) {
+export function BetMarketCard({ market, round, timeZone, options, bets, bettorName, onSubmit, submitMessage }: Props) {
   const [selectedOptionId, setSelectedOptionId] = useState(options[0]?.id ?? '');
   const [selectedStakePence, setSelectedStakePence] = useState(1000);
   const [comment, setComment] = useState('');
@@ -69,7 +75,7 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
       <div className="bet-card-title">
         <div>
           <h3>{market.title}</h3>
-          <p>{round ? `${formatShortDate(round.roundDate)} · ${round.courseName ?? `Round ${round.roundNumber}`} · ${formatTeeTimeDisplay(round.teeTime)}` : closeLabel(market.closesAt)}</p>
+          <p>{round ? `${formatShortDate(round.roundDate)} · ${round.courseName ?? `Round ${round.roundNumber}`} · ${formatTeeTimeDisplay(round.teeTime)}` : closeLabel(market.closesAt, timeZone)}</p>
         </div>
         <span>{formatPenceCurrency(potPence)} pot</span>
       </div>
@@ -104,7 +110,7 @@ export function BetMarketCard({ market, round, options, bets, bettorName, onSubm
         <button className="place-bet-button" disabled={!bettorName.trim() || !selectedOptionId || isSubmitting} type="submit">
           {isSubmitting ? 'Saving…' : bettorName.trim() ? `Place ${formatPenceCurrency(selectedStakePence)} bet` : 'Choose your name first'}
         </button>
-        <small className="bet-close-copy">{closeLabel(market.closesAt)}. You can add another bet or edit this pick before the market closes.</small>
+        <small className="bet-close-copy">{closeLabel(market.closesAt, timeZone)}. You can add another bet or edit this pick before the market closes.</small>
         {submitMessage && <p className={/could not|error|invalid/i.test(submitMessage) ? 'form-error' : 'form-success'}>{submitMessage}</p>}
       </form> : null}
 

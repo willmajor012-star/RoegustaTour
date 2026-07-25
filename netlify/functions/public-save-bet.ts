@@ -1,5 +1,7 @@
 import { createServerSupabaseClient } from './_supabase';
 import { requirePublicAccess } from './_publicAccess';
+import { applyAutomaticBetDefaultsForMarket } from './_betDefaults';
+import { BET_PUNTO_STAKE_INCREMENT_PENCE } from '../../src/lib/betting';
 
 type FunctionEvent = { httpMethod: string; body: string | null; headers?: Record<string, string | undefined> };
 type FunctionResponse = { statusCode: number; body: string };
@@ -46,6 +48,7 @@ function mapPublicBet(row: Row) {
     outcomeStatus: typeof row.outcome_status === 'string' ? row.outcome_status : 'pending',
     payoutStatus: typeof row.payout_status === 'string' ? row.payout_status : 'not_applicable',
     comment: typeof row.comment === 'string' ? row.comment : undefined,
+    entrySource: typeof row.entry_source === 'string' ? row.entry_source : row.admin_entered === true ? 'admin' : 'public',
     createdAt: String(row.created_at),
     status: typeof row.status === 'string' ? row.status : 'active',
   };
@@ -112,6 +115,7 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
   if (action !== 'create' && !editToken) return jsonResponse(403, { ok: false, message: 'This Bet Punto pick cannot be changed without its private edit token.' });
   if (action === 'create' && !bettorName) return jsonResponse(400, { ok: false, message: 'Bettor name is required.' });
   if (action !== 'void' && (!Number.isInteger(stakeAmountPence) || stakeAmountPence <= 0)) return jsonResponse(400, { ok: false, message: 'Stake must be a positive pounds-and-pence amount.' });
+  if (action !== 'void' && stakeAmountPence % BET_PUNTO_STAKE_INCREMENT_PENCE !== 0) return jsonResponse(400, { ok: false, message: 'Bet Punto stakes must be in £5 increments.' });
 
   try {
     const supabase = createServerSupabaseClient();
@@ -130,15 +134,17 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
       if (!editToken || !(await tokenMatchesHash(editToken, storedEditTokenHash))) return jsonResponse(403, { ok: false, message: 'This Bet Punto pick cannot be changed without its private edit token.' });
       if (String(existingBet.status) !== 'active') return jsonResponse(400, { ok: false, message: 'Only active Bet Punto picks can be changed.' });
     }
-    const markets = await runRows<{ id: string; tour_id: string; status: string; closes_at: string | null }>(supabase.from('bet_markets').select('id, tour_id, status, closes_at').eq('id', effectiveMarketId).limit(1), 'find bet market');
+    const markets = await runRows<{ id: string; tour_id: string; status: string; closes_at: string | null; required: boolean | null }>(supabase.from('bet_markets').select('id, tour_id, status, closes_at, required').eq('id', effectiveMarketId).limit(1), 'find bet market');
     if (markets.length === 0) return jsonResponse(404, { ok: false, message: 'Bet market was not found.' });
     if (markets[0].status !== 'open') return jsonResponse(400, { ok: false, message: 'This Bet Punto market is not open for public bet changes.' });
+    if (markets[0].required && !markets[0].closes_at) return jsonResponse(400, { ok: false, message: 'This required market has no fixed first-tee close time and cannot accept bets yet.' });
 
     const livePlayerRows = await runRows<LivePlayerRow>(supabase.from('tour_players').select('player_id, players(id, display_name, nickname, active)').eq('tour_id', markets[0].tour_id).eq('attending', true), 'find live tour bettors');
     const livePlayers = livePlayerRows.map(livePlayer).filter((player): player is NonNullable<ReturnType<typeof livePlayer>> => Boolean(player));
 
     const marketCloseTime = markets[0].closes_at ? Date.parse(markets[0].closes_at) : null;
     if (marketCloseTime !== null && Number.isFinite(marketCloseTime) && marketCloseTime <= Date.now()) {
+      await applyAutomaticBetDefaultsForMarket(supabase, markets[0].id);
       return jsonResponse(400, { ok: false, message: 'This Bet Punto market has closed for new picks.' });
     }
 
@@ -173,6 +179,7 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
       payout_status: 'not_applicable',
       device_id: deviceId,
       public_edit_token_hash: await hashEditToken(newEditToken),
+      entry_source: 'public',
     };
     const saved = await runSingle<Row>(supabase.from('bets').insert(insertRow).select('*').single(), 'save public bet');
     return jsonResponse(200, { ok: true, bet: mapPublicBet(saved), editToken: newEditToken });

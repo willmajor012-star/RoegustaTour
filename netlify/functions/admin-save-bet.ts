@@ -2,6 +2,7 @@ import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_admi
 import { badRequest, optionalNumber, optionalString, runRows, runSingle, withAdminSupabase } from './_adminSupabase';
 import { mapBet } from './_mappers';
 import { writeAuditLog } from './_audit';
+import { BET_PUNTO_STAKE_INCREMENT_PENCE } from '../../src/lib/betting';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -25,6 +26,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (!bettorName) return badRequest('Bettor name is required.');
   if (!bettorPlayerId) return badRequest('Choose a live tour player for this bet.');
   if (stakeAmountPence === null || !Number.isInteger(stakeAmountPence) || stakeAmountPence <= 0) return badRequest('Stake must be a positive pounds-and-pence amount.');
+  if (stakeAmountPence % BET_PUNTO_STAKE_INCREMENT_PENCE !== 0) return badRequest('Bet Punto stakes must be in £5 increments.');
   if (!['active', 'void'].includes(status)) return badRequest('Bet status is invalid.');
 
   const optionRows = await runRows<{ market_id: string; linked_player_id: string | null; bet_markets: { tour_id: string } | { tour_id: string }[] | null }>(supabase.from('bet_options').select('market_id, linked_player_id, bet_markets(tour_id)').eq('id', optionId).limit(1), 'find bet option');
@@ -56,6 +58,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     stake_amount_pence: stakeAmountPence,
     comment: comment?.slice(0, 240) ?? null,
     admin_entered: true,
+    entry_source: 'admin',
     admin_notes: adminNotes,
     void_reason: status === 'void' ? (voidReason ?? adminNotes ?? 'Voided by admin') : null,
     status,

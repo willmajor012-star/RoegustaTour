@@ -9,6 +9,7 @@ import { formatRoundDisplayName, formatTourDisplayName, getDateOnlyScheduledDate
 import { usePublicData } from '../lib/usePublicData';
 import { TEAM_COLOUR_FALLBACKS, normalizeTeamColour } from '../lib/teamColours';
 import { awardedPoints, pointsRequiredToWinOutright, totalAvailablePoints } from '../lib/matchplay';
+import { courseGuidesForTour } from '../data/courseGuides';
 
 type DashboardData = {
   summary: Omit<PublicSummaryResponse, 'source'>;
@@ -19,9 +20,9 @@ type DashboardData = {
 
 const emptyDashboardData: DashboardData = {
   source: 'supabase',
-  summary: { rounds: [], recentResults: [], openMarkets: [] },
+  summary: { rounds: [], recentResults: [], openMarkets: [], tourCourses: [] },
   score: { teams: [], rounds: [], matches: [], scores: [] },
-  matches: { rounds: [], matches: [], matchParticipants: [], players: [], tourPlayers: [], tourTeams: [], tourTeamMembers: [], roundPrizeResults: [] },
+  matches: { rounds: [], matches: [], matchParticipants: [], players: [], tourPlayers: [], tourTeams: [], tourTeamMembers: [], roundPrizeResults: [], tourCourses: [] },
 };
 
 async function fetchDashboardData(): Promise<DashboardData> {
@@ -101,6 +102,7 @@ export function Dashboard() {
   const tourLive = !tourComplete && (tour?.status === 'active' || Boolean(tourStart && tourEnd && Date.now() >= tourStart.getTime() && Date.now() <= tourEnd.getTime()));
   const upNextFormat = nextRound?.formatLabel ?? (nextTee?.match.format ? formatMatchFormat(nextTee.match.format) : undefined) ?? 'Format TBC';
   const upNextTime = normalizeTeeTime(nextTee?.match.teeTime) ?? normalizeTeeTime(nextRound?.teeTime) ?? 'TBC';
+  const tourCourses = courseGuidesForTour(tour, rounds, activeData.summary.tourCourses);
 
   useEffect(() => {
     const interval = window.setInterval(() => setTick((value) => value + 1), 1000);
@@ -144,7 +146,7 @@ export function Dashboard() {
 
     {tourComplete && latestResultCard}
 
-    <CourseRail compact title="Know the courses" eyebrow="Faldo · O'Connor · Old Course" />
+    <CourseRail compact title="Know the courses" eyebrow={tourCourses.map((course) => course.shortName).join(' · ') || 'Course preparation'} courses={tourCourses} />
 
     <a className="card tappable-card home-this-tour-card" href="/tours">
       <div><p className="eyebrow">This tour</p><h2>Teams, schedule & tour info</h2><p>Players, course guides and the full itinerary now live together under Tours.</p></div>

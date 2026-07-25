@@ -118,7 +118,7 @@ export function Tours() {
   if (selectedTour) return <TourDetail tour={selectedTour} data={activeData} dataForStats={dataForStats} onBack={() => setSelectedTourId(undefined)} />;
 
   return <div className="page-stack tours-page tour-archive-landing">
-    <PageHeader title="Tours" eyebrow="Current tour & archive" description="Everything for this tour first, with previous years kept underneath." />
+    <PageHeader title="Tours" eyebrow="Current tour & archive" />
     {loading && <p className="card">Loading tours…</p>}
     {error && <p className="card form-error">Tours could not be loaded. Please refresh.</p>}
     {!loading && !error && sortedTours.length === 0 && <p className="card">Tours will appear once published.</p>}

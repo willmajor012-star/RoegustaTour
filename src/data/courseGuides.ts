@@ -1,34 +1,15 @@
-export type CourseTee = {
-  key: string;
-  label: string;
-  colour: string;
-  textColour?: string;
-};
+import type { CourseGuide as SharedCourseGuide, CourseHole as SharedCourseHole, CourseTee as SharedCourseTee, Round, Tour } from '../lib/types';
 
-export type CourseHole = {
+export type CourseTee = SharedCourseTee;
+export type CourseHole = SharedCourseHole;
+export type CourseGuide = SharedCourseGuide;
+
+type MetricCourseHole = {
   number: number;
   par: number;
   strokeIndex: number;
   metres: Record<string, number>;
   officialNote?: string;
-};
-
-export type CourseGuide = {
-  slug: 'faldo' | 'oconnor' | 'old-course';
-  name: string;
-  shortName: string;
-  resort: string;
-  location: string;
-  architect: string;
-  opened?: string;
-  overview: string;
-  noteAvailability: 'course-only' | 'hole-by-hole';
-  officialPageUrl: string;
-  scorecardUrl: string;
-  heroImageUrl: string;
-  heroPosition?: string;
-  tees: CourseTee[];
-  holes: CourseHole[];
 };
 
 const amendoeiraTees: CourseTee[] = [
@@ -46,7 +27,7 @@ const oldCourseTees: CourseTee[] = [
   { key: 'red', label: 'Red', colour: '#ae3c45' },
 ];
 
-const faldoHoles: CourseHole[] = [
+const faldoHoles: MetricCourseHole[] = [
   { number: 1, par: 4, strokeIndex: 7, metres: { gold: 415, white: 410, yellow: 388, blue: 362, red: 320 } },
   { number: 2, par: 3, strokeIndex: 17, metres: { gold: 174, white: 169, yellow: 147, blue: 126, red: 96 } },
   { number: 3, par: 4, strokeIndex: 11, metres: { gold: 324, white: 319, yellow: 310, blue: 268, red: 214 } },
@@ -67,7 +48,7 @@ const faldoHoles: CourseHole[] = [
   { number: 18, par: 5, strokeIndex: 12, metres: { gold: 496, white: 465, yellow: 433, blue: 405, red: 373 } },
 ];
 
-const oconnorHoles: CourseHole[] = [
+const oconnorHoles: MetricCourseHole[] = [
   { number: 1, par: 5, strokeIndex: 11, metres: { gold: 546, white: 513, yellow: 497, blue: 476, red: 470 } },
   { number: 2, par: 4, strokeIndex: 7, metres: { gold: 365, white: 323, yellow: 301, blue: 267, red: 234 } },
   { number: 3, par: 3, strokeIndex: 15, metres: { gold: 162, white: 148, yellow: 139, blue: 124, red: 113 } },
@@ -88,7 +69,7 @@ const oconnorHoles: CourseHole[] = [
   { number: 18, par: 4, strokeIndex: 10, metres: { gold: 374, white: 356, yellow: 338, blue: 320, red: 301 } },
 ];
 
-const oldCourseHoles: CourseHole[] = [
+const oldCourseHoles: MetricCourseHole[] = [
   { number: 1, par: 4, strokeIndex: 17, metres: { white: 310, yellow: 302, blue: 296, red: 282 }, officialNote: 'A downhill opener: favour position before approaching between the front bunkers.' },
   { number: 2, par: 5, strokeIndex: 5, metres: { white: 435, yellow: 417, blue: 407, red: 375 }, officialNote: 'A rising par five; avoid the left bunker and hidden plateau.' },
   { number: 3, par: 4, strokeIndex: 9, metres: { white: 324, yellow: 300, blue: 290, red: 252 }, officialNote: 'Stay clear of the left umbrella pine to open the green.' },
@@ -125,7 +106,7 @@ export const courseGuides: CourseGuide[] = [
     heroImageUrl: 'https://www.amendoeiraresort.com/media/uploads/page_setup_images/AGR_Faldo_13Tee_2_amendoeira.jpg?q=pr:sharp/rs:fill/w:1920/h:1080/g:ce/f:jpg',
     heroPosition: 'center',
     tees: amendoeiraTees,
-    holes: faldoHoles,
+    holes: toYardHoles(faldoHoles),
   },
   {
     slug: 'oconnor',
@@ -142,7 +123,7 @@ export const courseGuides: CourseGuide[] = [
     heroImageUrl: 'https://www.amendoeiraresort.com/media/uploads/page_setup_images/AGR_Oconner_Tee_18_Amendoeira.jpg?q=pr:sharp/rs:fill/w:1920/h:1080/g:ce/f:jpg',
     heroPosition: 'center',
     tees: amendoeiraTees,
-    holes: oconnorHoles,
+    holes: toYardHoles(oconnorHoles),
   },
   {
     slug: 'old-course',
@@ -159,7 +140,7 @@ export const courseGuides: CourseGuide[] = [
     heroImageUrl: 'https://www.vilamouragolf.com/wp-content/uploads/2026/03/oldcourse-photos.jpg',
     heroPosition: 'center',
     tees: oldCourseTees,
-    holes: oldCourseHoles,
+    holes: toYardHoles(oldCourseHoles),
   },
 ];
 
@@ -167,24 +148,45 @@ export function metresToYards(metres: number) {
   return Math.round(metres * 1.0936133);
 }
 
+function toYardHoles(holes: MetricCourseHole[]): CourseHole[] {
+  return holes.map(({ metres, ...hole }) => ({
+    ...hole,
+    yards: Object.fromEntries(Object.entries(metres).map(([tee, distance]) => [tee, metresToYards(distance)])),
+  }));
+}
+
 export function totalPar(course: CourseGuide) {
   return course.holes.reduce((sum, hole) => sum + hole.par, 0);
 }
 
 export function totalYards(course: CourseGuide, teeKey: string) {
-  return course.holes.reduce((sum, hole) => sum + metresToYards(hole.metres[teeKey] ?? 0), 0);
+  return course.holes.reduce((sum, hole) => sum + (hole.yards[teeKey] ?? 0), 0);
 }
 
-export function findCourseGuide(slug?: string) {
-  return courseGuides.find((course) => course.slug === slug);
+export function findCourseGuide(slug?: string, courses: CourseGuide[] = courseGuides) {
+  return courses.find((course) => course.slug === slug);
 }
 
-export function courseGuideForName(courseName?: string | null) {
+export function courseGuideForName(courseName?: string | null, courses: CourseGuide[] = courseGuides) {
   const normalized = courseName?.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, ' ').trim() ?? '';
-  if (normalized.includes('faldo')) return findCourseGuide('faldo');
-  if (normalized.includes('oconnor')) return findCourseGuide('oconnor');
-  if (normalized.includes('old course') || normalized.includes('vilamoura old')) return findCourseGuide('old-course');
-  return undefined;
+  if (!normalized) return undefined;
+  return courses.find((course) => {
+    const candidates = [course.name, course.shortName, course.slug].map((value) => value.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]+/g, ' ').trim());
+    return candidates.some((candidate) => candidate === normalized || normalized.includes(candidate) || candidate.includes(normalized));
+  });
+}
+
+export function courseGuideForRound(round: Pick<Round, 'courseId' | 'courseName'> | undefined, courses: CourseGuide[]) {
+  if (!round) return undefined;
+  return (round.courseId ? courses.find((course) => course.id === round.courseId) : undefined) ?? courseGuideForName(round.courseName, courses);
+}
+
+export function courseGuidesForTour(tour: Tour | undefined, rounds: Round[], savedCourses: CourseGuide[]) {
+  const publishedCourses = savedCourses.filter((course) => course.published !== false).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  if (publishedCourses.length > 0) return publishedCourses;
+  if (tour?.year !== 2026) return [];
+  const matched = courseGuides.filter((course) => rounds.some((round) => courseGuideForName(round.courseName, [course])));
+  return matched.length > 0 ? matched : courseGuides;
 }
 
 export function courseGuidePath(course: Pick<CourseGuide, 'slug'>) {

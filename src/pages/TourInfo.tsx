@@ -15,7 +15,7 @@ export function TourInfo() {
   const activeData = data ?? emptyTourInfo;
   const tour = activeData.tour;
 
-  return <div className="page-stack handbook-page"><PageHeader title="Tour information" eyebrow={tour?.name ?? 'Tour handbook'} description="The schedule, rounds, kit and key information in one place." />
+  return <div className="page-stack handbook-page"><PageHeader title="Tour information" eyebrow={tour?.name ?? 'Tour handbook'} />
     {loading && <p className="card">Loading tour handbook…</p>}
     {error && <p className="card form-error">{error}</p>}
     <section className="handbook-hero card"><div><p className="eyebrow">Details</p><h3>{tour?.location ?? 'Location TBC'}</h3><p>{formatDate(tour?.startDate)} — {formatDate(tour?.endDate)}</p>{tour?.description && <p>{tour.description}</p>}{!loading && !error && !tour && <p>Tour details TBC.</p>}</div><span className="brand-logo-roundel info-logo-mark"><img className="brand-logo" src="/brand/roegusta-logo-mark.png" alt="Roegusta Tour mark" /></span></section>

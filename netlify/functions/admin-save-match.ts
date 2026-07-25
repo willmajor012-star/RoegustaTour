@@ -1,6 +1,7 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { badRequest, optionalNumber, optionalString, runRows, runSingle, withAdminSupabase } from './_adminSupabase';
 import { mapMatch, mapMatchParticipant } from './_mappers';
+import { syncRequiredMarketDeadlinesForRound } from './_betMarketDeadline';
 import type { Match, MatchFormat } from '../../src/lib/types';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
@@ -149,6 +150,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const staleResultsRemoved = await supabase.from('player_match_results').delete().eq('match_id', matchId);
   if (staleResultsRemoved.error) throw new Error(`remove stale player match results: ${staleResultsRemoved.error.message}`);
 
+  await syncRequiredMarketDeadlinesForRound(supabase, roundId);
 
   const participants = await runRows(supabase.from('match_participants').select('*').eq('match_id', matchId), 'match participants after save');
   const refreshedMatch = await runSingle<Record<string, unknown>>(supabase.from('matches').select('*').eq('id', matchId).single(), 'match after save');

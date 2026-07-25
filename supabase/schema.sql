@@ -16,6 +16,7 @@ create table tours (
   name text not null,
   year integer not null,
   location text,
+  timezone text not null default 'Europe/London',
   start_date date,
   end_date date,
   status text not null check (status in ('planned','active','complete','archived')),
@@ -122,12 +123,40 @@ create table tour_team_day_kit (
 );
 create index tour_team_day_kit_tour_idx on tour_team_day_kit(tour_id, kit_date);
 
+create table tour_courses (
+  id uuid primary key default gen_random_uuid(),
+  tour_id uuid not null references tours(id) on delete cascade,
+  slug text not null,
+  name text not null,
+  short_name text not null,
+  resort text,
+  location text,
+  architect text,
+  opened text,
+  overview text,
+  note_availability text not null default 'course-only' check (note_availability in ('course-only','hole-by-hole')),
+  official_page_url text,
+  scorecard_url text,
+  hero_image_url text,
+  hero_position text,
+  tees jsonb not null default '[]'::jsonb,
+  holes jsonb not null default '[]'::jsonb,
+  sort_order integer not null default 0,
+  published boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (tour_id, slug)
+);
+create index tour_courses_tour_order_idx on tour_courses(tour_id, sort_order);
+create index tour_courses_public_idx on tour_courses(tour_id, published, sort_order);
+
 create table rounds (
   id uuid primary key default gen_random_uuid(),
   tour_id uuid not null references tours(id) on delete cascade,
   round_number integer not null,
   name text not null,
   round_date date,
+  course_id uuid references tour_courses(id) on delete set null,
   course_name text,
   tee_time time,
   format_label text,
@@ -139,6 +168,7 @@ create table rounds (
   unique (tour_id, round_number)
 );
 create index rounds_tour_idx on rounds(tour_id);
+create index rounds_course_id_idx on rounds(course_id);
 create index rounds_public_idx on rounds(tour_id, published, status);
 
 create table matches (
@@ -222,10 +252,11 @@ create table bet_markets (
   description text,
   market_type text not null check (market_type in ('match_winner','player_performance','team_result','over_under','special','custom')),
   market_scope text not null default 'general_pot' check (market_scope in ('general_pot', 'special')),
-  status text not null check (status in ('open','closed','settled','void')),
+  status text not null check (status in ('draft','open','closed','settled','void')),
   closes_at timestamptz,
   result_option_id uuid,
   result_text text,
+  required boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -259,6 +290,7 @@ create table bets (
   comment text,
   bettor_player_id uuid references players(id) on delete set null,
   admin_entered boolean not null default false,
+  entry_source text not null default 'public' check (entry_source in ('public','admin','automatic_default')),
   admin_notes text,
   void_reason text,
   public_edit_token_hash text,
@@ -272,6 +304,7 @@ create index bets_device_idx on bets(device_id);
 create index bets_bettor_player_idx on bets(bettor_player_id);
 create index bets_public_edit_token_hash_idx on bets(public_edit_token_hash) where public_edit_token_hash is not null;
 create index bets_market_bettor_idx on bets(market_id, lower(btrim(bettor_name)));
+create unique index bets_one_active_automatic_default_idx on bets(market_id, bettor_player_id) where entry_source = 'automatic_default' and status = 'active' and bettor_player_id is not null;
 
 create table audit_log (
   id uuid primary key default gen_random_uuid(),

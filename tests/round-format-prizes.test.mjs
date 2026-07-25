@@ -52,12 +52,12 @@ describe('points to win target', () => {
 });
 
 describe('secondary prize result support', () => {
-  it('adds admin CRUD and default prize helper without changing tabs', () => {
+  it('adds admin CRUD, a course library and the default prize helper', () => {
     assert.match(adminSource, /Secondary prize results/);
     assert.match(adminSource, /saveRoundPrizeResult/);
     assert.match(adminSource, /deleteRoundPrizeResult/);
     assert.match(adminSource, /createDefaultRoundPrizeResults/);
-    assert.match(adminSource, /const tabs = \['Overview', 'Tour setup', 'Player library', 'Squads & teams', 'Rounds & tee times', 'Matches & pairings', 'Result entry'/);
+    assert.match(adminSource, /const tabs = \['Overview', 'Tour setup', 'Player library', 'Squads & teams', 'Courses', 'Rounds & tee times', 'Matches & pairings', 'Result entry'/);
   });
 
   it('public display hides via published API query and renders published rows', () => {

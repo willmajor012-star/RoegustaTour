@@ -1,5 +1,6 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { badRequest, optionalString, runRows, withAdminSupabase } from './_adminSupabase';
+import { syncRequiredMarketDeadlinesForRound } from './_betMarketDeadline';
 
 export const handler: (event: FunctionEvent) => Promise<FunctionResponse> = (event) => withAdminSupabase(event, 'POST', async (supabase, body) => {
   const id = optionalString(body.id);
@@ -7,7 +8,7 @@ export const handler: (event: FunctionEvent) => Promise<FunctionResponse> = (eve
   if (!id) return badRequest('Match ID is required.');
   if (!tourId) return badRequest('Tour ID is required.');
 
-  const matches = await runRows<{ id: string; tour_id: string; status: string; published?: boolean }>(supabase.from('matches').select('id, tour_id, status, published').eq('id', id).limit(1), 'find match to delete');
+  const matches = await runRows<{ id: string; tour_id: string; round_id: string; status: string; published?: boolean }>(supabase.from('matches').select('id, tour_id, round_id, status, published').eq('id', id).limit(1), 'find match to delete');
   if (matches.length === 0) return badRequest('Match does not exist.');
   const match = matches[0];
   if (match.tour_id !== tourId) return badRequest('Match does not belong to this tour.');
@@ -31,6 +32,7 @@ export const handler: (event: FunctionEvent) => Promise<FunctionResponse> = (eve
   if (participantDelete.error) throw new Error(`delete match participants: ${participantDelete.error.message}`);
   const deleted = await supabase.from('matches').delete().eq('id', id);
   if (deleted.error) throw new Error(`delete match: ${deleted.error.message}`);
+  await syncRequiredMarketDeadlinesForRound(supabase, match.round_id);
 
   return jsonResponse(200, { ok: true, deletedMatchId: id });
 });

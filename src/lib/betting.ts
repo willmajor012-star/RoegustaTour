@@ -2,6 +2,9 @@ import type { Bet, BetMarket, BetOption, Match, Round } from './types';
 
 const currencyFormatter = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' });
 
+export const BET_PUNTO_MINIMUM_STAKE_PENCE = 1000;
+export const BET_PUNTO_STAKE_INCREMENT_PENCE = 500;
+
 export type BetPuntoMarketKind = 'player_winner' | 'team_winner' | 'advanced';
 
 export function betPuntoMarketKind(market: Pick<BetMarket, 'marketType'>): BetPuntoMarketKind {
@@ -174,6 +177,8 @@ export type BetPuntoBettorSummary = {
   totalBets: number;
   totalStakePence: number;
   settledPayoutPence: number;
+  pendingStakePence: number;
+  automaticDefaultStakePence: number;
   netPence: number;
   won: number;
   lost: number;
@@ -252,7 +257,7 @@ export function buildBetPuntoBettorSummaries(markets: BetMarket[], options: BetO
     displayNameByKey.set(key, displayName);
     const existing = summaryByKey.get(key);
     if (existing) return existing;
-    const next: BetPuntoBettorSummary = { bettorName: displayName, totalBets: 0, totalStakePence: 0, settledPayoutPence: 0, netPence: 0, won: 0, lost: 0, pending: 0, void: 0, push: 0, missingStablefordPicks: 0, missingMandatoryPicks: 0 };
+    const next: BetPuntoBettorSummary = { bettorName: displayName, totalBets: 0, totalStakePence: 0, settledPayoutPence: 0, pendingStakePence: 0, automaticDefaultStakePence: 0, netPence: 0, won: 0, lost: 0, pending: 0, void: 0, push: 0, missingStablefordPicks: 0, missingMandatoryPicks: 0 };
     summaryByKey.set(key, next);
     return next;
   };
@@ -266,13 +271,16 @@ export function buildBetPuntoBettorSummaries(markets: BetMarket[], options: BetO
       continue;
     }
     summary.totalBets += 1;
-    summary.totalStakePence += getBetStakePence(bet);
+    const stakePence = getBetStakePence(bet);
+    summary.totalStakePence += stakePence;
+    if (bet.entrySource === 'automatic_default') summary.automaticDefaultStakePence += stakePence;
     if (bet.outcomeStatus === 'won') summary.won += 1;
     else if (bet.outcomeStatus === 'lost') summary.lost += 1;
     else if (bet.outcomeStatus === 'push') summary.push += 1;
     else summary.pending += 1;
 
     const market = marketById.get(bet.marketId);
+    if (market?.status !== 'settled') summary.pendingStakePence += stakePence;
     const settledPayout = market?.status === 'settled' ? (bet.payoutAmountPence ?? payoutMap.get(bet.id) ?? 0) : 0;
     summary.settledPayoutPence += settledPayout;
   }

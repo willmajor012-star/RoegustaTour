@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   saveRoundPrizeResult,
-  settleBetMarket,
   submitResult,
   updateMatchPublished,
   updateRoundPublished,
@@ -203,14 +202,6 @@ export function AdminLiveDesk({
         linkedBetMarketId: linkedMarket?.id ?? null,
         published: publish,
       });
-      if (publish && linkedMarket && winnerOption) {
-        await settleBetMarket({
-          marketId: linkedMarket.id,
-          resultOptionId: winnerOption.id,
-          settlementNote: `${scoreValue} ${unit}`,
-          correction: linkedMarket.status === 'settled',
-        });
-      }
       await onRefresh();
       setPrizeState({
         saving: false,

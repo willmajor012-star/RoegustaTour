@@ -1,6 +1,7 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { withAdminSupabase, runRows } from './_adminSupabase';
-import { mapBet, mapBetMarket, mapBetOption, mapMatch, mapMatchParticipant, mapPlayer, mapRound, mapTour, mapTourPlayer, mapTourTeam, mapTourTeamMember, mapTourHandbookSection, mapTourItineraryItem, mapTourTeamResult, mapRoundPrizeResult } from './_mappers';
+import { mapBet, mapBetMarket, mapBetOption, mapCourseGuide, mapMatch, mapMatchParticipant, mapPlayer, mapRound, mapTour, mapTourPlayer, mapTourTeam, mapTourTeamMember, mapTourHandbookSection, mapTourItineraryItem, mapTourTeamResult, mapRoundPrizeResult } from './_mappers';
+import { applyAutomaticBetDefaultsForTour } from './_betDefaults';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -11,7 +12,11 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
   const currentTour = tours.find((tour) => tour.isCurrentPublic) ?? tours.find((tour) => tour.status === 'active') ?? tours.find((tour) => tour.status === 'complete') ?? tours[0];
   const selectedTour = (requestedTourId ? tours.find((tour) => tour.id === requestedTourId) : undefined) ?? currentTour;
 
-  const playerRows = await runRows(supabase.from('players').select('*').order('display_name', { ascending: true }), 'admin players');
+  const [playerRows, courseLibraryRows] = await Promise.all([
+    runRows(supabase.from('players').select('*').order('display_name', { ascending: true }), 'admin players'),
+    runRows(supabase.from('tour_courses').select('*').order('sort_order', { ascending: true }), 'admin course library').catch(() => []),
+  ]);
+  const courseLibrary = courseLibraryRows.map(mapCourseGuide);
 
   if (!selectedTour) {
     return jsonResponse(200, {
@@ -34,8 +39,12 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
       handbookSections: [],
       itineraryItems: [],
       roundPrizeResults: [],
+      tourCourses: [],
+      courseLibrary,
     });
   }
+
+  await applyAutomaticBetDefaultsForTour(supabase, selectedTour.id);
 
   const [tourPlayerRows, teamRows, memberRows, roundRows, matchRows, marketRows, handbookRows, itineraryRows] = await Promise.all([
     runRows(supabase.from('tour_players').select('*').eq('tour_id', selectedTour.id), 'admin tour players'),
@@ -90,5 +99,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'GET', async
     handbookSections: handbookRows.map(mapTourHandbookSection),
     itineraryItems: itineraryRows.map(mapTourItineraryItem),
     roundPrizeResults: prizeRows.map(mapRoundPrizeResult),
+    tourCourses: courseLibrary.filter((course) => course.tourId === selectedTour.id),
+    courseLibrary,
   });
 });
