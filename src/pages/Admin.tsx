@@ -465,7 +465,7 @@ const adminGuideSections: AdminGuideSection[] = [
         items: [
           'Open Rounds & tee times.',
           'Use the 2026 format helper for the selected tour.',
-          "It creates Sat AM Faldo Course, 4BBB, 18 holes; Sat PM O'Connor Jnr. Course, scramble, 9 holes; Sun Old Course, singles, 18 holes; and Mon Course TBC, 4BBB, 9 holes.",
+          'It creates Sat AM Faldo Course, 4BBB, 18 holes; Sat PM Amendoeira Par 3, scramble, 9 holes with no guide required; Sun Old Course, singles, 18 holes; and Mon Course TBC, 4BBB, 9 holes.',
         ],
       },
       {
@@ -495,17 +495,19 @@ const adminGuideSections: AdminGuideSection[] = [
         heading: 'Step-by-step',
         items: [
           'Select the tour first, then open Courses.',
-          'Choose a built-in or previous-tour guide to copy, or create a blank course.',
+          'Choose Add from course library to load a built-in template or previous-tour guide, or create a blank course.',
+          'Review the loaded copy and click Save course guide. A library template is not public and cannot be linked to a round until it has been saved to the selected tour.',
           'Enter the official overview, source links, tees and every hole in yards.',
           'Only choose official hole-by-hole commentary when the source really provides it.',
-          'Publish the course, then select that saved guide on the relevant round in Rounds & tee times.',
+          'Publish the course, choose whether it should show on Home, then select that saved guide on the relevant round in Rounds & tee times.',
+          'Leave the guide unlinked for a round that does not need one, such as the 2026 Par 3.',
         ],
       },
       {
         heading: 'Archiving and reuse',
         items: [
           'Each saved course is a snapshot owned by that tour, so editing next year cannot alter an archived scorecard.',
-          'For a future tour, use Copy a saved guide, review it against the latest official scorecard, save it to the new tour, then link its rounds.',
+          'For a future tour, use Add from course library, review it against the latest official scorecard, save it to the new tour, then link its rounds.',
         ],
       },
     ],
@@ -857,6 +859,23 @@ const adminGuideSections: AdminGuideSection[] = [
 
 const duplicateMatchNumberMessage =
   'A match with this number already exists for this round. Edit the existing match or use the next available match number.';
+
+const adminContextGuideByTab: Partial<Record<AdminTab, string>> = {
+  Overview: 'guide-tour',
+  'Tour setup': 'guide-tour',
+  Courses: 'guide-courses',
+  'Rounds & tee times': 'guide-rounds',
+  'Tour itinerary': 'guide-info',
+  'Player library': 'guide-photos',
+  'Squads & teams': 'guide-teams',
+  'Matches & pairings': 'guide-pairings',
+  'Result entry': 'guide-results',
+  'Bet Punto': 'guide-bet-punto',
+  Settings: 'guide-public-password',
+  'Admin guide': 'guide-troubleshooting',
+  Handbook: 'guide-archive',
+};
+
 const maxPlayersForFormat = (format: MatchFormat) =>
   format === 'singles' ? 1 : format === 'custom' ? Number.POSITIVE_INFINITY : 2;
 const nextAvailableMatchNumber = (
@@ -1028,6 +1047,7 @@ export function Admin() {
   const [activeTab, setActiveTab] = useState<AdminTab>('Overview');
   const [activeWorkspace, setActiveWorkspace] =
     useState<AdminWorkspaceId>('live');
+  const [contextHelpId, setContextHelpId] = useState<string | null>(null);
 
   const [adminData, setAdminData] = useState<AdminDataResponse | null>(null);
   const [selectedTourId, setSelectedTourId] = useState<string | undefined>();
@@ -1056,6 +1076,26 @@ export function Admin() {
     useState<RoundPrizeForm>(emptyRoundPrizeForm);
   const [teeTimePlanForm, setTeeTimePlanForm] =
     useState<TeeTimePlanForm>(emptyTeeTimePlanForm);
+
+  const currentGuideId =
+    activeWorkspace === 'live'
+      ? 'guide-results'
+      : adminContextGuideByTab[activeTab] ?? 'guide-troubleshooting';
+  const currentGuide = adminGuideSections.find(
+    (section) => section.id === currentGuideId,
+  );
+  const openContextGuide = adminGuideSections.find(
+    (section) => section.id === contextHelpId,
+  );
+
+  useEffect(() => {
+    if (!contextHelpId) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setContextHelpId(null);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [contextHelpId]);
   const [states, setStates] = useState<Record<string, SaveState>>({});
   const [betPuntoResetConfirmation, setBetPuntoResetConfirmation] =
     useState('');
@@ -3012,6 +3052,23 @@ export function Admin() {
               </label>
             </section>
           ) : null}
+          {currentGuide ? (
+            <section className="admin-context-help" aria-label="Help for current admin tool">
+              <div>
+                <span>Using {activeWorkspace === 'live' ? 'Live results' : activeTab}</span>
+                <small>{currentGuide.summary}</small>
+              </div>
+              <button
+                className="admin-help-button"
+                type="button"
+                aria-label={`Help: ${currentGuide.title}`}
+                onClick={() => setContextHelpId(currentGuide.id)}
+              >
+                <span aria-hidden="true">i</span>
+                Help
+              </button>
+            </section>
+          ) : null}
           {dataLoading ? (
             <p className="card">Loading live admin data…</p>
           ) : null}
@@ -4049,7 +4106,7 @@ export function Admin() {
                                     });
                                   }}
                                 >
-                                  <option value="">No saved guide</option>
+                                  <option value="">No guide linked (valid for Par 3 or TBC)</option>
                                   {adminData.tourCourses.map((course) => (
                                     <option value={course.id} key={course.id}>
                                       {course.name}
@@ -4243,7 +4300,7 @@ export function Admin() {
                                   });
                                 }}
                               >
-                                <option value="">No saved guide</option>
+                                <option value="">No guide linked (valid for Par 3 or TBC)</option>
                                 {adminData.tourCourses.map((course) => (
                                   <option value={course.id} key={course.id}>
                                     {course.name}
@@ -6508,6 +6565,70 @@ export function Admin() {
           </p>
         </section>
       )}
+      {openContextGuide ? (
+        <div
+          className="admin-help-overlay"
+          role="presentation"
+          onClick={() => setContextHelpId(null)}
+        >
+          <section
+            className="admin-help-dialog card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-context-help-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Contextual Admin help</p>
+                <h3 id="admin-context-help-title">{openContextGuide.title}</h3>
+                <p>{openContextGuide.summary}</p>
+              </div>
+              <button
+                className="admin-help-close"
+                type="button"
+                aria-label="Close help"
+                onClick={() => setContextHelpId(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="admin-context-guide-blocks">
+              {openContextGuide.blocks.map((block) => (
+                <section key={block.heading}>
+                  <h4>{block.heading}</h4>
+                  <ol>
+                    {block.items.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ol>
+                </section>
+              ))}
+            </div>
+            <div className="admin-help-actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setContextHelpId(null);
+                  setActiveWorkspace('settings');
+                  setActiveTab('Admin guide');
+                  window.setTimeout(() => {
+                    document.getElementById(openContextGuide.id)?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'start',
+                    });
+                  }, 0);
+                }}
+              >
+                Open full Admin guide
+              </button>
+              <button type="button" onClick={() => setContextHelpId(null)}>
+                Close
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

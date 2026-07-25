@@ -7,6 +7,7 @@ const scoreboard = readFileSync('src/components/Scoreboard.tsx', 'utf8');
 const golf = readFileSync('src/pages/Matches.tsx', 'utf8');
 const courseEditor = readFileSync('src/components/AdminCourseEditor.tsx', 'utf8');
 const migration = readFileSync('supabase/migrations/0015_tour_courses_and_automatic_bet_defaults.sql', 'utf8');
+const homeVisibilityMigration = readFileSync('supabase/migrations/202607250002_course_home_visibility.sql', 'utf8');
 const liveReadinessMigration = readFileSync('supabase/migrations/202607250001_live_readiness_transactions.sql', 'utf8');
 const deadline = readFileSync('netlify/functions/_betMarketDeadline.ts', 'utf8');
 const defaults = readFileSync('netlify/functions/_betDefaults.ts', 'utf8');
@@ -53,10 +54,12 @@ test('courses are tour-owned snapshots that can be copied into a future tour', (
   assert.match(migration, /create table if not exists public\.tour_courses/);
   assert.match(migration, /tour_id uuid not null references public\.tours/);
   assert.match(migration, /foreign key \(course_id\) references public\.tour_courses/);
-  assert.match(courseEditor, /Copy a saved guide/);
+  assert.match(courseEditor, /Add from course library/);
   assert.match(courseEditor, /data\.courseLibrary\.filter\(\(course\) => course\.tourId !== tour\.id\)/);
   assert.match(courseEditor, /id: undefined/);
   assert.match(courseEditor, /tourId/);
+  assert.match(courseEditor, /Show this guide in the Home course section/);
+  assert.match(homeVisibilityMigration, /show_on_home boolean not null default true/);
 });
 
 test('required markets close at the timezone-aware first tee and auto-default in £5 increments to £10', () => {

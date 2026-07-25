@@ -337,10 +337,11 @@ export async function getBettingBundle(supabase: SupabaseClient) {
 
 export async function getTourInfoBundle(supabase: SupabaseClient) {
   const tour = await getCurrentTour(supabase);
-  if (!tour) return { tour: undefined, rounds: [], handbookSections: [], itineraryItems: [], teamDayKit: [], tourTeams: [], players: [], roundPrizeResults: [] };
+  if (!tour) return { tour: undefined, rounds: [], tourCourses: [], handbookSections: [], itineraryItems: [], teamDayKit: [], tourTeams: [], players: [], roundPrizeResults: [] };
 
-  const [roundRows, itineraryRows, kitRows, teamRows] = await Promise.all([
+  const [roundRows, courseRows, itineraryRows, kitRows, teamRows] = await Promise.all([
     runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'tour info rounds'),
+    runQuery(table(supabase, 'tour_courses').select('*').eq('tour_id', tour.id).eq('published', true).order('sort_order', { ascending: true }), 'tour info courses').catch(() => []),
     runQuery(table(supabase, 'tour_itinerary_items').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour itinerary items'),
     runQuery(table(supabase, 'tour_team_day_kit').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour team day kit'),
     runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour info teams'),
@@ -352,6 +353,7 @@ export async function getTourInfoBundle(supabase: SupabaseClient) {
   return {
     tour,
     rounds,
+    tourCourses: courseRows.map(mapCourseGuide),
     handbookSections: [],
     itineraryItems: activeManualItineraryItems(itineraryRows.map(mapTourItineraryItem), tour.id),
     teamDayKit: kitRows.map(mapTourTeamDayKit).filter((kit) => publicTeamIds.has(kit.teamId)),

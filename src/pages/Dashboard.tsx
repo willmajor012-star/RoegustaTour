@@ -99,7 +99,8 @@ export function Dashboard() {
   const tourLive = !tourComplete && (tour?.status === 'active' || Boolean(tourStart && tourEnd && Date.now() >= tourStart.getTime() && Date.now() <= tourEnd.getTime()));
   const upNextFormat = nextRound?.formatLabel ?? (nextTee?.match.format ? formatMatchFormat(nextTee.match.format) : undefined) ?? 'Format TBC';
   const upNextTime = normalizeTeeTime(nextTee?.match.teeTime) ?? normalizeTeeTime(nextRound?.teeTime) ?? 'TBC';
-  const tourCourses = courseGuidesForTour(tour, rounds, activeData.tourCourses);
+  const tourCourses = courseGuidesForTour(tour, rounds, activeData.tourCourses)
+    .filter((course) => course.showOnHome !== false);
 
   useEffect(() => {
     const interval = window.setInterval(() => setTick((value) => value + 1), 1000);

@@ -42,3 +42,12 @@ test('Admin guide documents manual and unsupported boundaries accurately', () =>
   }
   assert.doesNotMatch(adminSource, /Team 1 \/ Team 2|Team 1|Team 2/);
 });
+
+test('contextual help follows every Admin workflow and opens the full guide', () => {
+  for (const tab of ['Tour setup', 'Courses', 'Rounds & tee times', 'Tour itinerary', 'Player library', 'Squads & teams', 'Matches & pairings', 'Result entry', 'Bet Punto', 'Settings']) {
+    assert.match(adminSource, new RegExp(`['"]?${tab.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]?\\s*:`));
+  }
+  assert.match(adminSource, /className="admin-help-button"/);
+  assert.match(adminSource, /aria-label=\{`Help:/);
+  assert.match(adminSource, /Open full Admin guide/);
+});

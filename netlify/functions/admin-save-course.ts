@@ -59,6 +59,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const noteAvailability = optionalString(body.noteAvailability) as CourseGuide['noteAvailability'] | null;
   const sortOrder = optionalNumber(body.sortOrder) ?? 0;
   const published = body.published === true;
+  const showOnHome = body.showOnHome === true;
 
   if (!tourId) return badRequest('Tour ID is required.');
   if (!slug || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return badRequest('Course slug must use lowercase letters, numbers and single hyphens.');
@@ -98,6 +99,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     holes,
     sort_order: sortOrder,
     published,
+    show_on_home: showOnHome,
     updated_at: new Date().toISOString(),
   };
   const query = id

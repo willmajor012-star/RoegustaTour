@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { courseGuidePath, courseGuides } from '../data/courseGuides';
+import { courseGuidePath } from '../data/courseGuides';
 import type { CourseGuide } from '../lib/types';
 
 type Props = {
@@ -9,7 +9,7 @@ type Props = {
   courses?: CourseGuide[];
 };
 
-export function CourseRail({ title = 'Course guides', eyebrow = 'Course preparation', compact = false, courses = courseGuides }: Props) {
+export function CourseRail({ title = 'Course guides', eyebrow = 'Course preparation', compact = false, courses = [] }: Props) {
   return (
     <section className={`course-rail-section ${compact ? 'compact' : ''}`}>
       <div className="home-section-heading">

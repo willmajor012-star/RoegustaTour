@@ -37,7 +37,8 @@ test('admin can change public password without showing current password', () => 
 
 test('2026 helper creates agreed rounds and no Friday golf', () => {
   assert.match(templateSource, /Faldo Course/);
-  assert.match(templateSource, /O'Connor Jnr\. Course/);
+  assert.match(templateSource, /Amendoeira Par 3/);
+  assert.doesNotMatch(templateSource, /O'Connor Jnr\. Course/);
   assert.match(templateSource, /Old Course/);
   assert.match(templateSource, /Course TBC/);
   assert.match(templateSource, /round_date: '2026-11-07'/);

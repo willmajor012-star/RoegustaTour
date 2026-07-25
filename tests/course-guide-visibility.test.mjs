@@ -24,7 +24,7 @@ function tour(year) {
   };
 }
 
-test('the complete 2026 course set survives stale live round names', async () => {
+test('public courses never fall back to built-in templates or stale round names', async () => {
   const { courseGuidesForTour } = await loadCourseGuideModule();
   const staleRounds = [
     { courseName: 'Faldo Course' },
@@ -34,11 +34,10 @@ test('the complete 2026 course set survives stale live round names', async () =>
 
   const courses = courseGuidesForTour(tour(2026), staleRounds, []);
 
-  assert.deepEqual(courses.map((course) => course.slug), ['faldo', 'oconnor', 'old-course']);
-  assert.equal(courses.find((course) => course.slug === 'oconnor')?.holes.length, 18);
+  assert.deepEqual(courses, []);
 });
 
-test('a partial saved 2026 course set overrides matching guides without hiding the others', async () => {
+test('a partial saved 2026 course set exposes only the saved published guide', async () => {
   const { courseGuides, courseGuidesForTour } = await loadCourseGuideModule();
   const savedFaldo = {
     ...structuredClone(courseGuides.find((course) => course.slug === 'faldo')),
@@ -51,9 +50,23 @@ test('a partial saved 2026 course set overrides matching guides without hiding t
 
   const courses = courseGuidesForTour(tour(2026), [], [savedFaldo]);
 
-  assert.deepEqual(courses.map((course) => course.slug), ['faldo', 'oconnor', 'old-course']);
+  assert.deepEqual(courses.map((course) => course.slug), ['faldo']);
   assert.equal(courses[0].id, 'saved-faldo');
   assert.equal(courses[0].overview, 'Saved tour-specific Faldo overview.');
+});
+
+test('round guide matching requires the selected saved guide id', async () => {
+  const { courseGuides, courseGuideForRound } = await loadCourseGuideModule();
+  const savedFaldo = {
+    ...structuredClone(courseGuides.find((course) => course.slug === 'faldo')),
+    id: 'saved-faldo',
+    tourId: 'tour-2026',
+    published: true,
+  };
+
+  assert.equal(courseGuideForRound({ courseId: 'saved-faldo', courseName: 'Wrong name' }, [savedFaldo])?.id, 'saved-faldo');
+  assert.equal(courseGuideForRound({ courseName: 'Faldo Course' }, [savedFaldo]), undefined);
+  assert.equal(courseGuideForRound({ courseId: 'missing', courseName: 'Faldo Course' }, [savedFaldo]), undefined);
 });
 
 test('future tours expose only their own published course snapshots', async () => {
