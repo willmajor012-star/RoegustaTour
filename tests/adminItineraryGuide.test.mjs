@@ -121,6 +121,14 @@ test('public Tour information is a single schedule with daily shirts and no hand
   assert.match(publicData, /handbookSections: \[\]/);
 });
 
+test('itinerary day headings use a defined dark background so cream text remains visible', async () => {
+  const css = await readFile(new URL('../src/styles/experience.css', import.meta.url), 'utf8');
+  const headerRule = css.match(/\.itinerary-day-header\s*{[^}]+}/s)?.[0] ?? '';
+  assert.match(headerRule, /--rt-green-950,\s*#062b22/);
+  assert.match(headerRule, /--rt-green-850,\s*#0a3e34/);
+  assert.doesNotMatch(headerRule, /--rt-green-800/);
+});
+
 test('Bet Punto CSS stacks tables on mobile instead of requiring horizontal scrolling', async () => {
   const css = await readFile(new URL('../src/styles/globals.css', import.meta.url), 'utf8');
   assert.match(css, /@media \(max-width: 640px\)/);

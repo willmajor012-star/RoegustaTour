@@ -1589,7 +1589,11 @@
   display: grid;
   gap: 10px;
   padding: 15px 16px;
-  background: linear-gradient(135deg, var(--rt-green-950), var(--rt-green-800));
+  background: linear-gradient(
+    135deg,
+    var(--rt-green-950, #062b22),
+    var(--rt-green-850, #0a3e34)
+  );
   color: var(--rt-cream);
 }
 
