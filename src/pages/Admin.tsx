@@ -10,6 +10,7 @@ import { AdminLiveDesk } from '../components/AdminLiveDesk';
 import { AdminCourseEditor } from '../components/AdminCourseEditor';
 import { AdminTourItinerary } from '../components/AdminTourItinerary';
 import { AdminWorkspaceNav } from '../components/AdminWorkspaceNav';
+import { AdminContextHelpButton } from '../components/AdminContextHelpButton';
 import {
   applyBetDefaults,
   deleteBetMarket,
@@ -118,6 +119,7 @@ type TourForm = {
   timezone: string;
   status: Tour['status'];
   description: string;
+  isTest: boolean;
 };
 type AttendanceDraft = {
   attending: boolean;
@@ -441,6 +443,7 @@ const adminGuideSections: AdminGuideSection[] = [
           'Open Tour setup.',
           'Click Create new tour or Create next tour.',
           'Fill Name, Year, Location, Start date, End date, Status, and Description.',
+          'For a disposable full rehearsal only, tick Disposable QA test tour. Its name must begin QA TEST TOUR. Real tours must never use this flag.',
           'Status values are planned, active, complete or archived. Status meanings: planned is being prepared; active is the live/current event; complete is finished but visible historically; archived is historical and should only receive deliberate corrections.',
           'Click Create tour or Save tour.',
           'Click Set current public only when that is the tour public users should see.',
@@ -451,6 +454,7 @@ const adminGuideSections: AdminGuideSection[] = [
         items: [
           'Back to app, open Home, Golf, Tours, Stats and Bet Punto to confirm the correct current public tour is showing.',
           'If the wrong tour is current public, public pages can show the wrong rosters, courses, rounds, results, itinerary and Bet Punto markets.',
+          'A disposable QA tour can be completed and then permanently removed by typing its exact name. Real completed tours, results and Bet Punto history remain protected from deletion.',
         ],
       },
     ],
@@ -464,8 +468,9 @@ const adminGuideSections: AdminGuideSection[] = [
         heading: 'Step-by-step',
         items: [
           'Open Rounds & tee times.',
-          'Use the 2026 format helper for the selected tour.',
-          'It creates Sat AM Faldo Course, 4BBB, 18 holes; Sat PM Amendoeira Par 3, scramble, 9 holes with no guide required; Sun Old Course, singles, 18 holes; and Mon Course TBC, 4BBB, 9 holes.',
+          'Use the 2026 setup helper for the selected tour.',
+          'It installs any missing Faldo, O’Connor and Old Course library templates as saved, published tour guides and makes them available for the Home course section.',
+          'It creates Sat AM Faldo Course, 4BBB, 18 holes and links the saved Faldo guide; Sat PM Amendoeira Par 3, scramble, 9 holes with no guide required; Sun Old Course, singles, 18 holes and links the saved Old Course guide; and Mon Course TBC, 4BBB, 9 holes.',
         ],
       },
       {
@@ -473,7 +478,8 @@ const adminGuideSections: AdminGuideSection[] = [
         items: [
           'It does not create Friday golf. Do not assume Friday golf.',
           'It does not delete completed data.',
-          'It does not publish everything unexpectedly; check each Published flag yourself.',
+          'It publishes newly installed course guides because these replace the previous public built-in guides. It preserves the visibility and content of any guide already saved to that tour.',
+          'It does not publish rosters, rounds or matches unexpectedly; check those Published flags yourself.',
         ],
       },
       {
@@ -906,6 +912,7 @@ function emptyTourForm(tour?: Tour): TourForm {
     timezone: tour?.timezone ?? 'Europe/Lisbon',
     status: tour?.status ?? 'planned',
     description: tour?.description ?? '',
+    isTest: tour?.isTest ?? false,
   };
 }
 
@@ -1643,6 +1650,8 @@ export function Admin() {
       const saved = await saveTour({
         ...tourForm,
         year: Number(tourForm.year),
+        startDate: tourForm.startDate || undefined,
+        endDate: tourForm.endDate || undefined,
       });
       setSelectedTourId(saved.tour.id);
       return saved.tour.id;
@@ -2066,14 +2075,24 @@ export function Admin() {
 
   const removeSelectedTour = () => {
     if (!tourForm.id) return;
+    const confirmationName = tourForm.isTest
+      ? window.prompt(
+          `This permanently removes the disposable test tour and all of its teams, rounds, results and Bet Punto data. Type the exact name to continue:\n\n${tourForm.name}`,
+        )
+      : undefined;
+    if (tourForm.isTest && confirmationName !== tourForm.name) return;
     if (
+      !tourForm.isTest &&
       !window.confirm(
-        `Delete ${tourForm.name || 'this tour'}? This is only allowed for test tours with no completed results.`,
+        `Delete ${tourForm.name || 'this tour'}? Real tours can only be deleted before they contain protected results or Bet Punto history.`,
       )
     )
       return;
     void runSave('delete-tour', 'Tour deleted.', async () => {
-      await deleteTour({ id: tourForm.id as string });
+      await deleteTour({
+        id: tourForm.id as string,
+        confirmationName: confirmationName ?? undefined,
+      });
       setTourForm(emptyTourForm());
       return undefined;
     });
@@ -2688,13 +2707,13 @@ export function Admin() {
     if (!selectedTour) return;
     if (
       !window.confirm(
-        'Apply the agreed 2026 format template to this tour? This updates or creates planned rounds, but does not change the tour itinerary, matches or results.',
+        'Apply the agreed 2026 setup to this tour? This installs any missing Faldo, O’Connor and Old Course guides as published Home guides; links Faldo and Old Course to their matching rounds by saved guide ID; leaves the Par 3 without a guide; and updates or creates planned rounds. Existing guide edits, matches and results are preserved.',
       )
     )
       return;
     void runSave(
       'apply-2026-template',
-      '2026 format template applied.',
+      '2026 setup applied: guides installed and matching rounds linked.',
       async () => {
         const result = await apply2026FormatTemplate({
           tourId: selectedTour.id,
@@ -3080,6 +3099,7 @@ export function Admin() {
                   data={adminData}
                   tour={selectedTour}
                   onRefresh={() => loadAdminData(selectedTour.id)}
+                  onHelp={setContextHelpId}
                 />
               ) : null}
               {activeWorkspace !== 'live' ? (
@@ -3150,8 +3170,10 @@ export function Admin() {
 
                   {activeTab === 'Tour setup' ? (
                     <section className="card admin-panel">
-                      <p className="eyebrow">Tour lifecycle</p>
-                      <h3>Edit or create annual tours</h3>
+                      <div className="section-heading">
+                        <div><p className="eyebrow">Tour lifecycle</p><h3>Edit or create annual tours</h3></div>
+                        <AdminContextHelpButton label="Creating, selecting and deleting tours" onClick={() => setContextHelpId('guide-tour')} />
+                      </div>
                       <p>
                         Archiving or completing a tour keeps all historic
                         courses, teams, rounds, results, stats and betting.{' '}
@@ -3216,6 +3238,7 @@ export function Admin() {
                               timezone:
                                 selectedTour?.timezone ?? 'Europe/Lisbon',
                               description: '',
+                              isTest: false,
                             });
                           }}
                         >
@@ -3265,6 +3288,7 @@ export function Admin() {
                           <input
                             value={tourForm.startDate}
                             max={tourForm.endDate || undefined}
+                            required={tourForm.status !== 'archived'}
                             onChange={(event) =>
                               setTourForm({
                                 ...tourForm,
@@ -3279,6 +3303,7 @@ export function Admin() {
                           <input
                             value={tourForm.endDate}
                             min={tourForm.startDate || undefined}
+                            required={tourForm.status !== 'archived'}
                             onChange={(event) =>
                               setTourForm({
                                 ...tourForm,
@@ -3333,6 +3358,31 @@ export function Admin() {
                             }
                           />
                         </label>
+                        <label className="publish-toggle admin-full-span">
+                          <input
+                            type="checkbox"
+                            checked={tourForm.isTest}
+                            disabled={Boolean(tourForm.id)}
+                            onChange={(event) =>
+                              setTourForm({
+                                ...tourForm,
+                                isTest: event.target.checked,
+                                name:
+                                  event.target.checked &&
+                                  !/^QA TEST TOUR\b/i.test(tourForm.name)
+                                    ? `QA TEST TOUR ${tourForm.year || new Date().getFullYear()}`
+                                    : tourForm.name,
+                              })
+                            }
+                          />{' '}
+                          Disposable QA test tour
+                          <small>
+                            Only for a full rehearsal. Its name must begin “QA
+                            TEST TOUR”; exact-name confirmation allows all test
+                            results and bets to be removed afterwards. Real
+                            tours remain protected.
+                          </small>
+                        </label>
                         <SaveButton
                           state={states.tour}
                           label={tourForm.id ? 'Save tour' : 'Create tour'}
@@ -3350,8 +3400,10 @@ export function Admin() {
 
                   {activeTab === 'Player library' ? (
                     <section className="card admin-panel">
-                      <p className="eyebrow">Player library</p>
-                      <h3>Permanent players</h3>
+                      <div className="section-heading">
+                        <div><p className="eyebrow">Player library</p><h3>Permanent players</h3></div>
+                        <AdminContextHelpButton label="Player profiles and photos" onClick={() => setContextHelpId('guide-photos')} />
+                      </div>
                       <form className="admin-form-grid" onSubmit={submitPlayer}>
                         <p className="admin-full-span">
                           Create a new player here. Existing players edit inline
@@ -3581,8 +3633,10 @@ export function Admin() {
 
                   {activeTab === 'Squads & teams' ? (
                     <section className="card admin-panel">
-                      <p className="eyebrow">Squads & teams</p>
-                      <h3>{selectedTour?.name ?? 'No selected tour'}</h3>
+                      <div className="section-heading">
+                        <div><p className="eyebrow">Squads & teams</p><h3>{selectedTour?.name ?? 'No selected tour'}</h3></div>
+                        <AdminContextHelpButton label="Teams, attendance and rosters" onClick={() => setContextHelpId('guide-teams')} />
+                      </div>
                       {!selectedTour ? (
                         <p>No tour is available.</p>
                       ) : (
@@ -3666,8 +3720,10 @@ export function Admin() {
                             ) : null}
                           </form>
                           <div className="premium-inset">
-                            <p className="eyebrow">Bulk attendance</p>
-                            <h4>Tick everyone first, then save once</h4>
+                            <div className="section-heading">
+                              <div><p className="eyebrow">Bulk attendance</p><h4>Tick everyone first, then save once</h4></div>
+                              <AdminContextHelpButton label="Bulk attendance and tour profiles" onClick={() => setContextHelpId('guide-teams')} />
+                            </div>
                             {attendanceChanges.length > 0 ? (
                               <p className="form-success">
                                 {attendanceChanges.length} unsaved attendance
@@ -3847,8 +3903,10 @@ export function Admin() {
                             />
                           </div>
                           <div className="premium-inset">
-                            <p className="eyebrow">Bulk team assignment</p>
-                            <h4>Assign attending players, then save once</h4>
+                            <div className="section-heading">
+                              <div><p className="eyebrow">Bulk team assignment</p><h4>Assign attending players, then save once</h4></div>
+                              <AdminContextHelpButton label="Assigning players to teams" onClick={() => setContextHelpId('guide-teams')} />
+                            </div>
                             <div className="team-assignment-board">
                               <AssignmentColumn
                                 title="Unassigned"
@@ -4006,6 +4064,7 @@ export function Admin() {
                       data={adminData}
                       tour={selectedTour}
                       onRefresh={() => loadAdminData(selectedTour.id)}
+                      onHelp={() => setContextHelpId('guide-courses')}
                     />
                   ) : null}
                   {activeTab === 'Courses' && !selectedTour ? (
@@ -4018,6 +4077,7 @@ export function Admin() {
                       data={adminData}
                       tour={selectedTour}
                       onRefresh={() => loadAdminData(selectedTour.id)}
+                      onHelp={() => setContextHelpId('guide-info')}
                     />
                   ) : null}
                   {activeTab === 'Tour itinerary' && !selectedTour ? (
@@ -4028,8 +4088,10 @@ export function Admin() {
 
                   {activeTab === 'Rounds & tee times' ? (
                     <section className="card admin-panel">
-                      <p className="eyebrow">Rounds & tee times</p>
-                      <h3>{selectedTour?.name ?? 'No selected tour'}</h3>
+                      <div className="section-heading">
+                        <div><p className="eyebrow">Rounds & tee times</p><h3>{selectedTour?.name ?? 'No selected tour'}</h3></div>
+                        <AdminContextHelpButton label="Rounds, guide links and tee times" onClick={() => setContextHelpId('guide-rounds')} />
+                      </div>
                       {!selectedTour ? (
                         <p>No tour is available.</p>
                       ) : (
@@ -4056,7 +4118,10 @@ export function Admin() {
                             </button>
                           </div>
                           <div className="premium-inset">
-                            <p className="eyebrow">Tour round setup</p>
+                            <div className="section-heading">
+                              <p className="eyebrow">Tour round setup</p>
+                              <AdminContextHelpButton label="2026 rounds and course-guide setup" onClick={() => setContextHelpId('guide-2026-format')} />
+                            </div>
                             <div className="admin-form-grid">
                               <label>
                                 Number of rounds
@@ -4172,7 +4237,7 @@ export function Admin() {
                               />
                               <SaveButton
                                 state={states['apply-2026-template']}
-                                label="Apply 2026 format template"
+                                label="Apply 2026 setup"
                                 onClick={applyFormatTemplate2026}
                               />
                               <SaveButton
@@ -4482,8 +4547,10 @@ export function Admin() {
 
                   {activeTab === 'Matches & pairings' ? (
                     <section className="card admin-panel">
-                      <p className="eyebrow">Matches & pairings</p>
-                      <h3>Draft and publish pairings</h3>
+                      <div className="section-heading">
+                        <div><p className="eyebrow">Matches & pairings</p><h3>Draft and publish pairings</h3></div>
+                        <AdminContextHelpButton label="Matches and player pairings" onClick={() => setContextHelpId('guide-pairings')} />
+                      </div>
                       {!selectedTour ? (
                         <p>No tour is available.</p>
                       ) : adminData.rounds.length === 0 ? (
@@ -4522,7 +4589,10 @@ export function Admin() {
                             </select>
                           </label>
                           <div className="premium-inset">
-                            <p className="eyebrow">Sequential tee times</p>
+                            <div className="section-heading">
+                              <p className="eyebrow">Sequential tee times</p>
+                              <AdminContextHelpButton label="Sequential match tee times" onClick={() => setContextHelpId('guide-pairings')} />
+                            </div>
                             <div className="admin-form-grid">
                               <label>
                                 First tee time
@@ -5053,8 +5123,10 @@ export function Admin() {
 
                   {activeTab === 'Result entry' ? (
                     <section className="card admin-panel">
-                      <p className="eyebrow">Corrections</p>
-                      <h3>Correct or clear a saved match result</h3>
+                      <div className="section-heading">
+                        <div><p className="eyebrow">Corrections</p><h3>Correct or clear a saved match result</h3></div>
+                        <AdminContextHelpButton label="Correcting and clearing match results" onClick={() => setContextHelpId('guide-results')} />
+                      </div>
                       <p>
                         Enter normal live results from the Live area. Use this
                         protected workflow when an existing result needs a
@@ -5309,8 +5381,10 @@ export function Admin() {
                             ) : null}
                           </form>
                           <div className="premium-inset">
-                            <p className="eyebrow">Secondary prize results</p>
-                            <h4>Historic prize winners</h4>
+                            <div className="section-heading">
+                              <div><p className="eyebrow">Secondary prize results</p><h4>Historic prize winners</h4></div>
+                              <AdminContextHelpButton label="Secondary prize winners and linked bet settlement" onClick={() => setContextHelpId('guide-secondary-prizes')} />
+                            </div>
                             <SaveButton
                               state={states['default-round-prizes']}
                               label="Add default secondary prizes for this tour"
@@ -5627,8 +5701,10 @@ export function Admin() {
 
                   {activeTab === 'Settings' ? (
                     <section className="card admin-panel">
-                      <p className="eyebrow">Settings</p>
-                      <h3>Public access</h3>
+                      <div className="section-heading">
+                        <div><p className="eyebrow">Settings</p><h3>Public access</h3></div>
+                        <AdminContextHelpButton label="Public password access" onClick={() => setContextHelpId('guide-public-password')} />
+                      </div>
                       <p>
                         The public app uses a shared password. This is separate
                         from the Admin PIN and does not grant admin access.
@@ -5698,8 +5774,10 @@ export function Admin() {
                   ) : null}
                   {activeTab === 'Bet Punto' ? (
                     <section className="card admin-panel">
-                      <p className="eyebrow">Bet Punto</p>
-                      <h3>Markets, options and indicative returns</h3>
+                      <div className="section-heading">
+                        <div><p className="eyebrow">Bet Punto</p><h3>Markets, options and indicative returns</h3></div>
+                        <AdminContextHelpButton label="Bet Punto markets, defaults and settlement" onClick={() => setContextHelpId('guide-bet-punto')} />
+                      </div>
                       {betPuntoVisibilityWarnings.length > 0 ? (
                         <div className="premium-inset form-error">
                           <strong>Public visibility warnings</strong>
@@ -5721,8 +5799,10 @@ export function Admin() {
                       ) : (
                         <>
                           <div className="premium-inset">
-                            <p className="eyebrow">Clean slate</p>
-                            <h4>Reset Bet Punto for this tour</h4>
+                            <div className="section-heading">
+                              <div><p className="eyebrow">Clean slate</p><h4>Reset Bet Punto for this tour</h4></div>
+                              <AdminContextHelpButton label="Resetting a tour’s Bet Punto slate" onClick={() => setContextHelpId('guide-bet-punto')} />
+                            </div>
                             <p>
                               Deletes only Bet Punto markets, options and bets
                               for {selectedTour.name}. Golf rounds, matches,
@@ -5767,7 +5847,10 @@ export function Admin() {
                             />
                           </div>
                           <div className="premium-inset">
-                            <p className="eyebrow">Quick market setup</p>
+                            <div className="section-heading">
+                              <p className="eyebrow">Quick market setup</p>
+                              <AdminContextHelpButton label="Building required Bet Punto markets" onClick={() => setContextHelpId('guide-bet-punto')} />
+                            </div>
                             <p>
                               Bet Punto uses two round-linked markets only:
                               highest individual Stableford, or lowest team
@@ -6343,7 +6426,10 @@ export function Admin() {
                           </div>
                           {selectedBetMarket ? (
                             <div className="premium-inset">
-                              <p className="eyebrow">Advanced corrections</p>
+                              <div className="section-heading">
+                                <p className="eyebrow">Advanced corrections</p>
+                                <AdminContextHelpButton label="Manual Bet Punto corrections" onClick={() => setContextHelpId('guide-bet-punto')} />
+                              </div>
                               <form
                                 className="admin-form-grid"
                                 onSubmit={submitAdminBet}

@@ -2,17 +2,18 @@ import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_admi
 import { badRequest, optionalString, runRows, withAdminSupabase } from './_adminSupabase';
 import { mapRound, mapTourItineraryItem } from './_mappers';
 import { syncRequiredMarketDeadlinesForRound } from './_betMarketDeadline';
+import { installCourseTemplatesForTour } from './_courseTemplateInstaller';
 import type { MatchFormat } from '../../src/lib/types';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 type RoundRow = { id: string; round_number: number; tee_time?: string | null; status?: string | null; published?: boolean | null };
 
-type TemplateRound = { round_number: number; name: string; round_date: string; session: 'AM' | 'PM'; course_name: string; format: MatchFormat; format_label: string; holes: 9 | 18; status: 'planned' };
+type TemplateRound = { round_number: number; name: string; round_date: string; session: 'AM' | 'PM'; course_name: string; course_slug?: string; format: MatchFormat; format_label: string; holes: 9 | 18; status: 'planned' };
 
 const template: TemplateRound[] = [
-  { round_number: 1, name: 'Saturday AM 4BBB', round_date: '2026-11-07', session: 'AM', course_name: 'Faldo Course', format: 'better_ball', format_label: '4BBB', holes: 18, status: 'planned' },
+  { round_number: 1, name: 'Saturday AM 4BBB', round_date: '2026-11-07', session: 'AM', course_name: 'Faldo Course', course_slug: 'faldo', format: 'better_ball', format_label: '4BBB', holes: 18, status: 'planned' },
   { round_number: 2, name: 'Saturday PM Par 3 Scramble', round_date: '2026-11-07', session: 'PM', course_name: 'Amendoeira Par 3', format: 'scramble', format_label: 'Scramble', holes: 9, status: 'planned' },
-  { round_number: 3, name: 'Sunday Singles', round_date: '2026-11-08', session: 'AM', course_name: 'Old Course', format: 'singles', format_label: 'Singles', holes: 18, status: 'planned' },
+  { round_number: 3, name: 'Sunday Singles', round_date: '2026-11-08', session: 'AM', course_name: 'Old Course', course_slug: 'old-course', format: 'singles', format_label: 'Singles', holes: 18, status: 'planned' },
   { round_number: 4, name: 'Monday 9-hole 4BBB', round_date: '2026-11-09', session: 'AM', course_name: 'Course TBC', format: 'better_ball', format_label: '4BBB', holes: 9, status: 'planned' },
 ];
 
@@ -25,9 +26,15 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (tours.length === 0) return badRequest('Tour must exist.');
   if (Number(tours[0].year) !== 2026) return badRequest('The 2026 format template can only be applied to a 2026 tour.');
 
+  const installedGuides = await installCourseTemplatesForTour(
+    supabase,
+    tourId,
+    ['faldo', 'oconnor', 'old-course'],
+    { published: true, showOnHome: true },
+  );
   const [existingRounds, courseRows] = await Promise.all([
     runRows<RoundRow>(supabase.from('rounds').select('id, round_number, tee_time, status, published').eq('tour_id', tourId), 'load rounds'),
-    runRows<{ id: string; name: string }>(supabase.from('tour_courses').select('id, name').eq('tour_id', tourId), 'load tour courses').catch(() => []),
+    runRows<{ id: string; slug: string; name: string }>(supabase.from('tour_courses').select('id, slug, name').eq('tour_id', tourId), 'load tour courses'),
   ]);
   const templateNumbers = new Set(template.map((round) => round.round_number));
   const extraRounds = existingRounds.filter((round) => !templateNumbers.has(Number(round.round_number)) && round.status !== 'complete');
@@ -43,8 +50,11 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
 
   for (const round of template) {
     const existing = existingRounds.find((candidate) => Number(candidate.round_number) === round.round_number);
-    const courseId = courseRows.find((course) => course.name.toLowerCase() === round.course_name.toLowerCase())?.id ?? null;
-    const row = { tour_id: tourId, ...round, course_id: courseId, tee_time: existing?.tee_time || null, notes: notes(round.session), published: existing?.published ?? false };
+    const courseId = round.course_slug
+      ? courseRows.find((course) => course.slug === round.course_slug)?.id ?? null
+      : null;
+    const { course_slug: _courseSlug, ...roundValues } = round;
+    const row = { tour_id: tourId, ...roundValues, course_id: courseId, tee_time: existing?.tee_time || null, notes: notes(round.session), published: existing?.published ?? false };
     if (existing) {
       if (existing.status === 'complete') continue;
       const { error } = await supabase.from('rounds').update(row).eq('id', existing.id).eq('tour_id', tourId);
@@ -60,5 +70,12 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     runRows<Record<string, unknown>>(supabase.from('tour_itinerary_items').select('*').eq('tour_id', tourId).order('sort_order', { ascending: true }), 'itinerary'),
   ]);
   for (const round of roundRows) await syncRequiredMarketDeadlinesForRound(supabase, String(round.id));
-  return jsonResponse(200, { ok: true, rounds: roundRows.map(mapRound), itineraryItems: itemRows.map(mapTourItineraryItem), warnings });
+  return jsonResponse(200, {
+    ok: true,
+    rounds: roundRows.map(mapRound),
+    itineraryItems: itemRows.map(mapTourItineraryItem),
+    installedCourseGuides: installedGuides.courses,
+    createdCourseGuideSlugs: installedGuides.createdSlugs,
+    warnings,
+  });
 });

@@ -7,6 +7,7 @@ import {
   type AdminDataResponse,
 } from '../lib/adminApi';
 import type { Match, RoundPrizeResult, Tour } from '../lib/types';
+import { AdminContextHelpButton } from './AdminContextHelpButton';
 
 type ResultDraft = {
   winningSide: Exclude<Match['winningSide'], 'void'> | '';
@@ -50,10 +51,12 @@ export function AdminLiveDesk({
   data,
   tour,
   onRefresh,
+  onHelp,
 }: {
   data: AdminDataResponse;
   tour: Tour;
   onRefresh: () => Promise<void> | void;
+  onHelp: (guideId: 'guide-results' | 'guide-secondary-prizes') => void;
 }) {
   const preferredRound = data.rounds.find((round) => round.status === 'active')
     ?? data.rounds.find((round) => round.status === 'planned')
@@ -229,6 +232,7 @@ export function AdminLiveDesk({
         <h3>Live results desk</h3>
         <p>Choose the round once, enter every result, then publish one complete update.</p>
       </div>
+      <AdminContextHelpButton label="Live match results" onClick={() => onHelp('guide-results')} />
       <label>Round
         <select value={selectedRound.id} onChange={(event) => setSelectedRoundId(event.target.value)}>
           {data.rounds.map((round) => <option key={round.id} value={round.id}>{roundLabel(round)}</option>)}
@@ -276,7 +280,7 @@ export function AdminLiveDesk({
     <div className="card live-prize-card">
       <div className="section-heading">
         <div><p className="eyebrow">Round winner</p><h3>{prizeType === 'team_gross' ? 'Lowest scramble score' : 'Highest Stableford score'}</h3></div>
-        <span className={linkedMarket ? 'market-linked' : 'market-missing'}>{linkedMarket ? 'Bet market linked' : 'No market linked'}</span>
+        <div className="chip-list"><AdminContextHelpButton label="Secondary prize winner and Bet Punto settlement" onClick={() => onHelp('guide-secondary-prizes')} /><span className={linkedMarket ? 'market-linked' : 'market-missing'}>{linkedMarket ? 'Bet market linked' : 'No market linked'}</span></div>
       </div>
       <div className="live-prize-form">
         <label>Winner

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { courseGuides } from '../data/courseGuides';
-import { deleteCourse, saveCourse, type AdminDataResponse } from '../lib/adminApi';
+import { deleteCourse, installCourseTemplates, saveCourse, type AdminDataResponse } from '../lib/adminApi';
 import type { CourseGuide, CourseHole, CourseTee, Tour } from '../lib/types';
+import { AdminContextHelpButton } from './AdminContextHelpButton';
 
 type EditorState = {
   saving: boolean;
@@ -68,7 +69,7 @@ function completeHoleRows(course: CourseGuide, count: number): CourseGuide {
   return { ...course, holes };
 }
 
-export function AdminCourseEditor({ data, tour, onRefresh }: { data: AdminDataResponse; tour: Tour; onRefresh: () => Promise<void> | void }) {
+export function AdminCourseEditor({ data, tour, onRefresh, onHelp }: { data: AdminDataResponse; tour: Tour; onRefresh: () => Promise<void> | void; onHelp: () => void }) {
   const orderedCourses = useMemo(() => [...data.tourCourses].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)), [data.tourCourses]);
   const reusableCourses = useMemo(() => {
     const all = [...courseGuides, ...data.courseLibrary.filter((course) => course.tourId !== tour.id)];
@@ -171,9 +172,38 @@ export function AdminCourseEditor({ data, tour, onRefresh }: { data: AdminDataRe
     }
   };
 
+  const install2026Guides = async () => {
+    setState({ saving: true, message: 'Installing missing 2026 course guides…' });
+    try {
+      const result = await installCourseTemplates({
+        tourId: tour.id,
+        templateSlugs: ['faldo', 'oconnor', 'old-course'],
+        published: true,
+        showOnHome: true,
+      });
+      await onRefresh();
+      setState({
+        saving: false,
+        message:
+          result.createdSlugs.length > 0
+            ? `Installed ${result.createdSlugs.length} missing guide${result.createdSlugs.length === 1 ? '' : 's'}. Existing saved guides were preserved.`
+            : 'All three 2026 guides were already saved; nothing was overwritten.',
+      });
+    } catch (error) {
+      setState({
+        saving: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'The 2026 guide set could not be installed.',
+      });
+    }
+  };
+
   return <section className="admin-course-editor">
     <div className="card course-admin-heading">
       <div><p className="eyebrow">Tour course library</p><h3>Course guides & scorecards</h3><p>Every public guide must first be saved to this tour. Start from a library template or a previous-tour guide, check it, save it, then link it to the relevant round. A round such as the Par 3 can deliberately have no guide.</p></div>
+      <AdminContextHelpButton label="Course guide library and setup" onClick={onHelp} />
       <div className="course-admin-pickers">
         <label>Edit course
           <select value={draft.id ?? ''} onChange={(event) => setDraft(orderedCourses.find((course) => course.id === event.target.value) ?? emptyCourse(tour.id, orderedCourses.length))}>
@@ -192,11 +222,12 @@ export function AdminCourseEditor({ data, tour, onRefresh }: { data: AdminDataRe
           <small>This loads a copy into the form. Review it and press Save course guide to add it to this tour.</small>
         </label>
         <button type="button" onClick={() => setDraft(emptyCourse(tour.id, orderedCourses.length))}>New blank course</button>
+        {tour.year === 2026 ? <button type="button" disabled={state.saving} onClick={() => void install2026Guides()}>Install missing 2026 guide set</button> : null}
       </div>
     </div>
 
     <div className="card admin-course-section">
-      <div className="section-heading"><div><p className="eyebrow">1 · Course identity</p><h3>Overview & official sources</h3></div></div>
+      <div className="section-heading"><div><p className="eyebrow">1 · Course identity</p><h3>Overview & official sources</h3></div><AdminContextHelpButton label="Course identity and publishing" onClick={onHelp} /></div>
       <div className="admin-form-grid">
         <label>Name<input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value, slug: draft.slug || slugify(event.target.value) })} /></label>
         <label>Short name<input value={draft.shortName} onChange={(event) => setDraft({ ...draft, shortName: event.target.value })} /></label>
@@ -218,7 +249,7 @@ export function AdminCourseEditor({ data, tour, onRefresh }: { data: AdminDataRe
     </div>
 
     <div className="card admin-course-section">
-      <div className="section-heading"><div><p className="eyebrow">2 · Tees</p><h3>Scorecard tees</h3></div><button className="pill" type="button" onClick={addTee}>Add tee</button></div>
+      <div className="section-heading"><div><p className="eyebrow">2 · Tees</p><h3>Scorecard tees</h3></div><div className="chip-list"><AdminContextHelpButton label="Course scorecard tees" onClick={onHelp} /><button className="pill" type="button" onClick={addTee}>Add tee</button></div></div>
       <div className="course-tee-admin-list">{draft.tees.map((tee, index) => <div key={`${tee.key}:${index}`}>
         <label>Key<input value={tee.key} onChange={(event) => updateTee(index, { key: slugify(event.target.value) })} /></label>
         <label>Label<input value={tee.label} onChange={(event) => updateTee(index, { label: event.target.value })} /></label>
@@ -228,7 +259,7 @@ export function AdminCourseEditor({ data, tour, onRefresh }: { data: AdminDataRe
     </div>
 
     <div className="card admin-course-section">
-      <div className="section-heading"><div><p className="eyebrow">3 · Scorecard</p><h3>Hole data in yards</h3></div><div className="chip-list"><button className="pill" type="button" onClick={() => setDraft((current) => completeHoleRows(current, 9))}>9 holes</button><button className="pill" type="button" onClick={() => setDraft((current) => completeHoleRows(current, 18))}>18 holes</button></div></div>
+      <div className="section-heading"><div><p className="eyebrow">3 · Scorecard</p><h3>Hole data in yards</h3></div><div className="chip-list"><AdminContextHelpButton label="Course hole data" onClick={onHelp} /><button className="pill" type="button" onClick={() => setDraft((current) => completeHoleRows(current, 9))}>9 holes</button><button className="pill" type="button" onClick={() => setDraft((current) => completeHoleRows(current, 18))}>18 holes</button></div></div>
       {draft.holes.length === 0 ? <p>Choose 9 or 18 holes to create the scorecard rows, then enter the official figures.</p> : <div className="course-hole-admin-wrap"><table className="course-hole-admin-table"><thead><tr><th>Hole</th><th>Par</th><th>SI</th>{draft.tees.map((tee) => <th key={tee.key}>{tee.label}</th>)}<th>Official note</th></tr></thead><tbody>{draft.holes.map((hole, index) => <tr key={hole.number}>
         <td><strong>{hole.number}</strong></td>
         <td><input aria-label={`Hole ${hole.number} par`} inputMode="numeric" value={hole.par || ''} onChange={(event) => updateHole(index, { par: Number(event.target.value) || 0 })} /></td>

@@ -88,6 +88,7 @@ export function mapTour(row: Row): Tour {
     status: requiredString(row, 'status') as Tour['status'],
     description: asString(row.description),
     isCurrentPublic: asBoolean(row.is_current_public),
+    isTest: asBoolean(row.is_test),
   };
 }
 

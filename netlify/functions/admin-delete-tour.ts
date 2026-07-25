@@ -7,14 +7,24 @@ type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
 export const handler: Handler = (event) => withAdminSupabase(event, 'POST', async (supabase, body) => {
   const id = optionalString(body.id);
+  const confirmationName = optionalString(body.confirmationName);
   if (!id) return badRequest('Tour ID is required.');
 
-  const tours = await runRows<{ id: string; name: string; year: number; status: string }>(supabase.from('tours').select('id, name, year, status').eq('id', id).limit(1), 'find tour to delete');
+  const tours = await runRows<{ id: string; name: string; year: number; status: string; is_test: boolean }>(supabase.from('tours').select('id, name, year, status, is_test').eq('id', id).limit(1), 'find tour to delete');
   if (tours.length === 0) return badRequest('Tour does not exist.');
   const tour = tours[0];
 
+  if (tour.is_test) {
+    if (confirmationName !== tour.name) {
+      return badRequest('Enter the exact disposable test-tour name to confirm deletion.');
+    }
+    const deletedTestTour = await supabase.from('tours').delete().eq('id', id).eq('is_test', true);
+    if (deletedTestTour.error) throw new Error(`delete disposable test tour: ${deletedTestTour.error.message}`);
+    return jsonResponse(200, { ok: true, deletedTourId: id });
+  }
+
   if (protectedYears.has(Number(tour.year))) return badRequest('Roegusta tours from 2022, 2023, 2024 and 2025 are protected and cannot be deleted from admin.');
-  if (tour.status === 'complete' || tour.status === 'archived') return badRequest('Complete or archived tours cannot be deleted from admin. Archive protects historic data.');
+  if (tour.status === 'complete' || tour.status === 'archived') return badRequest('Complete or archived real tours cannot be deleted from admin. Archive protects historic data.');
 
   const [completedMatches, playerResults, historicalStats, protectedMarkets, allMarkets] = await Promise.all([
     runRows(supabase.from('matches').select('id').eq('tour_id', id).eq('status', 'complete').limit(1), 'completed matches for tour delete'),

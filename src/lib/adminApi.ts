@@ -47,6 +47,7 @@ export type SaveTourPayload = {
   endDate?: string;
   status: Tour['status'];
   description?: string;
+  isTest?: boolean;
 };
 
 export type SaveTourPlayerPayload = {
@@ -239,14 +240,21 @@ function postAdminJson<T>(path: string, payload: unknown): Promise<T> {
 
 export const fetchPublicAccessSettings = () => fetchAdminJson<PublicAccessSettingsResponse>('/.netlify/functions/admin-public-access-settings', { method: 'GET' });
 export const savePublicAccessSettings = (payload: SavePublicAccessSettingsPayload) => postAdminJson<PublicAccessSettingsResponse>('/.netlify/functions/admin-public-access-settings', payload);
-export const apply2026FormatTemplate = (payload: { tourId: string }) => postAdminJson<{ ok: true; rounds: Round[]; itineraryItems: TourItineraryItem[]; warnings?: string[] }>('/.netlify/functions/admin-apply-2026-format-template', payload);
+export const apply2026FormatTemplate = (payload: { tourId: string }) => postAdminJson<{
+  ok: true;
+  rounds: Round[];
+  itineraryItems: TourItineraryItem[];
+  installedCourseGuides: Array<{ id: string; slug: string; name: string }>;
+  createdCourseGuideSlugs: string[];
+  warnings?: string[];
+}>('/.netlify/functions/admin-apply-2026-format-template', payload);
 
 export const fetchAdminData = (tourId?: string) => fetchAdminJson<AdminDataResponse>(`/.netlify/functions/admin-data${tourId ? `?tourId=${encodeURIComponent(tourId)}` : ''}`, { method: 'GET' });
 export const savePlayer = (payload: SavePlayerPayload) => postAdminJson<{ ok: true; player: Player }>('/.netlify/functions/admin-save-player', payload);
 export const saveTour = (payload: SaveTourPayload) => postAdminJson<{ ok: true; tour: Tour }>('/.netlify/functions/admin-save-tour', payload);
 export const setCurrentPublicTour = (payload: { tourId: string }) => postAdminJson<{ ok: true; tour: Tour }>('/.netlify/functions/admin-set-current-public-tour', payload);
 export const publishAdminContent = (payload: { tourId: string; scope: 'round_matches' | 'tour_all'; roundId?: string }) => postAdminJson<{ ok: true; result: { teamCount: number; roundCount: number; matchCount: number } }>('/.netlify/functions/admin-publish-content', payload);
-export const deleteTour = (payload: { id: string }) => postAdminJson<{ ok: true; deletedTourId: string }>('/.netlify/functions/admin-delete-tour', payload);
+export const deleteTour = (payload: { id: string; confirmationName?: string }) => postAdminJson<{ ok: true; deletedTourId: string }>('/.netlify/functions/admin-delete-tour', payload);
 export const saveTourPlayer = (payload: SaveTourPlayerPayload) => postAdminJson<{ ok: true; tourPlayer: TourPlayer; tourTeamMembers?: TourTeamMember[] }>('/.netlify/functions/admin-save-tour-player', payload);
 export const saveTourTeam = (payload: SaveTourTeamPayload) => postAdminJson<{ ok: true; tourTeam: TourTeam }>('/.netlify/functions/admin-save-team', payload);
 export const updateTeamPublished = (payload: { tourId: string; teamId: string; published: boolean }) => postAdminJson<{ ok: true; tourTeam: TourTeam }>('/.netlify/functions/admin-update-team-published', payload);
@@ -259,6 +267,7 @@ export const saveRound = (payload: SaveRoundPayload) => postAdminJson<{ ok: true
 export const updateRoundPublished = (payload: { tourId: string; roundId: string; published: boolean }) => postAdminJson<{ ok: true; round: Round }>('/.netlify/functions/admin-update-round-published', payload);
 export const deleteRound = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedRoundId: string }>('/.netlify/functions/admin-delete-round', payload);
 export const saveCourse = (payload: SaveCoursePayload) => postAdminJson<{ ok: true; course: CourseGuide }>('/.netlify/functions/admin-save-course', payload);
+export const installCourseTemplates = (payload: { tourId: string; templateSlugs: string[]; published: boolean; showOnHome: boolean }) => postAdminJson<{ ok: true; courses: Array<{ id: string; slug: string; name: string }>; createdSlugs: string[] }>('/.netlify/functions/admin-install-course-templates', payload);
 export const deleteCourse = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedCourseId: string }>('/.netlify/functions/admin-delete-course', payload);
 export const saveMatch = (payload: SaveMatchPayload) => postAdminJson<{ ok: true; match: Match; matchParticipants: MatchParticipant[] }>('/.netlify/functions/admin-save-match', payload);
 export const updateMatchPublished = (payload: { tourId: string; matchId: string; published: boolean }) => postAdminJson<{ ok: true; match: Match }>('/.netlify/functions/admin-update-match-published', payload);
