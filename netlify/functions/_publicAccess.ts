@@ -6,11 +6,15 @@ declare const process: { env: Record<string, string | undefined> };
 export type PublicAccessEvent = { headers?: Record<string, string | undefined>; httpMethod?: string; body?: string | null };
 export type PublicAccessResponse = { statusCode: number; headers?: Record<string, string>; body: string };
 
-type PublicAccessSetting = { password_hash: string | null; password_salt: string | null; session_version: number | null };
+type PublicAccessSetting = {
+  password_hash: string | null;
+  password_salt: string | null;
+  session_version: number | null;
+  requires_change: boolean | null;
+};
 
 const COOKIE_NAME = 'rt_public_access';
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 180;
-const DEFAULT_PUBLIC_PASSWORD = 'roegustatour';
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
@@ -31,10 +35,7 @@ export function createPasswordSalt() { const bytes = new Uint8Array(16); crypto.
 
 function secret() {
   const value = process.env.TOUR_PUBLIC_ACCESS_SECRET;
-  if (!value) {
-    if (process.env.CONTEXT === 'production' || process.env.NODE_ENV === 'production') throw new Error('Missing required public access environment variable: TOUR_PUBLIC_ACCESS_SECRET');
-    return 'dev-public-access-secret';
-  }
+  if (!value) throw new Error('Missing required public access environment variable: TOUR_PUBLIC_ACCESS_SECRET');
   return value;
 }
 
@@ -43,18 +44,36 @@ async function sign(value: string) {
   return bytesToBase64Url(new Uint8Array(await crypto.subtle.sign('HMAC', key, textEncoder.encode(value))));
 }
 
-export async function getPublicAccessSetting(supabase: SupabaseClient): Promise<{ configured: boolean; passwordHash: string; passwordSalt: string; sessionVersion: number }> {
-  const { data, error } = await supabase.from('public_access_settings').select('password_hash, password_salt, session_version').eq('id', 'default').maybeSingle<PublicAccessSetting>();
-  if (error && !/public_access_settings|does not exist|schema cache/i.test(error.message)) throw new Error(`load public access setting: ${error.message}`);
-  if (data?.password_hash && data.password_salt) return { configured: true, passwordHash: data.password_hash, passwordSalt: data.password_salt, sessionVersion: data.session_version ?? 1 };
-  const salt = 'bootstrap-default';
-  return { configured: false, passwordHash: await hashPublicPassword(DEFAULT_PUBLIC_PASSWORD, salt), passwordSalt: salt, sessionVersion: 1 };
+export async function getPublicAccessSetting(supabase: SupabaseClient): Promise<{ configured: boolean; requiresChange: boolean; passwordHash: string; passwordSalt: string; sessionVersion: number }> {
+  const { data, error } = await supabase.from('public_access_settings').select('password_hash, password_salt, session_version, requires_change').eq('id', 'default').maybeSingle<PublicAccessSetting>();
+  if (error) {
+    if (/requires_change/i.test(error.message)) {
+      throw new Error('Public access needs the live-readiness database migration. Apply 202607250001_live_readiness_transactions.sql.');
+    }
+    const missingSettingsTable = /(relation|table).*public_access_settings.*does not exist|could not find the table.*public_access_settings/i.test(error.message);
+    if (!missingSettingsTable) throw new Error(`load public access setting: ${error.message}`);
+  }
+  if (data?.password_hash && data.password_salt) {
+    return {
+      configured: true,
+      requiresChange: data.requires_change ?? false,
+      passwordHash: data.password_hash,
+      passwordSalt: data.password_salt,
+      sessionVersion: data.session_version ?? 1,
+    };
+  }
+  throw new Error('Public access is not configured. Set a password in Admin → Settings.');
 }
 
 export async function verifyPublicPassword(supabase: SupabaseClient, password: string) {
   const setting = await getPublicAccessSetting(supabase);
   const received = await hashPublicPassword(password, setting.passwordSalt);
-  return { ok: constantTimeEqual(received, setting.passwordHash), sessionVersion: setting.sessionVersion, configured: setting.configured };
+  return {
+    ok: constantTimeEqual(received, setting.passwordHash),
+    sessionVersion: setting.sessionVersion,
+    configured: setting.configured,
+    requiresChange: setting.requiresChange,
+  };
 }
 
 function readCookie(event: PublicAccessEvent) {

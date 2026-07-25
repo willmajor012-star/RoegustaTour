@@ -1,6 +1,7 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { badRequest, optionalNumber, optionalString, runRows, runSingle, withAdminSupabase } from './_adminSupabase';
 import { mapTourPlayer, mapTourTeamMember } from './_mappers';
+import { resetPendingAutomaticDefaultsForTour } from './_betDefaults';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -50,6 +51,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     }
   }
 
+  await resetPendingAutomaticDefaultsForTour(supabase, tourId);
   const memberRows = await runRows(supabase.from('tour_team_members').select('*').eq('tour_id', tourId), 'tour team members after attendance save');
 
   return jsonResponse(200, { ok: true, tourPlayer: mapTourPlayer(saved), tourTeamMembers: memberRows.map(mapTourTeamMember) });

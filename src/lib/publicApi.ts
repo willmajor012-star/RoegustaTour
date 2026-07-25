@@ -33,6 +33,14 @@ export type PublicMatchesResponse = PublicResponse<{
   tourCourses: CourseGuide[];
 }>;
 
+export type PublicDashboardResponse = PublicMatchesResponse & {
+  recentResults: Match[];
+  openMarkets: BetMarket[];
+  scores: TeamScoreRow[];
+};
+
+export type PublicTourHeaderResponse = PublicResponse<{ tour?: Tour }>;
+
 export type PublicPlayersResponse = PublicResponse<{
   players: Player[];
 }>;
@@ -123,21 +131,46 @@ export type PublicTourInfoResponse = PublicResponse<{
   roundPrizeResults: RoundPrizeResult[];
 }>;
 
-async function fetchPublicJson<T>(path: string): Promise<T> {
-  const response = await fetch(path);
-  if (!response.ok) {
-    let detail = '';
-    try {
-      const text = await response.text();
-      detail = text ? `: ${text.slice(0, 240)}` : '';
-    } catch {
-      detail = '';
-    }
-    throw new Error(`Public data request failed for ${path} with ${response.status}${detail}`);
-  }
-  return response.json() as Promise<T>;
+const publicResponseCache = new Map<string, { expiresAt: number; value: unknown }>();
+const publicRequestsInFlight = new Map<string, Promise<unknown>>();
+const PUBLIC_RESPONSE_CACHE_MS = 4_000;
+
+export function clearPublicDataCache() {
+  publicResponseCache.clear();
 }
 
+async function fetchPublicJson<T>(path: string): Promise<T> {
+  const cached = publicResponseCache.get(path);
+  if (cached && cached.expiresAt > Date.now()) return cached.value as T;
+  const pending = publicRequestsInFlight.get(path);
+  if (pending) return pending as Promise<T>;
+
+  const request = (async () => {
+    const response = await fetch(path);
+    if (!response.ok) {
+      let detail = '';
+      try {
+        const text = await response.text();
+        detail = text ? `: ${text.slice(0, 240)}` : '';
+      } catch {
+        detail = '';
+      }
+      throw new Error(`Public data request failed for ${path} with ${response.status}${detail}`);
+    }
+    const value = await response.json() as T;
+    publicResponseCache.set(path, { expiresAt: Date.now() + PUBLIC_RESPONSE_CACHE_MS, value });
+    return value;
+  })();
+  publicRequestsInFlight.set(path, request);
+  try {
+    return await request;
+  } finally {
+    publicRequestsInFlight.delete(path);
+  }
+}
+
+export const fetchPublicDashboard = () => fetchPublicJson<PublicDashboardResponse>('/.netlify/functions/public-dashboard');
+export const fetchPublicTourHeader = () => fetchPublicJson<PublicTourHeaderResponse>('/.netlify/functions/public-tour-header');
 export const fetchPublicSummary = () => fetchPublicJson<PublicSummaryResponse>('/.netlify/functions/public-summary');
 export const fetchPublicScore = () => fetchPublicJson<PublicScoreResponse>('/.netlify/functions/public-score');
 export const fetchPublicMatches = () => fetchPublicJson<PublicMatchesResponse>('/.netlify/functions/public-matches');

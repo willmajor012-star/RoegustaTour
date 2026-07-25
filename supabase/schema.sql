@@ -16,14 +16,15 @@ create table tours (
   name text not null,
   year integer not null,
   location text,
-  timezone text not null default 'Europe/London',
+  timezone text not null default 'Europe/Lisbon',
   start_date date,
   end_date date,
   status text not null check (status in ('planned','active','complete','archived')),
   description text,
   is_current_public boolean not null default false,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint tours_date_order_check check (start_date is null or end_date is null or start_date <= end_date)
 );
 create unique index tours_year_idx on tours(year);
 create unique index tours_single_current_public_idx on tours(is_current_public) where is_current_public = true;
@@ -257,6 +258,7 @@ create table bet_markets (
   result_option_id uuid,
   result_text text,
   required boolean not null default false,
+  defaults_applied_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -316,3 +318,14 @@ create table audit_log (
   created_at timestamptz not null default now()
 );
 create index audit_log_entity_idx on audit_log(entity_type, entity_id);
+
+create table public_access_settings (
+  id text primary key default 'default',
+  password_hash text,
+  password_salt text,
+  session_version integer not null default 1,
+  requires_change boolean not null default false,
+  updated_at timestamptz not null default now(),
+  updated_by text,
+  constraint public_access_settings_singleton check (id = 'default')
+);

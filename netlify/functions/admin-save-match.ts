@@ -15,6 +15,10 @@ type IdRow = { id: string };
 type PlayerRow = { id: string; active?: boolean };
 type TourPlayerRow = { player_id: string; attending?: boolean };
 type MemberRow = { player_id: string; team_id: string };
+type AtomicMatchSave = {
+  match: Record<string, unknown>;
+  matchParticipants: Record<string, unknown>[];
+};
 
 function playerIdsFrom(value: unknown): string[] | null {
   if (!Array.isArray(value)) return null;
@@ -30,8 +34,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const matchNumber = typeof body.matchNumber === 'number' ? body.matchNumber : Number(body.matchNumber);
   const format = optionalString(body.format) as MatchFormat | null;
   const requestedStatus = optionalString(body.status) as Match['status'] | null;
-  const status = requestedStatus === 'void' ? 'void' : 'planned';
-  const pointsAvailable = 1;
+  const status = requestedStatus ?? 'planned';
   const pointsSideA = optionalNumber(body.pointsSideA);
   const pointsSideB = optionalNumber(body.pointsSideB);
   const sideAPlayerIds = playerIdsFrom(body.sideAPlayerIds);
@@ -74,7 +77,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (duplicateMatches.some((match) => match.id !== id)) return badRequest(duplicateMatchNumberMessage);
 
   if (allPlayerIds.length > 0) {
-    const booked = await runRows<{ player_id: string; match_id: string }>(supabase.from('match_participants').select('player_id, match_id').eq('round_id', roundId).in('player_id', allPlayerIds), 'check round player bookings').catch(async () => runRows<{ player_id: string; match_id: string }>(supabase.from('match_participants').select('player_id, match_id, matches!inner(round_id)').eq('matches.round_id', roundId).in('player_id', allPlayerIds), 'check round player bookings'));
+    const booked = await runRows<{ player_id: string; match_id: string }>(supabase.from('match_participants').select('player_id, match_id, matches!inner(round_id)').eq('matches.round_id', roundId).in('player_id', allPlayerIds), 'check round player bookings');
     const doubleBooked = booked.find((row) => row.match_id !== id);
     if (doubleBooked) return badRequest('A selected player is already assigned to another match in this round. Remove them from the other match before saving.');
 
@@ -99,60 +102,33 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     }
   }
 
-  const winningSide = status === 'void' ? 'void' : pointsSideA !== null && pointsSideB !== null ? (pointsSideA > pointsSideB ? 'A' : pointsSideB > pointsSideA ? 'B' : 'halved') : null;
-
-  const matchRow = {
-    id: id ?? crypto.randomUUID(),
-    tour_id: tourId,
-    round_id: roundId,
-    match_number: matchNumber,
-    format,
-    status,
-    side_a_team_id: sideATeamId,
-    side_b_team_id: sideBTeamId,
-    side_a_label: null,
-    side_b_label: optionalString(body.sideBLabel),
-    points_available: pointsAvailable,
-    points_side_a: null,
-    points_side_b: null,
-    winning_side: status === 'void' ? winningSide : null,
-    result_text: null,
-    tee_time: optionalString(body.teeTime),
-    published: typeof body.published === 'boolean' ? body.published : false,
-    notes: optionalString(body.notes),
-  };
-
-  const query = id
-    ? supabase.from('matches').update(matchRow).eq('id', id).select('*').single()
-    : supabase.from('matches').insert(matchRow).select('*').single();
-  let saved: Record<string, unknown>;
+  let saved: AtomicMatchSave;
   try {
-    saved = await runSingle<Record<string, unknown>>(query, 'save match');
+    saved = await runSingle<AtomicMatchSave>(supabase.rpc('admin_save_match_setup_atomic', {
+      p_id: id,
+      p_tour_id: tourId,
+      p_round_id: roundId,
+      p_match_number: matchNumber,
+      p_format: format,
+      p_status: status,
+      p_side_a_team_id: sideATeamId,
+      p_side_b_team_id: sideBTeamId,
+      p_side_a_label: optionalString(body.sideALabel),
+      p_side_b_label: optionalString(body.sideBLabel),
+      p_tee_time: optionalString(body.teeTime),
+      p_published: typeof body.published === 'boolean' ? body.published : false,
+      p_notes: optionalString(body.notes),
+      p_side_a_player_ids: sideAPlayerIds,
+      p_side_b_player_ids: sideBPlayerIds,
+    }), 'save match setup atomically');
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
     if (message.includes('matches_round_id_match_number_key') || message.toLowerCase().includes('duplicate key')) return badRequest(duplicateMatchNumberMessage);
+    if (message.includes('Completed match pairings are locked')) return badRequest('This match already has a result. Clear the result in Corrections before changing its round, format, teams or players.');
     throw error;
   }
-  const matchId = String(saved.id);
-
-  const removed = await supabase.from('match_participants').delete().eq('match_id', matchId);
-  if (removed.error) throw new Error(`replace match participants: ${removed.error.message}`);
-
-  const participantRows = [
-    ...sideAPlayerIds.map((playerId) => ({ id: crypto.randomUUID(), match_id: matchId, player_id: playerId, side: 'A', team_id: sideATeamId })),
-    ...sideBPlayerIds.map((playerId) => ({ id: crypto.randomUUID(), match_id: matchId, player_id: playerId, side: 'B', team_id: sideBTeamId })),
-  ];
-  if (participantRows.length > 0) {
-    const inserted = await supabase.from('match_participants').insert(participantRows);
-    if (inserted.error) throw new Error(`insert match participants: ${inserted.error.message}`);
-  }
-
-  const staleResultsRemoved = await supabase.from('player_match_results').delete().eq('match_id', matchId);
-  if (staleResultsRemoved.error) throw new Error(`remove stale player match results: ${staleResultsRemoved.error.message}`);
 
   await syncRequiredMarketDeadlinesForRound(supabase, roundId);
 
-  const participants = await runRows(supabase.from('match_participants').select('*').eq('match_id', matchId), 'match participants after save');
-  const refreshedMatch = await runSingle<Record<string, unknown>>(supabase.from('matches').select('*').eq('id', matchId).single(), 'match after save');
-  return jsonResponse(200, { ok: true, match: mapMatch(refreshedMatch), matchParticipants: participants.map(mapMatchParticipant) });
+  return jsonResponse(200, { ok: true, match: mapMatch(saved.match), matchParticipants: saved.matchParticipants.map(mapMatchParticipant) });
 });

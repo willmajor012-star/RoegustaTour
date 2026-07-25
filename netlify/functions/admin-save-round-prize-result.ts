@@ -2,7 +2,6 @@ import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_admi
 import { badRequest, optionalNumber, optionalString, runRows, runSingle, withAdminSupabase } from './_adminSupabase';
 import { mapBetMarket, mapRoundPrizeResult } from './_mappers';
 import { applyAutomaticBetDefaultsForMarket } from './_betDefaults';
-import { settleBetMarketRows } from './_betSettlement';
 import { writeAuditLog } from './_audit';
 import type { BetMarket, RoundPrizeResult } from '../../src/lib/types';
 
@@ -19,6 +18,13 @@ type LinkedMarketRow = {
   closes_at: string | null;
   required: boolean | null;
   result_option_id: string | null;
+};
+type AtomicPrizeSave = {
+  roundPrizeResult: Record<string, unknown>;
+  settlement: {
+    betMarket: Record<string, unknown>;
+    settlementSummary: { totalPotPence: number; settledBetCount: number; winningBetCount: number };
+  } | null;
 };
 
 export const handler: Handler = (event) => withAdminSupabase(event, 'POST', async (supabase, body, session) => {
@@ -89,44 +95,37 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
       if (defaults.unresolved.length > 0) return badRequest('Automatic defaults could not be assigned for every attending player. Check player options and team assignments before publishing the winner.');
     }
   }
-  const row = {
-    id: id ?? crypto.randomUUID(),
-    tour_id: tourId,
-    round_id: roundId,
-    prize_type: prizeType,
-    title,
-    winner_player_id: prizeType === 'team_gross' ? null : winnerPlayerId,
-    winner_team_id: prizeType === 'team_gross' ? winnerTeamId : null,
-    winning_score_text: optionalString(body.winningScoreText),
-    score_value: optionalNumber(body.scoreValue),
-    score_unit: optionalString(body.scoreUnit),
-    notes: optionalString(body.notes),
-    linked_bet_market_id: linkedBetMarketId,
-    published,
-    updated_at: new Date().toISOString(),
-  };
-  const query = id ? supabase.from('round_prize_results').update(row).eq('id', id).select('*').single() : supabase.from('round_prize_results').insert(row).select('*').single();
-  const saved = await runSingle<Record<string, unknown>>(query, 'save round prize result');
-  let settledMarket: Record<string, unknown> | undefined;
-  let settlementSummary: Awaited<ReturnType<typeof settleBetMarketRows>> | undefined;
-  if (published && linkedMarket && winnerOptionId) {
-    settledMarket = await runSingle<Record<string, unknown>>(supabase.from('bet_markets').update({
-      status: 'settled',
-      result_option_id: winnerOptionId,
-      result_text: optionalString(body.winningScoreText) ?? title,
-    }).eq('id', linkedMarket.id).select('*').single(), 'settle prize-linked Bet Punto market');
-    settlementSummary = await settleBetMarketRows(supabase, linkedMarket.id, linkedMarket.market_scope, winnerOptionId);
+  const saved = await runSingle<AtomicPrizeSave>(supabase.rpc('admin_save_round_prize_result_atomic', {
+    p_id: id,
+    p_tour_id: tourId,
+    p_round_id: roundId,
+    p_prize_type: prizeType,
+    p_title: title,
+    p_winner_player_id: prizeType === 'team_gross' ? null : winnerPlayerId,
+    p_winner_team_id: prizeType === 'team_gross' ? winnerTeamId : null,
+    p_winning_score_text: optionalString(body.winningScoreText),
+    p_score_value: optionalNumber(body.scoreValue),
+    p_score_unit: optionalString(body.scoreUnit),
+    p_notes: optionalString(body.notes),
+    p_linked_bet_market_id: linkedBetMarketId,
+    p_published: published,
+    p_winner_option_id: winnerOptionId ?? null,
+    p_market_result_text: optionalString(body.winningScoreText) ?? title,
+  }), 'save prize result and settle linked market atomically');
+  const settledMarket = saved.settlement?.betMarket;
+  const settlementSummary = saved.settlement?.settlementSummary;
+  if (published && linkedMarket && winnerOptionId && settlementSummary) {
     await writeAuditLog(supabase, session, linkedMarket.status === 'settled' ? 'bet_market.settlement_corrected_from_prize' : 'bet_market.settled_from_prize', 'bet_market', linkedMarket.id, {
       tourId,
       roundId,
-      prizeResultId: String(saved.id),
+      prizeResultId: String(saved.roundPrizeResult.id),
       winnerOptionId,
       settlementSummary,
     });
   }
   return jsonResponse(200, {
     ok: true,
-    roundPrizeResult: mapRoundPrizeResult(saved),
+    roundPrizeResult: mapRoundPrizeResult(saved.roundPrizeResult),
     betMarket: settledMarket ? mapBetMarket(settledMarket) : undefined,
     settlementSummary,
   });

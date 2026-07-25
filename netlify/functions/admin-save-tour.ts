@@ -3,6 +3,7 @@ import { badRequest, optionalString, runSingle, withAdminSupabase } from './_adm
 import { mapTour } from './_mappers';
 import type { Tour } from '../../src/lib/types';
 import { isValidTimeZone } from '../../src/lib/tourTime';
+import { validateTourDateRange } from '../../src/lib/tourValidation';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -13,12 +14,16 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const name = optionalString(body.name);
   const year = typeof body.year === 'number' ? body.year : Number(body.year);
   const status = optionalString(body.status) as Tour['status'] | null;
-  const timezone = optionalString(body.timezone) ?? 'Europe/London';
+  const timezone = optionalString(body.timezone) ?? 'Europe/Lisbon';
+  const startDate = optionalString(body.startDate);
+  const endDate = optionalString(body.endDate);
 
   if (!name) return badRequest('Tour name is required.');
   if (!Number.isInteger(year) || year < 2000 || year > 2100) return badRequest('Tour year must be a sensible number.');
   if (!status || !allowedStatuses.includes(status)) return badRequest('Tour status is invalid.');
   if (!isValidTimeZone(timezone)) return badRequest('Tour timezone must be a valid IANA timezone, for example Europe/Lisbon.');
+  const dateError = validateTourDateRange(startDate, endDate);
+  if (dateError) return badRequest(dateError);
 
   const row = {
     id: id ?? crypto.randomUUID(),
@@ -26,8 +31,8 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     year,
     location: optionalString(body.location),
     timezone,
-    start_date: optionalString(body.startDate),
-    end_date: optionalString(body.endDate),
+    start_date: startDate,
+    end_date: endDate,
     status,
     description: optionalString(body.description),
   };

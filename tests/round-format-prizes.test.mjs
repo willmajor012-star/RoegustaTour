@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const matchplaySource = readFileSync(new URL('../src/lib/matchplay.ts', import.meta.url), 'utf8');
 const displaySource = readFileSync(new URL('../src/lib/display.ts', import.meta.url), 'utf8');
 const adminSource = readFileSync(new URL('../src/pages/Admin.tsx', import.meta.url), 'utf8');
+const adminNavigationSource = readFileSync(new URL('../src/lib/adminNavigation.ts', import.meta.url), 'utf8');
 const publicSource = readFileSync(new URL('../src/pages/Matches.tsx', import.meta.url), 'utf8');
 const resetSource = readFileSync(new URL('../netlify/functions/admin-reset-bet-punto-tour.ts', import.meta.url), 'utf8');
 const savePrizeSource = readFileSync(new URL('../netlify/functions/admin-save-round-prize-result.ts', import.meta.url), 'utf8');
@@ -57,7 +58,9 @@ describe('secondary prize result support', () => {
     assert.match(adminSource, /saveRoundPrizeResult/);
     assert.match(adminSource, /deleteRoundPrizeResult/);
     assert.match(adminSource, /createDefaultRoundPrizeResults/);
-    assert.match(adminSource, /const tabs = \['Overview', 'Tour setup', 'Player library', 'Squads & teams', 'Courses', 'Rounds & tee times', 'Matches & pairings', 'Result entry'/);
+    for (const tab of ['Overview', 'Tour setup', 'Player library', 'Squads & teams', 'Courses', 'Rounds & tee times', 'Matches & pairings', 'Result entry']) {
+      assert.match(adminNavigationSource, new RegExp(`'${tab.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}'`));
+    }
   });
 
   it('public display hides via published API query and renders published rows', () => {

@@ -1,7 +1,6 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { badRequest, optionalNumber, optionalString, runRows, runSingle, withAdminSupabase } from './_adminSupabase';
 import { mapBetMarket, mapBetOption } from './_mappers';
-import { settleBetMarketRows } from './_betSettlement';
 import { normalizeMarketTitle } from '../../src/lib/betPuntoRules';
 import { writeAuditLog } from './_audit';
 import { requiredMarketDeadlineForRound } from './_betMarketDeadline';
@@ -118,6 +117,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     result_option_id: null,
     result_text: optionalString(body.resultText),
     required,
+    defaults_applied_at: null,
   };
 
   const query = id
@@ -178,13 +178,17 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
           return badRequest('Automatic defaults could not be assigned for every attending player. Check player options and team assignments before settling.');
         }
       }
-      const settlementSummary = await settleBetMarketRows(supabase, marketId, marketScope, resultOptionId);
+      const settlement = await runSingle<{ settlementSummary: { totalPotPence: number; settledBetCount: number; winningBetCount: number } }>(supabase.rpc('admin_settle_bet_market_atomic', {
+        p_market_id: marketId,
+        p_result_option_id: resultOptionId,
+        p_result_text: optionalString(body.resultText),
+      }), 'settle saved Bet Punto market atomically');
+      const settlementSummary = settlement.settlementSummary;
       await writeAuditLog(supabase, session, 'bet_market.settled_via_save', 'bet_market', marketId, { tourId, resultOptionId, settlementSummary });
     }
     if (status === 'void') {
+      await runSingle(supabase.rpc('admin_void_bet_market_atomic', { p_market_id: marketId }), 'void Bet Punto market atomically');
       await writeAuditLog(supabase, session, 'bet_market.voided', 'bet_market', marketId, { tourId });
-      const voided = await supabase.from('bets').update({ outcome_status: 'void', payout_amount_pence: null, payout_status: 'not_applicable' }).eq('market_id', marketId).eq('status', 'active');
-      if (voided.error) throw new Error(`void market bets: ${voided.error.message}`);
     }
   } catch (error) {
     if (!id) {

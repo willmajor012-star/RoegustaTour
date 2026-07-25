@@ -28,7 +28,7 @@ export async function requiredMarketDeadlineForRound(supabase: SupabaseClient, r
   const firstTeeTime = earliestClockTime([round.tee_time, ...matchRows.map((match) => match.tee_time)]);
   if (!round.round_date) return { roundId, tourId: round.tour_id, warning: 'Set the round date before opening its Bet Punto market.' };
   if (!firstTeeTime) return { roundId, tourId: round.tour_id, warning: 'Set the round or match first tee time before opening its Bet Punto market.' };
-  const timezone = tourRows[0]?.timezone || 'Europe/London';
+  const timezone = tourRows[0]?.timezone || 'Europe/Lisbon';
   const closesAt = zonedLocalDateTimeToIso(round.round_date, firstTeeTime, timezone);
   if (!closesAt) return { roundId, tourId: round.tour_id, warning: 'The tour timezone, round date or first tee time is invalid.' };
   return { roundId, tourId: round.tour_id, closesAt };
@@ -44,8 +44,8 @@ export async function syncRequiredMarketDeadlinesForRound(supabase: SupabaseClie
   for (const market of markets) {
     if (market.status === 'settled' || market.status === 'void') continue;
     const update = deadline.closesAt
-      ? { closes_at: deadline.closesAt }
-      : { closes_at: null, status: market.status === 'open' ? 'draft' : market.status };
+      ? { closes_at: deadline.closesAt, defaults_applied_at: null }
+      : { closes_at: null, defaults_applied_at: null, status: market.status === 'open' ? 'draft' : market.status };
     const saved = await supabase.from('bet_markets').update(update).eq('id', market.id);
     if (saved.error) throw new Error(`sync required Bet Punto close time: ${saved.error.message}`);
   }

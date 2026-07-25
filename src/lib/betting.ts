@@ -170,6 +170,7 @@ export type BetPuntoMarketSummary = {
   totalStakePence: number;
   settledPayoutPence: number;
   missingBettorNames: string[];
+  playingDate?: string;
 };
 
 export type BetPuntoBettorSummary = {
@@ -187,6 +188,7 @@ export type BetPuntoBettorSummary = {
   push: number;
   missingStablefordPicks: number;
   missingMandatoryPicks: number;
+  missingMandatoryDays: number;
 };
 
 function normalizedName(name: string) {
@@ -228,26 +230,64 @@ export function calculateMarketPayoutMap(markets: BetMarket[], options: BetOptio
   return payoutMap;
 }
 
-export function buildBetPuntoMarketSummaries(markets: BetMarket[], options: BetOption[], bets: Bet[], mandatoryBettorNames: string[] = []): BetPuntoMarketSummary[] {
+export function buildBetPuntoMarketSummaries(
+  markets: BetMarket[],
+  options: BetOption[],
+  bets: Bet[],
+  mandatoryBettorNames: string[] = [],
+  rounds: Pick<Round, 'id' | 'roundDate'>[] = [],
+): BetPuntoMarketSummary[] {
   const mandatoryNamesByKey = new Map(mandatoryBettorNames.map((name) => [normalizedName(name), name]));
+  const roundDateById = new Map(rounds.map((round) => [round.id, round.roundDate]));
+  const requiredMarkets = markets.filter(isMandatoryMarket);
   return markets.map((market) => {
     const activeMarketBets = getActiveBetsForMarket(market.id, bets);
     const backedKeys = new Set(activeMarketBets.map((bet) => normalizedName(bet.bettorName)));
     const payoutSummary = calculateIndicativePayouts(market, options.filter((option) => option.marketId === market.id), bets);
+    const playingDate = market.roundId ? roundDateById.get(market.roundId) : undefined;
+    const requiredMarketIdsForDate = playingDate
+      ? new Set(requiredMarkets.filter((candidate) => candidate.roundId && roundDateById.get(candidate.roundId) === playingDate).map((candidate) => candidate.id))
+      : undefined;
+    const missingBettorNames = !isMandatoryMarket(market)
+      ? []
+      : [...mandatoryNamesByKey].filter(([key]) => {
+        if (!requiredMarketIdsForDate) return !backedKeys.has(key);
+        const dailyStake = bets
+          .filter((bet) => bet.status === 'active'
+            && bet.outcomeStatus !== 'void'
+            && normalizedName(bet.bettorName) === key
+            && requiredMarketIdsForDate.has(bet.marketId))
+          .reduce((total, bet) => total + getBetStakePence(bet), 0);
+        return dailyStake < BET_PUNTO_MINIMUM_STAKE_PENCE;
+      }).map(([, name]) => name);
     return {
       market,
       totalBets: activeMarketBets.length,
       totalStakePence: activeMarketBets.reduce((total, bet) => total + getBetStakePence(bet), 0),
       settledPayoutPence: [...payoutSummary.payouts.values()].reduce((total, payout) => total + payout, 0),
-      missingBettorNames: isMandatoryMarket(market) ? [...mandatoryNamesByKey].filter(([key]) => !backedKeys.has(key)).map(([, name]) => name) : [],
+      missingBettorNames,
+      playingDate,
     };
   });
 }
 
-export function buildBetPuntoBettorSummaries(markets: BetMarket[], options: BetOption[], bets: Bet[], mandatoryBettorNames: string[] = []): BetPuntoBettorSummary[] {
+export function buildBetPuntoBettorSummaries(
+  markets: BetMarket[],
+  options: BetOption[],
+  bets: Bet[],
+  mandatoryBettorNames: string[] = [],
+  rounds: Pick<Round, 'id' | 'roundDate'>[] = [],
+): BetPuntoBettorSummary[] {
   const marketById = new Map(markets.map((market) => [market.id, market]));
   const payoutMap = calculateMarketPayoutMap(markets, options, bets);
   const mandatoryMarkets = markets.filter(isMandatoryMarket);
+  const roundDateById = new Map(rounds.map((round) => [round.id, round.roundDate]));
+  const requiredMarketIdsByDate = new Map<string, Set<string>>();
+  for (const market of mandatoryMarkets) {
+    const playingDate = market.roundId ? roundDateById.get(market.roundId) : undefined;
+    if (!playingDate) continue;
+    requiredMarketIdsByDate.set(playingDate, new Set([...(requiredMarketIdsByDate.get(playingDate) ?? []), market.id]));
+  }
   const summaryByKey = new Map<string, BetPuntoBettorSummary>();
   const displayNameByKey = new Map<string, string>();
 
@@ -257,7 +297,7 @@ export function buildBetPuntoBettorSummaries(markets: BetMarket[], options: BetO
     displayNameByKey.set(key, displayName);
     const existing = summaryByKey.get(key);
     if (existing) return existing;
-    const next: BetPuntoBettorSummary = { bettorName: displayName, totalBets: 0, totalStakePence: 0, settledPayoutPence: 0, pendingStakePence: 0, automaticDefaultStakePence: 0, netPence: 0, won: 0, lost: 0, pending: 0, void: 0, push: 0, missingStablefordPicks: 0, missingMandatoryPicks: 0 };
+    const next: BetPuntoBettorSummary = { bettorName: displayName, totalBets: 0, totalStakePence: 0, settledPayoutPence: 0, pendingStakePence: 0, automaticDefaultStakePence: 0, netPence: 0, won: 0, lost: 0, pending: 0, void: 0, push: 0, missingStablefordPicks: 0, missingMandatoryPicks: 0, missingMandatoryDays: 0 };
     summaryByKey.set(key, next);
     return next;
   };
@@ -288,7 +328,15 @@ export function buildBetPuntoBettorSummaries(markets: BetMarket[], options: BetO
   for (const [key, summary] of summaryByKey) {
     const backedMandatoryMarketIds = new Set(bets.filter((bet) => normalizedName(bet.bettorName) === key && bet.status === 'active').map((bet) => bet.marketId));
     summary.missingMandatoryPicks = mandatoryMarkets.filter((market) => !backedMandatoryMarketIds.has(market.id)).length;
-    summary.missingStablefordPicks = summary.missingMandatoryPicks;
+    summary.missingMandatoryDays = requiredMarketIdsByDate.size > 0
+      ? [...requiredMarketIdsByDate.values()].filter((marketIds) => bets
+        .filter((bet) => bet.status === 'active'
+          && bet.outcomeStatus !== 'void'
+          && normalizedName(bet.bettorName) === key
+          && marketIds.has(bet.marketId))
+        .reduce((total, bet) => total + getBetStakePence(bet), 0) < BET_PUNTO_MINIMUM_STAKE_PENCE).length
+      : summary.missingMandatoryPicks;
+    summary.missingStablefordPicks = summary.missingMandatoryDays;
     summary.netPence = summary.settledPayoutPence - summary.totalStakePence;
   }
 

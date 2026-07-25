@@ -159,7 +159,7 @@ export type SaveRoundPrizeResultPayload = { id?: string; tourId: string; roundId
 export type DeleteRoundPrizeResultPayload = { id: string; tourId: string };
 
 export type CreateDefaultRoundPrizeResultsPayload = { tourId: string; template2026?: boolean };
-export type PublicAccessSettingsResponse = { ok: true; configured: boolean; sessionVersion: number };
+export type PublicAccessSettingsResponse = { ok: true; configured: boolean; requiresChange: boolean; sessionVersion: number };
 export type SavePublicAccessSettingsPayload = { password: string; forceExpire?: boolean };
 
 export type SaveHandbookSectionPayload = { id?: string; tourId: string; sectionKey: string; title: string; body?: string | null; sortOrder: number };
@@ -172,6 +172,14 @@ export type SettleBetMarketPayload = {
   resultOptionId: string;
   settlementNote?: string | null;
   correction?: boolean;
+};
+
+export type AutomaticBetDefaultResult = {
+  dueMarketIds: string[];
+  closedMarketIds: string[];
+  insertedBetIds: string[];
+  updatedBetIds: string[];
+  unresolved: Array<{ marketId: string; playerId: string; reason: string }>;
 };
 
 export type SaveBetPayload = {
@@ -237,6 +245,7 @@ export const fetchAdminData = (tourId?: string) => fetchAdminJson<AdminDataRespo
 export const savePlayer = (payload: SavePlayerPayload) => postAdminJson<{ ok: true; player: Player }>('/.netlify/functions/admin-save-player', payload);
 export const saveTour = (payload: SaveTourPayload) => postAdminJson<{ ok: true; tour: Tour }>('/.netlify/functions/admin-save-tour', payload);
 export const setCurrentPublicTour = (payload: { tourId: string }) => postAdminJson<{ ok: true; tour: Tour }>('/.netlify/functions/admin-set-current-public-tour', payload);
+export const publishAdminContent = (payload: { tourId: string; scope: 'round_matches' | 'tour_all'; roundId?: string }) => postAdminJson<{ ok: true; result: { teamCount: number; roundCount: number; matchCount: number } }>('/.netlify/functions/admin-publish-content', payload);
 export const deleteTour = (payload: { id: string }) => postAdminJson<{ ok: true; deletedTourId: string }>('/.netlify/functions/admin-delete-tour', payload);
 export const saveTourPlayer = (payload: SaveTourPlayerPayload) => postAdminJson<{ ok: true; tourPlayer: TourPlayer; tourTeamMembers?: TourTeamMember[] }>('/.netlify/functions/admin-save-tour-player', payload);
 export const saveTourTeam = (payload: SaveTourTeamPayload) => postAdminJson<{ ok: true; tourTeam: TourTeam }>('/.netlify/functions/admin-save-team', payload);
@@ -257,6 +266,7 @@ export const submitResult = (payload: SubmitResultPayload) => postAdminJson<{ ok
 export const deleteMatch = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedMatchId: string }>('/.netlify/functions/admin-delete-match', payload);
 export const saveBetMarket = (payload: SaveBetMarketPayload) => postAdminJson<{ ok: true; betMarket: BetMarket; betOptions: BetOption[] }>('/.netlify/functions/admin-save-bet-market', payload);
 export const settleBetMarket = (payload: SettleBetMarketPayload) => postAdminJson<{ ok: true; betMarket: BetMarket; bets: Bet[] }>('/.netlify/functions/admin-settle-bet-market', payload);
+export const applyBetDefaults = (payload: { marketId: string; tourId: string }) => postAdminJson<{ ok: true; result: AutomaticBetDefaultResult }>('/.netlify/functions/admin-apply-bet-defaults', payload);
 export const deleteBetMarket = (payload: { id: string; tourId: string }) => postAdminJson<{ ok: true; deletedBetMarketId: string }>('/.netlify/functions/admin-delete-bet-market', payload);
 export const resetBetPuntoTour = (payload: { tourId: string; confirmation: string; forceCurrent?: boolean }) => postAdminJson<{ ok: true; tourId: string; deletedMarketCount: number; deletedOptionCount: number; deletedBetCount: number }>('/.netlify/functions/admin-reset-bet-punto-tour', payload);
 export const saveBet = (payload: SaveBetPayload) => postAdminJson<{ ok: true; bet: Bet }>('/.netlify/functions/admin-save-bet', payload);

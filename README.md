@@ -1,14 +1,14 @@
 # Roegusta Tour
 
-A mobile-first private golf tour hub for the Roegusta Tour: Ryder Cup-style scoring, match planning, calculated player stats, player profiles and a lightweight visible betting/voting log.
+A mobile-first private golf tour hub for the Roegusta Tour: Ryder Cup-style scoring, match planning, tour-scoped itineraries and courses, calculated player stats, player profiles and Bet Punto tour accounting.
 
 ## Stack
 
 - React + Vite + TypeScript
 - Simple global CSS in `src/styles/globals.css`
 - Netlify deployment and Netlify Functions
-- Future Supabase Postgres backend
-- Mock data for the first build
+- Supabase Postgres backend
+- PIN-protected Admin operations through Netlify Functions
 
 ## Local setup
 
@@ -22,18 +22,15 @@ npm run build
 
 - `src/app` — app shell, route list and navigation model
 - `src/components` — reusable cards, scoreboard, leaderboards and navigation
-- `src/data/mockData.ts` — first-build mock data and TODO for repository-backed access
+- `src/data/mockData.ts` — development fixtures and offline UI fallbacks
 - `src/lib` — TypeScript entities, scoring, stats, betting and formatting helpers
-- `src/pages` — public pages and admin placeholder shell
-- `netlify/functions` — placeholder public and admin endpoints
-- `supabase/schema.sql` — future Postgres schema
-- The header uses a text/CSS `TR` monogram placeholder so the branch contains code/text files only.
+- `src/pages` — public pages and the task-based Admin workspace
+- `netlify/functions` — authenticated public reads and Admin writes
+- `supabase/schema.sql` and `supabase/migrations` — Postgres schema and production-safe migrations
 
-## Mock data approach
+## Data approach
 
-The initial build uses fictional Roegusta-style data. The app stores permanent players, tour editions, tour-specific rosters, tour-specific teams, rounds, matches, match participants, betting markets, betting options, bets and historic imported summaries.
-
-Mock exports are intentionally shaped like future database records so Supabase access can be added without rebuilding the UI.
+Supabase stores permanent players, tour editions, tour-specific rosters, teams, courses, itinerary items, rounds, matches, participants, Bet Punto markets/options/bets and historic imported summaries. Public reads expose only published current-tour records; completed and archived tours remain readable as historical snapshots.
 
 ## Data model
 
@@ -41,7 +38,7 @@ Players are permanent. Team membership is never permanent: players join teams th
 
 ## Scoring model
 
-Admin will enter a single match result. From completed matches, utility functions derive:
+Admin enters a single match result. A transaction-safe database operation updates:
 
 - team score by tour
 - player match results
@@ -55,17 +52,17 @@ Team score adds `pointsSideA` and `pointsSideB` to the relevant tour teams. Play
 
 Historic rows use `HistoricalPlayerStats` for previous years where only aggregate data exists. All-time stats combine calculated match-based records with those imported summaries.
 
-## Betting model
+## Bet Punto model
 
-Betting is a social tour log, not a bookmaker. There are no accounts, wallets, transfers or payment handling. Users choose/type a local display name, pick an option, enter stake text and optional comments, and can see who backed what.
+Bet Punto is a social tour log, not a bookmaker. There are no accounts, wallets, transfers or in-app payment handling. Attending players place £5-increment stakes with a £10 minimum across the required markets for each playing day. Markets close at their round’s fixed first tee in the tour timezone; any daily shortfall defaults to the player or their own scramble team. Winner entry settles the linked pool and the tour ledger shows staked, payout and net position.
 
 ## Netlify deployment
 
 `netlify.toml` builds with `npm run build`, publishes `dist`, and serves functions from `netlify/functions`. The SPA redirect sends all browser routes to `index.html`.
 
-## Future Supabase integration
+## Supabase security
 
-Do not expose `SUPABASE_SECRET_KEY` in browser code. Future write operations should happen server-side through Netlify Functions. Admin functions verify a shared PIN/session token before any write placeholder is accepted. Future write handlers should continue to perform service-role writes server-side and record changes in `audit_log`.
+Do not expose `SUPABASE_SECRET_KEY` in browser code. Reads and writes go through Netlify Functions. Admin functions verify a signed, short-lived PIN session before service-role writes and record material actions in `audit_log`.
 
 ## Environment variables
 
@@ -75,12 +72,6 @@ See `.env.example`:
 - `SUPABASE_SECRET_KEY`
 - `ADMIN_PIN_HASH` — SHA-256 hash of the shared admin PIN, optionally prefixed with `sha256:`. Generate one with `printf %s "1234" | shasum -a 256 | awk '{print $1}'`.
 - `ADMIN_SESSION_SECRET` — long random value used to sign short-lived admin bearer tokens.
+- `TOUR_PUBLIC_ACCESS_SECRET` — long random value used to sign public-access cookies.
 
-## Next development phases
-
-1. Replace mock imports in Netlify Functions with Supabase reads.
-2. Replace admin write placeholders with Supabase mutations behind the existing admin session guard.
-3. Build admin forms for players, tours, teams, rounds, matches and results.
-4. Persist public bet submissions.
-5. Add row-level security policies and audit logging.
-6. Add richer filtering by tour and historic import tooling.
+Apply Supabase migrations in filename order before deploying code that depends on a new migration. Migration `202607250001_live_readiness_transactions.sql` supplies the atomic Admin operations, public-access hardening and Portugal timezone repair used by the current app.

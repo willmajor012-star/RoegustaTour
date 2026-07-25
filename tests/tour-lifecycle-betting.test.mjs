@@ -7,6 +7,7 @@ const scoreboard = readFileSync('src/components/Scoreboard.tsx', 'utf8');
 const golf = readFileSync('src/pages/Matches.tsx', 'utf8');
 const courseEditor = readFileSync('src/components/AdminCourseEditor.tsx', 'utf8');
 const migration = readFileSync('supabase/migrations/0015_tour_courses_and_automatic_bet_defaults.sql', 'utf8');
+const liveReadinessMigration = readFileSync('supabase/migrations/202607250001_live_readiness_transactions.sql', 'utf8');
 const deadline = readFileSync('netlify/functions/_betMarketDeadline.ts', 'utf8');
 const defaults = readFileSync('netlify/functions/_betDefaults.ts', 'utf8');
 const publicBet = readFileSync('netlify/functions/public-save-bet.ts', 'utf8');
@@ -59,7 +60,7 @@ test('courses are tour-owned snapshots that can be copied into a future tour', (
 });
 
 test('required markets close at the timezone-aware first tee and auto-default in £5 increments to £10', () => {
-  assert.match(migration, /timezone text not null default 'Europe\/London'/);
+  assert.match(liveReadinessMigration, /timezone = 'Europe\/Lisbon'/);
   assert.match(deadline, /earliestClockTime/);
   assert.match(deadline, /zonedLocalDateTimeToIso/);
   assert.match(deadline, /eq\('required', true\)/);
@@ -77,8 +78,8 @@ test('required markets close at the timezone-aware first tee and auto-default in
 
 test('a published playing winner settles the pool and feeds the obvious whole-tour tally', () => {
   assert.match(savePrize, /applyAutomaticBetDefaultsForMarket/);
-  assert.match(savePrize, /settleBetMarketRows/);
-  assert.match(savePrize, /status: 'settled'/);
+  assert.match(savePrize, /admin_save_round_prize_result_atomic/);
+  assert.match(liveReadinessMigration, /admin_settle_bet_market_atomic/);
   assert.match(savePrize, /winnerOptionId/);
   assert.match(betting, /Bet Punto leaderboard/);
   assert.match(betting, /Total staked/);

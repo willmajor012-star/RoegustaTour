@@ -126,18 +126,18 @@ function PlayerProfile({ summary, data, tourId }: { summary: PlayerAdvancedSumma
   const relationships = getPartnerOpponentRankings(summary.player.id, data, tourId);
   const matchHistory = getPlayerMatchHistory(summary.player.id, data, tourId);
   const recordTiles = tourId ? [
-    { label: 'Tour record', record: summary.currentTourRecord },
+    { label: 'This tour’s matches', record: summary.currentTourRecord },
     { label: 'Singles', record: summary.currentTourSinglesRecord },
     { label: 'Team', record: summary.currentTourTeamFormatRecord },
     ...(summary.currentTourScrambleRecord.matches > 0 ? [{ label: 'Scramble', record: summary.currentTourScrambleRecord }] : []),
   ] : [
-    { label: 'All tours', record: summary.allTimeRecord },
+    { label: 'All matchplay', record: summary.allTimeRecord },
     { label: 'Singles', record: summary.singlesRecord },
     { label: 'Team', record: summary.teamFormatRecord },
     ...(summary.scrambleRecord.matches > 0 ? [{ label: 'Scramble', record: summary.scrambleRecord }] : []),
   ];
 
-  return <aside className="player-profile card"><h3>{summary.player.displayName}</h3>{summary.tourAppearances > 0 && <p className="tour-record-summary">Tour record: {summary.tourAppearances} appearance{summary.tourAppearances === 1 ? '' : 's'} · {summary.tourWins}-{summary.tourHalves}-{summary.tourLosses} W-H-L</p>}<div className="profile-records">{recordTiles.map((tile) => <RecordTile key={tile.label} label={tile.label} record={tile.record} />)}</div><details><summary>Partners and opponents</summary><RelationshipList title="Best partners" rows={relationships.bestPartners} /><RelationshipList title="Toughest opponents" rows={relationships.toughestOpponents} /></details><details className="match-history-details"><summary>Recent matches</summary><div className="match-history-list">{matchHistory.length === 0 ? <p>No completed match history yet.</p> : matchHistory.map((item) => <p key={item.result.id}><strong>{formatMatchDisplayLabel(item.match, item.round)} · {item.result.result.toUpperCase()}</strong><br />{item.partners.length > 0 && <>Partners: {item.partners.map((player) => player.displayName).join(', ')} · </>}Opponents: {item.opponents.map((player) => player.displayName).join(', ') || 'TBC'} · {formatPoints(item.result.pointsFor)}-{formatPoints(item.result.pointsAgainst)}</p>)}</div></details></aside>;
+  return <aside className="player-profile card"><h3>{summary.player.displayName}</h3>{summary.tourAppearances > 0 && <p className="tour-record-summary">Tour finishes: {summary.tourAppearances} appearance{summary.tourAppearances === 1 ? '' : 's'} · {summary.tourWins} won · {summary.tourHalves} shared · {summary.tourLosses} runner-up finish{summary.tourLosses === 1 ? '' : 'es'}</p>}<div className="profile-records">{recordTiles.map((tile) => <RecordTile key={tile.label} label={tile.label} record={tile.record} />)}</div><details><summary>Partners and opponents</summary><RelationshipList title="Best partners" rows={relationships.bestPartners} /><RelationshipList title="Toughest opponents" rows={relationships.toughestOpponents} /></details><details className="match-history-details"><summary>Recent matches</summary><div className="match-history-list">{matchHistory.length === 0 ? <p>No completed match history yet.</p> : matchHistory.map((item) => <p key={item.result.id}><strong>{formatMatchDisplayLabel(item.match, item.round)} · {item.result.result.toUpperCase()}</strong><br />{item.partners.length > 0 && <>Partners: {item.partners.map((player) => player.displayName).join(', ')} · </>}Opponents: {item.opponents.map((player) => player.displayName).join(', ') || 'TBC'} · {formatPoints(item.result.pointsFor)}-{formatPoints(item.result.pointsAgainst)}</p>)}</div></details></aside>;
 }
 
 function RecordTile({ label, record }: { label: string; record: MatchRecord }) {
