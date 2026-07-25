@@ -149,7 +149,7 @@ export function Dashboard() {
     <CourseRail compact title="Know the courses" eyebrow={tourCourses.map((course) => course.shortName).join(' · ') || 'Course preparation'} courses={tourCourses} />
 
     <a className="card tappable-card home-this-tour-card" href="/tours">
-      <div><p className="eyebrow">This tour</p><h2>Teams, schedule & tour info</h2><p>Players, course guides and the full itinerary now live together under Tours.</p></div>
+      <div><p className="eyebrow">This tour</p><h2>Teams, courses & itinerary</h2><p>Players, course guides and the practical tour schedule live together under Tours.</p></div>
       <span className="card-chevron" aria-hidden="true">›</span>
     </a>
 

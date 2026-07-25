@@ -1,127 +1,124 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import test from 'node:test';
+import ts from 'typescript';
 
+async function loadItineraryModule() {
+  const source = await readFile(new URL('../src/lib/tourItinerary.ts', import.meta.url), 'utf8');
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.ESNext,
+      target: ts.ScriptTarget.ES2020,
+    },
+    fileName: 'tourItinerary.ts',
+  });
+  return import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
+}
 
-const roundItinerarySourceToken = (roundId) => `[round:${roundId}]`;
-const normalizeOrder = (items) => [...items].sort((a, b) => a.sortOrder - b.sortOrder || (a.itemDate ?? '').localeCompare(b.itemDate ?? '') || a.activity.localeCompare(b.activity) || a.id.localeCompare(b.id)).map((item, index) => ({ ...item, sortOrder: index + 1 }));
-const reorderItineraryItems = (items, itemId, direction) => {
-  const ordered = normalizeOrder(items);
-  const index = ordered.findIndex((candidate) => candidate.id === itemId);
-  const targetIndex = index + direction;
-  if (index < 0 || targetIndex < 0 || targetIndex >= ordered.length) return ordered;
-  const moved = [...ordered];
-  [moved[index], moved[targetIndex]] = [moved[targetIndex], moved[index]];
-  return moved.map((candidate, nextIndex) => ({ ...candidate, sortOrder: nextIndex + 1 }));
-};
-const buildMissingRoundItineraryDrafts = (existingItems, rounds) => {
-  const ordered = normalizeOrder(existingItems);
-  return rounds.filter((candidate) => candidate.roundDate).filter((candidate) => !ordered.some((existing) => (existing.sourceType === 'round' && existing.sourceId === candidate.id) || existing.notes?.includes(roundItinerarySourceToken(candidate.id)) || (existing.itemDate === candidate.roundDate && existing.activity.trim().toLowerCase() === (candidate.name || `Round ${candidate.roundNumber}`).trim().toLowerCase()))).map((candidate, index) => ({ itemDate: candidate.roundDate, dayLabel: null, timeLabel: candidate.teeTime || 'TBC', activity: candidate.name || `Round ${candidate.roundNumber}`, location: candidate.courseName || 'Course TBC', notes: candidate.formatLabel || null, sourceType: 'round', sourceId: candidate.id, isPlaceholder: !candidate.teeTime || !candidate.courseName, sortOrder: ordered.length + index + 1 }));
-};
-
-const item = (id, sortOrder, overrides = {}) => ({
+const item = (id, tourId, activity, overrides = {}) => ({
   id,
-  tourId: 'tour-1',
+  tourId,
   itemDate: '2026-11-07',
-  dayLabel: 'Saturday',
-  timeLabel: 'TBC',
-  activity: `Activity ${id}`,
-  location: 'Course',
-  notes: '',
+  activity,
   isPlaceholder: false,
-  sortOrder,
+  sortOrder: 10,
   ...overrides,
 });
 
-const round = (overrides = {}) => ({
-  id: 'round-1',
-  tourId: 'tour-1',
+const round = (id, tourId, overrides = {}) => ({
+  id,
+  tourId,
   roundNumber: 1,
-  name: 'Round 1',
+  name: 'Saturday golf',
   roundDate: '2026-11-07',
-  courseName: 'Course A',
-  teeTime: 'TBC',
-  formatLabel: 'Singles',
-  notes: '',
+  courseName: 'Faldo Course',
+  teeTime: '09:20',
   status: 'planned',
-  published: false,
+  published: true,
   ...overrides,
 });
 
-test('Admin guide tab and itinerary editor are present with key workflow topics', async () => {
+test('one tour itinerary admin workflow replaces the public handbook editor', async () => {
   const admin = await readFile(new URL('../src/pages/Admin.tsx', import.meta.url), 'utf8');
-  for (const topic of ['Admin guide', 'Build draft itinerary from tour dates and rounds', 'tour_itinerary_items', 'Do not assume Friday golf', 'player-photos', 'Current public tour', 'planned, active, complete or archived', 'Tee sheet, Results or Prizes', 'manual admin bet entry', 'Reset Bet Punto']) {
-    assert.match(admin, new RegExp(topic.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
-  }
+  const component = await readFile(new URL('../src/components/AdminTourItinerary.tsx', import.meta.url), 'utf8');
+  assert.match(admin, /'Tour itinerary'/);
+  assert.match(admin, /<AdminTourItinerary/);
+  assert.doesNotMatch(admin.match(/const tabs = \[[^\]]+\]/)?.[0] ?? '', /'Handbook'/);
+  for (const copy of ['Travel, stay and dinner', 'Golf from rounds', 'Team shirts', 'Golf is pulled directly from Rounds &amp; tee times']) assert.match(component, new RegExp(copy));
 });
 
-test('Admin itinerary CRUD functions use tour_itinerary_items', async () => {
+test('only travel, accommodation and dinner rows feed the manual itinerary', async () => {
+  const { activeManualItineraryItems } = await loadItineraryModule();
+  const rows = [
+    item('flight', 'tour-1', 'Outbound flight', { sourceType: 'travel' }),
+    item('hotel', 'tour-1', 'Hotel check-in'),
+    item('dinner', 'tour-1', 'Dinner', { sourceType: 'dinner' }),
+    item('old-golf', 'tour-1', 'Tour matches', { sourceType: 'template_2026' }),
+    item('round-copy', 'tour-1', 'Saturday golf', { sourceType: 'round', sourceId: 'round-1' }),
+    item('other-tour', 'tour-2', 'Dinner', { sourceType: 'dinner' }),
+  ];
+  assert.deepEqual(activeManualItineraryItems(rows, 'tour-1').map((row) => row.id).sort(), ['dinner', 'flight', 'hotel']);
+});
+
+test('golf schedule entries come directly from the selected tour rounds', async () => {
+  const { buildTourSchedule } = await loadItineraryModule();
+  const schedule = buildTourSchedule(
+    'tour-1',
+    [round('round-1', 'tour-1'), round('round-2', 'tour-2', { courseName: 'Other course' })],
+    [item('dinner', 'tour-1', 'Dinner', { sourceType: 'dinner', timeLabel: '19:30' })],
+  );
+  assert.equal(schedule.filter((entry) => entry.kind === 'golf').length, 1);
+  assert.equal(schedule.find((entry) => entry.kind === 'golf')?.location, 'Faldo Course');
+  assert.equal(schedule.find((entry) => entry.kind === 'golf')?.timeLabel, '09:20');
+});
+
+test('archived and future tour itinerary records remain isolated', async () => {
+  const { buildTourSchedule } = await loadItineraryModule();
+  const rows = [
+    item('archive-hotel', 'tour-2026', 'Accommodation', { sourceType: 'accommodation' }),
+    item('future-hotel', 'tour-2027', 'Accommodation', { sourceType: 'accommodation' }),
+  ];
+  const rounds = [round('archive-round', 'tour-2026'), round('future-round', 'tour-2027')];
+  assert.deepEqual(buildTourSchedule('tour-2026', rounds, rows).map((entry) => entry.id), ['round-archive-round', 'archive-hotel']);
+  assert.deepEqual(buildTourSchedule('tour-2027', rounds, rows).map((entry) => entry.id), ['round-future-round', 'future-hotel']);
+});
+
+test('Admin itinerary writes enforce the three practical manual categories', async () => {
   const saveFn = await readFile(new URL('../netlify/functions/admin-save-itinerary-item.ts', import.meta.url), 'utf8');
-  const deleteFn = await readFile(new URL('../netlify/functions/admin-delete-itinerary-item.ts', import.meta.url), 'utf8');
-  assert.match(saveFn, /tour_itinerary_items/);
-  assert.match(saveFn, /is_placeholder/);
-  assert.match(saveFn, /source_type/);
-  assert.match(deleteFn, /tour_itinerary_items/);
+  assert.match(saveFn, /\['travel', 'accommodation', 'dinner'\]/);
+  assert.match(saveFn, /Itinerary type must be travel, accommodation or dinner/);
+  assert.match(saveFn, /tour_id: tourId/);
 });
 
-test('itinerary move up and down swaps neighbours and produces unique order values', () => {
-  const items = [item('a', 1), item('b', 2), item('c', 3)];
-  assert.deepEqual(reorderItineraryItems(items, 'b', -1).map(({ id, sortOrder }) => [id, sortOrder]), [['b', 1], ['a', 2], ['c', 3]]);
-  assert.deepEqual(reorderItineraryItems(items, 'b', 1).map(({ id, sortOrder }) => [id, sortOrder]), [['a', 1], ['c', 2], ['b', 3]]);
+test('team shirt colours have tour-scoped admin read, save and delete paths', async () => {
+  const adminData = await readFile(new URL('../netlify/functions/admin-data.ts', import.meta.url), 'utf8');
+  const saveKit = await readFile(new URL('../netlify/functions/admin-save-team-day-kit.ts', import.meta.url), 'utf8');
+  const deleteKit = await readFile(new URL('../netlify/functions/admin-delete-team-day-kit.ts', import.meta.url), 'utf8');
+  assert.match(adminData, /tour_team_day_kit/);
+  assert.match(adminData, /teamDayKit: kitRows\.map\(mapTourTeamDayKit\)/);
+  assert.match(saveKit, /\.eq\('id', teamId\)\.eq\('tour_id', tourId\)/);
+  assert.match(saveKit, /\.eq\('team_id', teamId\)\.eq\('kit_date', kitDate\)/);
+  assert.match(saveKit, /targetId/);
+  assert.match(deleteKit, /\.eq\('id', id\)\.eq\('tour_id', tourId\)/);
 });
 
-test('itinerary builder does not duplicate generated round items after time label edit', () => {
-  const sourceRound = round();
-  const firstDraft = buildMissingRoundItineraryDrafts([], [sourceRound]);
-  assert.equal(firstDraft.length, 1);
-  assert.equal(firstDraft[0].sourceType, 'round');
-  assert.equal(firstDraft[0].sourceId, sourceRound.id);
-  assert.doesNotMatch(firstDraft[0].notes, /\[round:/);
-  const existing = item('generated', 1, { activity: 'Round 1', timeLabel: '09:32', notes: `${roundItinerarySourceToken(sourceRound.id)} Singles` });
-  assert.deepEqual(buildMissingRoundItineraryDrafts([existing], [{ ...sourceRound, teeTime: '10:00' }]), []);
+test('the 2026 helper no longer creates or deletes schedule placeholders', async () => {
+  const template = await readFile(new URL('../netlify/functions/admin-apply-2026-format-template.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(template, /const itinerary =/);
+  assert.doesNotMatch(template, /tour_itinerary_items'\)\.(?:insert|delete)/);
+  assert.match(template, /tour_itinerary_items'\)\.select/);
 });
 
-test('itinerary builder does not duplicate generated round items after round tee time change when legacy item lacks token', () => {
-  const sourceRound = round({ teeTime: 'TBC' });
-  const existing = item('legacy-generated', 1, { activity: 'Round 1', timeLabel: '09:32', notes: 'Singles' });
-  assert.deepEqual(buildMissingRoundItineraryDrafts([existing], [{ ...sourceRound, teeTime: '10:00' }]), []);
-});
-
-
-
-test('itinerary builder matches mapped legacy source fields before editable labels', () => {
-  const sourceRound = round();
-  const existing = item('generated-source', 1, { activity: 'Admin edited title', timeLabel: '09:32', notes: 'Better ball', sourceType: 'round', sourceId: sourceRound.id });
-  assert.deepEqual(buildMissingRoundItineraryDrafts([existing], [{ ...sourceRound, name: 'Round 1 updated', teeTime: '10:00' }]), []);
-});
-
-test('duplicating an itinerary item should use the next max sort order', async () => {
-  const admin = await readFile(new URL('../src/pages/Admin.tsx', import.meta.url), 'utf8');
-  assert.match(admin, /Math\.max\(0, \.\.\.\(adminData\?\.itineraryItems \?\? \[\]\)\.map\(\(candidate\) => candidate\.sortOrder\)\) \+ 1/);
-});
-
-test('public itinerary mapper strips legacy round tokens and infers source fields from notes', async () => {
-  const mapper = await readFile(new URL('../netlify/functions/_mappers.ts', import.meta.url), 'utf8');
-  assert.match(mapper, /legacyRoundItinerarySourceId/);
-  assert.match(mapper, /sourceId = asString\(row\.source_id\) \?\? legacyRoundItinerarySourceId\(row\.notes\)/);
-  assert.match(mapper, /sourceType = asString\(row\.source_type\) \?\? \(sourceId \? 'round' : undefined\)/);
-  assert.match(mapper, /replace\(\/\\s\*\\\[round:/);
-});
-
-
-
-test('source migration backfills source fields from legacy round notes', async () => {
-  const migration = await readFile(new URL('../supabase/migrations/202606250001_itinerary_source_fields.sql', import.meta.url), 'utf8');
-  assert.match(migration, /update tour_itinerary_items/);
-  assert.match(migration, /source_type = 'round'/);
-  assert.match(migration, /substring\(notes from/);
-  assert.match(migration, /round:/);
-});
-
-test('Public Info itinerary empty state is explicit TBC', async () => {
+test('public Tour information is a single schedule with daily shirts and no handbook cards', async () => {
   const info = await readFile(new URL('../src/pages/TourInfo.tsx', import.meta.url), 'utf8');
+  const publicData = await readFile(new URL('../netlify/functions/_publicData.ts', import.meta.url), 'utf8');
+  assert.match(info, /title="Tour itinerary"/);
+  assert.match(info, /First tee/);
+  assert.match(info, /Team shirt colours/);
   assert.match(info, /Itinerary TBC\./);
-  assert.doesNotMatch(info, /Friday placeholder round/i);
+  assert.doesNotMatch(info, /Key notes|handbookSections\.map|Secondary prize/);
+  assert.match(publicData, /activeManualItineraryItems/);
+  assert.match(publicData, /handbookSections: \[\]/);
 });
 
 test('Bet Punto CSS stacks tables on mobile instead of requiring horizontal scrolling', async () => {

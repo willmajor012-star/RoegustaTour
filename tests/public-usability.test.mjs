@@ -29,7 +29,7 @@ test('home prioritises score, up next, course guides and This Tour', () => {
   assert.match(dashboardSource, /home-up-next/);
   assert.match(dashboardSource, /<CourseRail/);
   assert.match(dashboardSource, /href="\/tours"/);
-  assert.match(dashboardSource, /Teams, schedule & tour info/);
+  assert.match(dashboardSource, /Teams, courses & itinerary/);
   assert.match(dashboardSource, /tourLive/);
   assert.match(dashboardSource, /tourComplete/);
 });

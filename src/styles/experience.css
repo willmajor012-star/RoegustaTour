@@ -1572,3 +1572,85 @@
     position: static;
   }
 }
+
+.itinerary-day-list {
+  display: grid;
+  gap: 18px;
+}
+
+.itinerary-day {
+  overflow: hidden;
+  border: 1px solid rgba(184, 154, 93, .35);
+  border-radius: 20px;
+  background: #fffaf0;
+}
+
+.itinerary-day-header {
+  display: grid;
+  gap: 10px;
+  padding: 15px 16px;
+  background: linear-gradient(135deg, var(--rt-green-950), var(--rt-green-800));
+  color: var(--rt-cream);
+}
+
+.itinerary-day-header h3 {
+  margin: 0;
+  color: var(--rt-cream);
+}
+
+.itinerary-day-header .team-kit-chip-list {
+  margin: 0;
+}
+
+.itinerary-day-header .team-kit-chip {
+  background: rgba(255, 250, 240, .12);
+  border-color: rgba(255, 250, 240, .3);
+  color: var(--rt-cream);
+}
+
+.itinerary-event-list {
+  display: grid;
+}
+
+.itinerary-event {
+  display: grid;
+  grid-template-columns: minmax(110px, .35fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 15px 16px;
+  border-bottom: 1px solid rgba(184, 154, 93, .24);
+}
+
+.itinerary-event:last-child {
+  border-bottom: 0;
+}
+
+.itinerary-event p {
+  margin: 4px 0 0;
+}
+
+.itinerary-event-time {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.itinerary-event-time span {
+  font-weight: 900;
+  color: var(--rt-green-900);
+}
+
+.itinerary-event-time small {
+  color: var(--rt-ink-muted);
+  font-weight: 800;
+}
+
+.itinerary-event-golf {
+  box-shadow: inset 4px 0 0 var(--rt-gold);
+}
+
+@media (max-width: 560px) {
+  .itinerary-event {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}

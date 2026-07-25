@@ -144,7 +144,7 @@ function CurrentTourHub({ tour, data, onOpenTour }: { tour: Tour; data: Omit<Pub
     <div className="tour-hub-links">
       <a href="/teams"><span>Squads</span><strong>Teams & players</strong><small>Captains, handicaps and profiles</small><b aria-hidden="true">›</b></a>
       <a href="/courses"><span>Prepare</span><strong>Course guides</strong><small>Faldo, O’Connor and Old Course</small><b aria-hidden="true">›</b></a>
-      <a href="/info"><span>Plan</span><strong>Schedule & tour info</strong><small>Itinerary, kit and key notes</small><b aria-hidden="true">›</b></a>
+      <a href="/info"><span>Plan</span><strong>Tour itinerary</strong><small>Flights, stay, dinners, golf and shirts</small><b aria-hidden="true">›</b></a>
     </div>
   </section>;
 }

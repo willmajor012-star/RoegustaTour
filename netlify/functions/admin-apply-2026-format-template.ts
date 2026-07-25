@@ -16,14 +16,6 @@ const template: TemplateRound[] = [
   { round_number: 4, name: 'Monday 9-hole 4BBB', round_date: '2026-11-09', session: 'AM', course_name: 'Course TBC', format: 'better_ball', format_label: '4BBB', holes: 9, status: 'planned' },
 ];
 
-const itinerary = [
-  { item_date: '2026-11-06', day_label: 'Friday 6 Nov', time_label: 'TBC', activity: 'Arrival / travel day', location: null, notes: 'Flights, transfers, accommodation and dinner TBC', sort_order: 10 },
-  { item_date: '2026-11-07', day_label: 'Saturday 7 Nov', time_label: 'AM', activity: 'Faldo Course 4BBB', location: 'Faldo Course', notes: null, sort_order: 20 },
-  { item_date: '2026-11-07', day_label: 'Saturday 7 Nov', time_label: 'PM', activity: "O'Connor Jnr. Course scramble", location: "O'Connor Jnr. Course", notes: null, sort_order: 30 },
-  { item_date: '2026-11-08', day_label: 'Sunday 8 Nov', time_label: 'TBC', activity: 'Old Course singles', location: 'Old Course', notes: null, sort_order: 40 },
-  { item_date: '2026-11-09', day_label: 'Monday 9 Nov', time_label: 'TBC', activity: 'Course TBC 9-hole 4BBB', location: 'Course TBC', notes: 'Departure details TBC', sort_order: 50 },
-];
-
 function notes(session: string) { return `[Session: ${session}]`; }
 
 export const handler: Handler = (event) => withAdminSupabase(event, 'POST', async (supabase, body) => {
@@ -60,22 +52,6 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     } else {
       const { error } = await supabase.from('rounds').insert({ id: crypto.randomUUID(), ...row });
       if (error) throw new Error(`create 2026 round ${round.round_number}: ${error.message}`);
-    }
-  }
-
-  const stale = await runRows<{ id: string; activity: string; is_placeholder: boolean }>(supabase.from('tour_itinerary_items').select('id, activity, is_placeholder').eq('tour_id', tourId).eq('item_date', '2026-11-06'), 'load stale Friday itinerary');
-  const staleIds = stale.filter((item) => item.is_placeholder && /golf|practice|opening match/i.test(item.activity)).map((item) => item.id);
-  if (staleIds.length > 0) {
-    const { error } = await supabase.from('tour_itinerary_items').delete().eq('tour_id', tourId).in('id', staleIds);
-    if (error) throw new Error(`remove stale Friday itinerary: ${error.message}`);
-  }
-
-  const existingItems = await runRows<{ id: string; item_date: string | null; activity: string }>(supabase.from('tour_itinerary_items').select('id, item_date, activity').eq('tour_id', tourId), 'load itinerary');
-  for (const item of itinerary) {
-    const exists = existingItems.some((candidate) => candidate.item_date === item.item_date && candidate.activity.toLowerCase() === item.activity.toLowerCase());
-    if (!exists) {
-      const { error } = await supabase.from('tour_itinerary_items').insert({ id: crypto.randomUUID(), tour_id: tourId, ...item, is_placeholder: true, source_type: 'template_2026', source_id: item.activity.toLowerCase().replace(/[^a-z0-9]+/g, '-') });
-      if (error) throw new Error(`create 2026 itinerary item: ${error.message}`);
     }
   }
 

@@ -67,11 +67,9 @@ describe('secondary prize result support', () => {
     assert.match(publicSource, /Secondary prizes/);
   });
 
-  it('Tour Info secondary prize rows include winner plus score fallbacks', () => {
-    assert.match(tourInfoSource, /Winner TBC/);
-    assert.match(tourInfoSource, /scoreValue/);
-    assert.match(tourInfoSource, /winnerPlayerId/);
-    assert.match(tourInfoSource, /winnerTeamId/);
+  it('Tour itinerary does not duplicate secondary prize information from Golf', () => {
+    assert.doesNotMatch(tourInfoSource, /winnerPlayerId|winnerTeamId|scoreValue|Secondary prize/);
+    assert.match(tourInfoSource, /Tour itinerary/);
   });
 
   it('backend validates secondary prize linked IDs', () => {
