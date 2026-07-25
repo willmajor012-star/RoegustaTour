@@ -1,10 +1,10 @@
 import { useRef } from 'react';
 import { formatDate } from '../lib/formatting';
-import { fetchPublicSummary } from '../lib/publicApi';
+import { fetchPublicTourHeader } from '../lib/publicApi';
 import { usePublicData } from '../lib/usePublicData';
 
 export function BrandHeader() {
-  const { data } = usePublicData(fetchPublicSummary);
+  const { data } = usePublicData(fetchPublicTourHeader, { refreshMs: 300_000 });
   const logoClicks = useRef<number[]>([]);
   const handleLogoClick = () => {
     const now = Date.now();

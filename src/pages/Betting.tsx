@@ -50,7 +50,7 @@ function betEditToken(betId: string) {
 
 export function Betting() {
   const [bettorName, setBettorName] = useState('');
-  const { data, loading, error } = usePublicData(fetchPublicBetMarkets, { refreshMs: 10000 });
+  const { data, loading, error } = usePublicData(fetchPublicBetMarkets, { refreshMs: 30000 });
   const activeData = data ?? emptyBettingData;
   const [savedBets, setSavedBets] = useState<Bet[]>([]);
   const [submitMessages, setSubmitMessages] = useState<Record<string, string>>({});
@@ -66,8 +66,8 @@ export function Betting() {
     if (!normalizedInput) return undefined;
     return bettorOptions.find((player) => normalizeBettorInput(player.displayName) === normalizedInput || (player.nickname && normalizeBettorInput(player.nickname) === normalizedInput));
   }, [bettorName, bettorOptions]);
-  const bettorSummaries = useMemo(() => buildBetPuntoBettorSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames), [activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames]);
-  const marketSummaries = useMemo(() => buildBetPuntoMarketSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames), [activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames]);
+  const bettorSummaries = useMemo(() => buildBetPuntoBettorSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames, activeData.rounds), [activeData.betMarkets, activeData.betOptions, activeData.rounds, bets, mandatoryBettorNames]);
+  const marketSummaries = useMemo(() => buildBetPuntoMarketSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames, activeData.rounds), [activeData.betMarkets, activeData.betOptions, activeData.rounds, bets, mandatoryBettorNames]);
   const requiredMarketSummaries = marketSummaries.filter((summary) => summary.market.required ?? (summary.market.marketType === 'player_performance' && summary.market.title.toLowerCase().includes('stableford')));
   const leaderboard = useMemo(() => [...bettorSummaries].sort((a, b) => b.netPence - a.netPence || b.settledPayoutPence - a.settledPayoutPence || a.bettorName.localeCompare(b.bettorName)), [bettorSummaries]);
   const settledDuePence = bettorSummaries.reduce((total, summary) => total + summary.settledPayoutPence, 0);
@@ -164,7 +164,7 @@ export function Betting() {
             {bettorOptions.map((player) => <option key={player.id} value={player.displayName}>{player.displayName}{player.nickname ? ` · ${player.nickname}` : ''}</option>)}
           </select>
         </label>
-        <small>£10 minimum per playing day. Stakes are in £5 increments and additional bets are allowed before close.</small>
+        <small>£10 minimum across all required markets on each playing day. Stakes are in £5 increments and additional bets are allowed before each market closes.</small>
       </section>
 
       {!loading && !error && <>
@@ -240,8 +240,8 @@ export function Betting() {
 
         <details className="card betting-admin-details">
           <summary><span><small>Market detail</small><strong>Daily coverage</strong></span><b>{requiredMarketSummaries.length}</b></summary>
-          <div className="table-wrap"><table className="bet-summary-table"><thead><tr><th>Required market</th><th>Status</th><th>Picks</th><th>Pot</th><th>Missing</th></tr></thead><tbody>{requiredMarketSummaries.length === 0 ? <tr><td colSpan={5}>No required markets yet.</td></tr> : requiredMarketSummaries.map((summary) => <tr key={summary.market.id}><td>{summary.market.title}</td><td>{betMarketUiStatusLabel(summary.market)}</td><td>{summary.totalBets}/{mandatoryBettorNames.length}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{summary.missingBettorNames.length === 0 ? 'Complete' : summary.missingBettorNames.join(', ')}</td></tr>)}</tbody></table></div>
-          <small>At the fixed first tee time, any shortfall to £10 is added automatically on the player themselves or their own scramble team.</small>
+          <div className="table-wrap"><table className="bet-summary-table"><thead><tr><th>Required market</th><th>Status</th><th>Bets</th><th>Pot</th><th>Players below £10 that day</th></tr></thead><tbody>{requiredMarketSummaries.length === 0 ? <tr><td colSpan={5}>No required markets yet.</td></tr> : requiredMarketSummaries.map((summary) => <tr key={summary.market.id}><td>{summary.market.title}</td><td>{betMarketUiStatusLabel(summary.market)}</td><td>{summary.totalBets}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{summary.missingBettorNames.length === 0 ? 'Complete' : summary.missingBettorNames.join(', ')}</td></tr>)}</tbody></table></div>
+          <small>Each market closes at its round’s fixed first tee time. At that point, only the remaining shortfall to the £10 daily total is added automatically on the player themselves or their own scramble team.</small>
         </details>
       </>}
     </div>

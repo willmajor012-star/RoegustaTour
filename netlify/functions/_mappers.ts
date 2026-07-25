@@ -82,7 +82,7 @@ export function mapTour(row: Row): Tour {
     name: requiredString(row, 'name'),
     year: requiredNumber(row, 'year'),
     location: asString(row.location),
-    timezone: asString(row.timezone) ?? 'Europe/London',
+    timezone: asString(row.timezone) ?? 'Europe/Lisbon',
     startDate: asString(row.start_date),
     endDate: asString(row.end_date),
     status: requiredString(row, 'status') as Tour['status'],

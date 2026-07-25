@@ -2,11 +2,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerSupabaseClient } from './_supabase';
 import { requirePublicAccess, type PublicAccessEvent } from './_publicAccess';
 import { mapBetMarket, mapBetOption, mapCourseGuide, mapHistoricalPlayerStats, mapMatch, mapMatchParticipant, mapPlayer, mapPlayerMatchResult, mapRound, mapRoundPrizeResult, mapTour, mapTourItineraryItem, mapTourPlayer, mapTourTeam, mapTourTeamDayKit, mapTourTeamMember, mapTourTeamResult } from './_mappers';
-import type { Match, Round, Tour, TourTeam, TourTeamMember } from '../../src/lib/types';
+import type { Match, Round, Tour, TourTeam } from '../../src/lib/types';
 import { publicBetPuntoMatchIds, publicBetPuntoPlayerIds, publicBetPuntoRoundIds, publicBetPuntoTeamIds, visibleBetMarkets } from '../../src/lib/betPuntoRules';
 import { activeManualItineraryItems } from '../../src/lib/tourItinerary';
 import { selectDefaultTour } from './_tourResolution';
 import { applyAutomaticBetDefaultsForTour } from './_betDefaults';
+import { calculateTeamScoreByTour } from '../../src/lib/scoring';
+import { filterPublicRounds, filterPublicTeamMembers, filterPublicTeams, isPublicMatch, isPublicRound, isPublicTeamRoster, isPublicTour } from '../../src/lib/publicVisibility';
+
+export { isPublicMatch, isPublicRound, isPublicTeamRoster, isPublicTour };
 
 type Row = Record<string, unknown>;
 type SupabaseResult<T> = { data: T[] | null; error: { message: string } | null };
@@ -42,81 +46,16 @@ export async function withLiveData<T extends object>(event: PublicAccessEvent, r
   }
 }
 
-export function isPublicTour(tour?: Pick<Tour, 'status' | 'isCurrentPublic'>): boolean {
-  if (!tour) return false;
-  return tour.isCurrentPublic === true || tour.status === 'complete' || tour.status === 'archived';
-}
-
-export function isPublicRound(round: Pick<Round, 'status' | 'published'>, tour?: Pick<Tour, 'status' | 'isCurrentPublic'>): boolean {
-  if (tour?.isCurrentPublic === true) return round.published === true;
-  return isPublicTour(tour) && (round.published === true || round.status === 'complete');
-}
-
-export function isPublicMatch(match: Pick<Match, 'published' | 'status'>, round?: Pick<Round, 'status' | 'published'>, tour?: Pick<Tour, 'status' | 'isCurrentPublic'>): boolean {
-  if (match.published !== true && match.status !== 'complete') return false;
-  return round ? isPublicRound(round, tour) : true;
-}
-
-export function isPublicTeamRoster(tour: Pick<Tour, 'status' | 'isCurrentPublic'> | undefined, team: Pick<TourTeam, 'published'>): boolean {
-  if (!tour || !isPublicTour(tour)) return false;
-  if (tour.isCurrentPublic === true) return team.published === true;
-  return tour.status === 'complete' || tour.status === 'archived' || team.published === true;
-}
-
-export function filterPublicRounds<TRound extends Round>(rounds: TRound[], tour?: Tour): TRound[] {
-  return rounds.filter((round) => isPublicRound(round, tour));
-}
-
-export function filterPublicTeams<TTeam extends TourTeam>(teams: TTeam[], tour?: Tour): TTeam[] {
-  return teams.filter((team) => isPublicTeamRoster(tour, team));
-}
-
-export function filterPublicTeamMembers<TMember extends TourTeamMember>(members: TMember[], publicTeams: Pick<TourTeam, 'id'>[]): TMember[] {
-  const publicTeamIds = new Set(publicTeams.map((team) => team.id));
-  return members.filter((member) => publicTeamIds.has(member.teamId));
-}
-
-function hasPublishedFlag(rows: Array<{ published?: boolean }>): boolean {
-  return rows.some((row) => row.published === true);
-}
-
-function shouldUseLegacyCurrentTourVisibility(tour?: Pick<Tour, 'status' | 'isCurrentPublic'>): boolean {
-  return tour?.status === 'active' || tour?.status === 'planned';
-}
-
-function publicRowsOrLegacyCurrent<TRow extends { published?: boolean }>(rows: TRow[], tour?: Pick<Tour, 'status' | 'isCurrentPublic'>): TRow[] {
-  const publishedRows = rows.filter((row) => row.published === true);
-  if (publishedRows.length > 0) return publishedRows;
-  return shouldUseLegacyCurrentTourVisibility(tour) ? rows : publishedRows;
-}
-
 function publicTeamsOrLegacyCurrent<TTeam extends TourTeam>(teams: TTeam[], tour?: Tour): TTeam[] {
-  if (!tour) return [];
-  if (tour.isCurrentPublic === true) {
-    const publishedTeams = teams.filter((team) => team.published === true);
-    return publishedTeams.length > 0 ? publishedTeams : teams;
-  }
-  const visibleTeams = publicRowsOrLegacyCurrent(teams, tour);
-  if (tour.status === 'complete' || tour.status === 'archived') return teams;
-  if (shouldUseLegacyCurrentTourVisibility(tour)) return visibleTeams;
-  if (!isPublicTour(tour)) return [];
-  return visibleTeams.filter((team) => isPublicTeamRoster(tour, team));
+  return filterPublicTeams(teams, tour);
 }
 
 function publicRoundsOrLegacyCurrent<TRound extends Round>(rounds: TRound[], tour?: Tour): TRound[] {
-  return publicRowsOrLegacyCurrent(rounds, tour).filter((round) => shouldUseLegacyCurrentTourVisibility(tour) || isPublicRound(round, tour));
+  return filterPublicRounds(rounds, tour);
 }
 
 function publicMatchesOrLegacyCurrent<TMatch extends Match>(matches: TMatch[], publicRoundById: Map<string, Round>, tour?: Tour): TMatch[] {
-  const eligibleMatches = matches.filter((match) => {
-    const round = publicRoundById.get(match.roundId);
-    if (!round) return false;
-    return shouldUseLegacyCurrentTourVisibility(tour) || isPublicMatch(match, round, tour);
-  });
-  if (hasPublishedFlag(eligibleMatches) || !shouldUseLegacyCurrentTourVisibility(tour)) {
-    return eligibleMatches.filter((match) => isPublicMatch(match, publicRoundById.get(match.roundId), tour));
-  }
-  return eligibleMatches;
+  return matches.filter((match) => isPublicMatch(match, publicRoundById.get(match.roundId), tour));
 }
 
 function mapPublicBetRow(row: Row) {
@@ -144,7 +83,11 @@ function rowsById<T extends { id: string }>(rows: T[]): Map<string, T> {
 
 export async function getCurrentTour(supabase: SupabaseClient) {
   const tours = (await runQuery(table(supabase, 'tours').select('*').order('year', { ascending: false }).limit(50), 'public tour candidates')).map(mapTour);
-  return selectDefaultTour(tours);
+  const explicitCurrent = tours.find((tour) => tour.isCurrentPublic === true);
+  if (explicitCurrent) return explicitCurrent;
+  // A private planned tour must not mask the most recent readable archive when
+  // the explicit current-public flag is temporarily absent.
+  return selectDefaultTour(tours.filter(isPublicTour));
 }
 
 export async function getPublicMatchBundle(supabase: SupabaseClient) {
@@ -167,19 +110,45 @@ export async function getPublicMatchBundle(supabase: SupabaseClient) {
   const matches = publicMatchesOrLegacyCurrent(matchRows.map(mapMatch), roundById, tour);
   const matchIds = matches.map((match) => match.id);
   const participantRows = matchIds.length > 0 ? await runQuery(table(supabase, 'match_participants').select('*').in('match_id', matchIds), 'public match participants') : [];
+  const matchParticipants = participantRows.map(mapMatchParticipant);
   const tourTeams = publicTeamsOrLegacyCurrent(teamRows.map(mapTourTeam), tour);
+  const tourTeamMembers = filterPublicTeamMembers(memberRows.map(mapTourTeamMember), tourTeams);
+  const roundPrizeResults = prizeRows.map(mapRoundPrizeResult).filter((prize) => roundById.has(prize.roundId));
+  const publicPlayerIds = new Set([
+    ...matchParticipants.map((participant) => participant.playerId),
+    ...tourTeamMembers.map((member) => member.playerId),
+    ...roundPrizeResults.map((prize) => prize.winnerPlayerId).filter((playerId): playerId is string => Boolean(playerId)),
+  ]);
 
   return {
     tour,
     rounds,
     matches,
-    matchParticipants: participantRows.map(mapMatchParticipant),
-    players: playerRows.map(mapPlayer),
-    tourPlayers: tourPlayerRows.map(mapTourPlayer),
+    matchParticipants,
+    players: playerRows.map(mapPlayer).filter((player) => publicPlayerIds.has(player.id)),
+    tourPlayers: tourPlayerRows.map(mapTourPlayer).filter((tourPlayer) => publicPlayerIds.has(tourPlayer.playerId)),
     tourTeams,
-    tourTeamMembers: filterPublicTeamMembers(memberRows.map(mapTourTeamMember), tourTeams),
-    roundPrizeResults: prizeRows.map(mapRoundPrizeResult).filter((prize) => roundById.has(prize.roundId)),
+    tourTeamMembers,
+    roundPrizeResults,
     tourCourses: courseRows.map(mapCourseGuide),
+  };
+}
+
+export async function getDashboardBundle(supabase: SupabaseClient) {
+  const bundle = await getPublicMatchBundle(supabase);
+  if (!bundle.tour) return { ...bundle, recentResults: [], openMarkets: [], scores: [] };
+
+  const marketRows = await runQuery(
+    table(supabase, 'bet_markets').select('*').eq('tour_id', bundle.tour.id).eq('status', 'open').order('created_at', { ascending: true }),
+    'dashboard open markets',
+  );
+  const publicRoundIds = new Set(bundle.rounds.map((round) => round.id));
+
+  return {
+    ...bundle,
+    recentResults: bundle.matches.filter((match) => match.status === 'complete'),
+    openMarkets: marketRows.filter((market) => !market.round_id || publicRoundIds.has(String(market.round_id))).map(mapBetMarket),
+    scores: calculateTeamScoreByTour(bundle.tour.id, bundle.tourTeams, bundle.rounds, bundle.matches),
   };
 }
 
@@ -219,22 +188,39 @@ export async function getScoreBundle(supabase: SupabaseClient) {
 }
 
 export async function getPlayersBundle(supabase: SupabaseClient) {
-  return { players: (await runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'players')).map(mapPlayer) };
+  const bundle = await getPublicMatchBundle(supabase);
+  return { players: bundle.players };
 }
 
 export async function getStatsBundle(supabase: SupabaseClient) {
-  const [playerRows, matchRows, participantRows, historicalRows] = await Promise.all([
+  const [playerRows, tourRows, roundRows, matchRows, historicalRows] = await Promise.all([
     runQuery(table(supabase, 'players').select('*').order('display_name', { ascending: true }), 'players'),
+    runQuery(table(supabase, 'tours').select('*'), 'stats tours'),
+    runQuery(table(supabase, 'rounds').select('*'), 'stats rounds'),
     runQuery(table(supabase, 'matches').select('*').eq('status', 'complete'), 'complete matches'),
-    runQuery(table(supabase, 'match_participants').select('*, matches!inner(status)').eq('matches.status', 'complete'), 'match participants'),
     runQuery(table(supabase, 'historical_player_stats').select('*'), 'historical player stats'),
+  ]);
+  const publicTours = tourRows.map(mapTour).filter(isPublicTour);
+  const tourById = rowsById(publicTours);
+  const publicRounds = roundRows.map(mapRound).filter((round) => isPublicRound(round, tourById.get(round.tourId)));
+  const roundById = rowsById(publicRounds);
+  const publicMatches = matchRows.map(mapMatch).filter((match) => isPublicMatch(match, roundById.get(match.roundId), tourById.get(match.tourId)));
+  const publicMatchIds = publicMatches.map((match) => match.id);
+  const participantRows = publicMatchIds.length > 0
+    ? await runQuery(table(supabase, 'match_participants').select('*').in('match_id', publicMatchIds), 'match participants')
+    : [];
+  const matchParticipants = participantRows.map(mapMatchParticipant);
+  const historicalPlayerStats = historicalRows.map(mapHistoricalPlayerStats).filter((row) => !row.tourId || tourById.has(row.tourId));
+  const publicPlayerIds = new Set([
+    ...matchParticipants.map((participant) => participant.playerId),
+    ...historicalPlayerStats.map((row) => row.playerId),
   ]);
 
   return {
-    players: playerRows.map(mapPlayer),
-    matches: matchRows.map(mapMatch),
-    matchParticipants: participantRows.map(mapMatchParticipant),
-    historicalPlayerStats: historicalRows.map(mapHistoricalPlayerStats),
+    players: playerRows.map(mapPlayer).filter((player) => publicPlayerIds.has(player.id)),
+    matches: publicMatches,
+    matchParticipants,
+    historicalPlayerStats,
   };
 }
 
@@ -252,7 +238,7 @@ export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
     currentTour ? runQuery(table(supabase, 'matches').select('*').eq('tour_id', currentTour.id).order('match_number', { ascending: true }), 'current public matches') : Promise.resolve([]),
   ]);
 
-  const tours = tourRows.map(mapTour).filter((tour) => isPublicTour(tour) || tour.id === currentTour?.id);
+  const tours = tourRows.map(mapTour).filter(isPublicTour);
   const tourById = rowsById(tours);
   const allRounds = roundRows.map(mapRound);
   const currentTourRounds = currentTour ? publicRoundsOrLegacyCurrent(allRounds.filter((round) => round.tourId === currentTour.id), currentTour) : [];
@@ -276,19 +262,27 @@ export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
   const currentTourTeams = currentTour ? publicTeamsOrLegacyCurrent(allTeams.filter((team) => team.tourId === currentTour.id), currentTour) : [];
   const currentTourTeamIds = new Set(currentTourTeams.map((team) => team.id));
   const tourTeams = allTeams.filter((team) => currentTourTeamIds.has(team.id) || isPublicTeamRoster(tourById.get(team.tourId), team));
+  const tourTeamMembers = filterPublicTeamMembers(memberRows.map(mapTourTeamMember), tourTeams);
+  const matchParticipants = participantRows.map(mapMatchParticipant);
+  const playerMatchResults = playerResultRows.map(mapPlayerMatchResult);
+  const publicPlayerIds = new Set([
+    ...tourTeamMembers.map((member) => member.playerId),
+    ...matchParticipants.map((participant) => participant.playerId),
+    ...playerMatchResults.map((result) => result.playerId),
+  ]);
 
   return {
     currentTour,
-    players: playerRows.map(mapPlayer),
+    players: playerRows.map(mapPlayer).filter((player) => publicPlayerIds.has(player.id)),
     tours,
     tourTeams,
-    tourPlayers: tourPlayerRows.map(mapTourPlayer).filter((tourPlayer) => tourById.has(tourPlayer.tourId)),
-    tourTeamMembers: filterPublicTeamMembers(memberRows.map(mapTourTeamMember), tourTeams),
+    tourPlayers: tourPlayerRows.map(mapTourPlayer).filter((tourPlayer) => tourById.has(tourPlayer.tourId) && publicPlayerIds.has(tourPlayer.playerId)),
+    tourTeamMembers,
     tourTeamResults: resultRows.map(mapTourTeamResult).filter((result) => tourById.has(result.tourId)),
     rounds,
     matches: [...matchById.values()],
-    matchParticipants: participantRows.map(mapMatchParticipant),
-    playerMatchResults: playerResultRows.map(mapPlayerMatchResult),
+    matchParticipants,
+    playerMatchResults,
   };
 }
 

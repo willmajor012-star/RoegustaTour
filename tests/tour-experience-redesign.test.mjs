@@ -11,6 +11,7 @@ const toursPage = readFileSync('src/pages/Tours.tsx', 'utf8');
 const bettingPage = readFileSync('src/pages/Betting.tsx', 'utf8');
 const bettingCard = readFileSync('src/components/BetMarketCard.tsx', 'utf8');
 const adminPage = readFileSync('src/pages/Admin.tsx', 'utf8');
+const adminNavigation = readFileSync('src/lib/adminNavigation.ts', 'utf8');
 const liveDesk = readFileSync('src/components/AdminLiveDesk.tsx', 'utf8');
 const savePrize = readFileSync('netlify/functions/admin-save-round-prize-result.ts', 'utf8');
 const refreshButton = readFileSync('src/components/RefreshButton.tsx', 'utf8');
@@ -65,17 +66,16 @@ test('Bet Punto puts the two daily market types and four quick stakes first', ()
 });
 
 test('Admin defaults to a live desk while retaining the full setup tools', () => {
-  assert.match(adminPage, /useState<'live' \| 'setup'>\('live'\)/);
+  assert.match(adminPage, /useState<AdminWorkspaceId>\('live'\)/);
   assert.match(adminPage, /<AdminLiveDesk/);
-  assert.match(adminPage, /Results, winner, publish/);
-  assert.match(adminPage, /Tour, teams, rounds, pairings/);
-  assert.match(adminPage, /adminMode === 'setup'/);
+  for (const workspace of ['Live', 'Tour', 'People', 'Pairings', 'Bet Punto', 'Settings']) assert.match(adminNavigation, new RegExp(`label: '${workspace}'`));
+  assert.match(adminPage, /activeWorkspace !== 'live'/);
   assert.match(liveDesk, /Choose the round once/);
   assert.match(liveDesk, /Save draft/);
   assert.match(liveDesk, /Publish round/);
   assert.match(liveDesk, /Publish & settle bets/);
   assert.doesNotMatch(liveDesk, /await settleBetMarket/);
-  assert.match(savePrize, /settleBetMarketRows/);
+  assert.match(savePrize, /admin_save_round_prize_result_atomic/);
   assert.match(savePrize, /applyAutomaticBetDefaultsForMarket/);
   assert.match(liveDesk, /if \(publish && incomplete\.length > 0\)/);
   assert.match(liveDesk, /if \(!publish && \(!draft\.winningSide/);

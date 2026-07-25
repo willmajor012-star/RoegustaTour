@@ -8,7 +8,7 @@ export async function writeAuditLog(
   entityType: string,
   entityId: string | null,
   payload: Record<string, unknown> = {},
-): Promise<void> {
+): Promise<boolean> {
   const { error } = await supabase.from('audit_log').insert({
     actor_label: session?.actorLabel ?? 'Roegusta admin',
     action,
@@ -16,5 +16,12 @@ export async function writeAuditLog(
     entity_id: entityId,
     payload,
   });
-  if (error) throw new Error(`write audit log: ${error.message}`);
+  if (error) {
+    // The user-facing write has often already committed (for example an atomic
+    // settlement RPC). Do not report that operation as failed merely because
+    // its secondary audit insert could not be recorded.
+    console.error(`write audit log: ${error.message}`);
+    return false;
+  }
+  return true;
 }

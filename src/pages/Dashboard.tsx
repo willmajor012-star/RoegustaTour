@@ -3,7 +3,7 @@ import { MatchCard } from '../components/MatchCard';
 import { CourseRail } from '../components/CourseRail';
 import { Scoreboard } from '../components/Scoreboard';
 import { formatMatchFormat, formatPoints, formatShortDate } from '../lib/formatting';
-import { fetchPublicMatches, fetchPublicScore, fetchPublicSummary, type PublicMatchesResponse, type PublicScoreResponse, type PublicSummaryResponse } from '../lib/publicApi';
+import { fetchPublicDashboard, type PublicDashboardResponse } from '../lib/publicApi';
 import type { Match, Round, TeamScoreRow, TourTeam } from '../lib/types';
 import { formatRoundDisplayName, formatTourDisplayName, getDateOnlyScheduledDate, getScheduledDate, getScheduleSortTime, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
 import { usePublicData } from '../lib/usePublicData';
@@ -11,24 +11,21 @@ import { TEAM_COLOUR_FALLBACKS, normalizeTeamColour } from '../lib/teamColours';
 import { awardedPoints, pointsRequiredToWinOutright, totalAvailablePoints } from '../lib/matchplay';
 import { courseGuidesForTour } from '../data/courseGuides';
 
-type DashboardData = {
-  summary: Omit<PublicSummaryResponse, 'source'>;
-  score: Omit<PublicScoreResponse, 'source'>;
-  matches: Omit<PublicMatchesResponse, 'source'>;
-  source: 'supabase';
-};
-
-const emptyDashboardData: DashboardData = {
+const emptyDashboardData: PublicDashboardResponse = {
   source: 'supabase',
-  summary: { rounds: [], recentResults: [], openMarkets: [], tourCourses: [] },
-  score: { teams: [], rounds: [], matches: [], scores: [] },
-  matches: { rounds: [], matches: [], matchParticipants: [], players: [], tourPlayers: [], tourTeams: [], tourTeamMembers: [], roundPrizeResults: [], tourCourses: [] },
+  rounds: [],
+  matches: [],
+  matchParticipants: [],
+  players: [],
+  tourPlayers: [],
+  tourTeams: [],
+  tourTeamMembers: [],
+  roundPrizeResults: [],
+  tourCourses: [],
+  recentResults: [],
+  openMarkets: [],
+  scores: [],
 };
-
-async function fetchDashboardData(): Promise<DashboardData> {
-  const [summary, score, matches] = await Promise.all([fetchPublicSummary(), fetchPublicScore(), fetchPublicMatches()]);
-  return { summary, score, matches, source: 'supabase' };
-}
 
 function countdownParts(startDate?: string, endDate?: string, status?: string) {
   if (!startDate) return { state: 'Tour date TBC' };
@@ -75,14 +72,14 @@ function teamScoreRows(scores: TeamScoreRow[], teams: TourTeam[]): TeamScoreRow[
 }
 
 export function Dashboard() {
-  const { data, loading, error } = usePublicData(fetchDashboardData);
+  const { data, loading, error } = usePublicData(fetchPublicDashboard);
   const [, setTick] = useState(0);
   const activeData = data ?? emptyDashboardData;
-  const tour = activeData.summary.tour ?? activeData.score.tour ?? activeData.matches.tour;
-  const rounds = activeData.summary.rounds.length > 0 ? activeData.summary.rounds : activeData.score.rounds.length > 0 ? activeData.score.rounds : activeData.matches.rounds;
+  const tour = activeData.tour;
+  const rounds = activeData.rounds;
   const roundById = useMemo(() => new Map(rounds.map((round) => [round.id, round])), [rounds]);
-  const visibleMatches = activeData.matches.matches.filter(isPublicVisibleMatch);
-  const teamRows = teamScoreRows(activeData.score.scores, activeData.score.teams.length > 0 ? activeData.score.teams : activeData.matches.tourTeams);
+  const visibleMatches = activeData.matches.filter(isPublicVisibleMatch);
+  const teamRows = teamScoreRows(activeData.scores, activeData.tourTeams);
   const totalPointsAvailable = totalAvailablePoints(visibleMatches);
   const remainingPoints = totalPointsAvailable - awardedPoints(visibleMatches);
   const pointsToWinOutright = pointsRequiredToWinOutright(totalPointsAvailable);
@@ -94,7 +91,7 @@ export function Dashboard() {
   const sortedRounds = [...rounds].sort((a, b) => getScheduleSortTime(a.roundDate, a.teeTime) - getScheduleSortTime(b.roundDate, b.teeTime) || a.roundNumber - b.roundNumber);
   const nextRound = nextTee?.round ?? sortedRounds.find((round) => round.status === 'active') ?? sortedRounds.find((round) => getScheduleSortTime(round.roundDate, round.teeTime) >= Date.now()) ?? sortedRounds[0];
   const latestRound = latestCompletedRound(rounds, visibleMatches);
-  const latestResult = latestRound ? undefined : ([...visibleMatches].filter((match) => match.status === 'complete').sort((a, b) => (getScheduledDate(roundById.get(b.roundId)?.roundDate, b.teeTime)?.getTime() ?? 0) - (getScheduledDate(roundById.get(a.roundId)?.roundDate, a.teeTime)?.getTime() ?? 0) || b.matchNumber - a.matchNumber)[0] ?? activeData.summary.recentResults[0]);
+  const latestResult = latestRound ? undefined : ([...visibleMatches].filter((match) => match.status === 'complete').sort((a, b) => (getScheduledDate(roundById.get(b.roundId)?.roundDate, b.teeTime)?.getTime() ?? 0) - (getScheduledDate(roundById.get(a.roundId)?.roundDate, a.teeTime)?.getTime() ?? 0) || b.matchNumber - a.matchNumber)[0] ?? activeData.recentResults[0]);
   const countdown = countdownParts(tour?.startDate, tour?.endDate, tour?.status);
   const tourStart = getDateOnlyScheduledDate(tour?.startDate);
   const tourEnd = getDateOnlyScheduledDate(tour?.endDate, '23:59:59');
@@ -102,7 +99,7 @@ export function Dashboard() {
   const tourLive = !tourComplete && (tour?.status === 'active' || Boolean(tourStart && tourEnd && Date.now() >= tourStart.getTime() && Date.now() <= tourEnd.getTime()));
   const upNextFormat = nextRound?.formatLabel ?? (nextTee?.match.format ? formatMatchFormat(nextTee.match.format) : undefined) ?? 'Format TBC';
   const upNextTime = normalizeTeeTime(nextTee?.match.teeTime) ?? normalizeTeeTime(nextRound?.teeTime) ?? 'TBC';
-  const tourCourses = courseGuidesForTour(tour, rounds, activeData.summary.tourCourses);
+  const tourCourses = courseGuidesForTour(tour, rounds, activeData.tourCourses);
 
   useEffect(() => {
     const interval = window.setInterval(() => setTick((value) => value + 1), 1000);
@@ -111,7 +108,7 @@ export function Dashboard() {
 
   const latestResultCard = <a className="card tappable-card latest-result-card" href="/matches">
     <div className="section-heading"><div><p className="eyebrow">{tourComplete ? 'Tour results' : 'Latest result'}</p><h2>{tourComplete ? 'Final results' : 'Latest result'}</h2></div><span className="card-chevron" aria-hidden="true">›</span></div>
-    {latestRound ? <div className="latest-round-results"><p><strong>{formatRoundDisplayName(latestRound.round)}</strong>{latestRound.round.roundDate ? ` · ${formatShortDate(latestRound.round.roundDate)}` : ''} · {roundScore(latestRound.matches)}</p>{latestRound.matches.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />)}</div> : !latestResult ? <p>No results yet</p> : <MatchCard match={latestResult} participants={activeData.matches.matchParticipants.filter((p) => p.matchId === latestResult.id)} players={activeData.matches.players} teams={activeData.matches.tourTeams} />}
+    {latestRound ? <div className="latest-round-results"><p><strong>{formatRoundDisplayName(latestRound.round)}</strong>{latestRound.round.roundDate ? ` · ${formatShortDate(latestRound.round.roundDate)}` : ''} · {roundScore(latestRound.matches)}</p>{latestRound.matches.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.players} teams={activeData.tourTeams} />)}</div> : !latestResult ? <p>No results yet</p> : <MatchCard match={latestResult} participants={activeData.matchParticipants.filter((p) => p.matchId === latestResult.id)} players={activeData.players} teams={activeData.tourTeams} />}
   </a>;
 
   return <div className={`page-stack dashboard-page ${tourLive ? 'tour-is-live' : tourComplete ? 'tour-is-complete' : 'tour-is-upcoming'}`}>

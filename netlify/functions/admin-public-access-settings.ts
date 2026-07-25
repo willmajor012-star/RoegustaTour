@@ -7,7 +7,12 @@ type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 export const handler: Handler = (event) => withAdminSupabase(event, event.httpMethod === 'GET' ? 'GET' : 'POST', async (supabase, body, session) => {
   if (event.httpMethod === 'GET') {
     const setting = await getPublicAccessSetting(supabase);
-    return jsonResponse(200, { ok: true, configured: setting.configured, sessionVersion: setting.sessionVersion });
+    return jsonResponse(200, {
+      ok: true,
+      configured: setting.configured,
+      requiresChange: setting.requiresChange,
+      sessionVersion: setting.sessionVersion,
+    });
   }
 
   const password = optionalString(body.password);
@@ -21,9 +26,15 @@ export const handler: Handler = (event) => withAdminSupabase(event, event.httpMe
     password_hash: await hashPublicPassword(password, salt),
     password_salt: salt,
     session_version: nextVersion,
+    requires_change: false,
     updated_at: new Date().toISOString(),
     updated_by: session.actorLabel,
   };
-  const saved = await runSingle<{ session_version: number }>(supabase.from('public_access_settings').upsert(row, { onConflict: 'id' }).select('session_version').single(), 'save public access setting');
-  return jsonResponse(200, { ok: true, configured: true, sessionVersion: saved.session_version });
+  const saved = await runSingle<{ session_version: number; requires_change: boolean }>(supabase.from('public_access_settings').upsert(row, { onConflict: 'id' }).select('session_version, requires_change').single(), 'save public access setting');
+  return jsonResponse(200, {
+    ok: true,
+    configured: true,
+    requiresChange: saved.requires_change,
+    sessionVersion: saved.session_version,
+  });
 });
