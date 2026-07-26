@@ -47,7 +47,7 @@ test('one tour itinerary admin workflow replaces the public handbook editor', as
   for (const copy of ['Travel, stay and dinner', 'Golf from rounds', 'Team shirts', 'Golf is pulled directly from Rounds &amp; tee times']) assert.match(component, new RegExp(copy));
 });
 
-test('only travel, accommodation and dinner rows feed the manual itinerary', async () => {
+test('only flights, travel, accommodation and dinner rows feed the manual itinerary', async () => {
   const { activeManualItineraryItems } = await loadItineraryModule();
   const rows = [
     item('flight', 'tour-1', 'Outbound flight', { sourceType: 'travel' }),
@@ -58,6 +58,17 @@ test('only travel, accommodation and dinner rows feed the manual itinerary', asy
     item('other-tour', 'tour-2', 'Dinner', { sourceType: 'dinner' }),
   ];
   assert.deepEqual(activeManualItineraryItems(rows, 'tour-1').map((row) => row.id).sort(), ['dinner', 'flight', 'hotel']);
+});
+
+test('legacy travel flights are recognised as flights and entries order by clock time', async () => {
+  const { activeManualItineraryItems, manualItineraryKind } = await loadItineraryModule();
+  const rows = [
+    item('late', 'tour-1', 'Dinner', { sourceType: 'dinner', timeLabel: '20:00', sortOrder: 1 }),
+    item('flight', 'tour-1', 'Outbound flight', { sourceType: 'travel', timeLabel: '08:30', endTimeLabel: '11:10', sortOrder: 99 }),
+    item('transfer', 'tour-1', 'Airport transfer', { sourceType: 'travel', timeLabel: '12:00', sortOrder: 1 }),
+  ];
+  assert.equal(manualItineraryKind(rows[1]), 'flight');
+  assert.deepEqual(activeManualItineraryItems(rows, 'tour-1').map((row) => row.id), ['flight', 'transfer', 'late']);
 });
 
 test('golf schedule entries come directly from the selected tour rounds', async () => {
@@ -102,11 +113,21 @@ test('archived and future tour itinerary records remain isolated', async () => {
   assert.deepEqual(buildTourSchedule('tour-2027', rounds, rows).map((entry) => entry.id), ['round-future-round', 'future-hotel']);
 });
 
-test('Admin itinerary writes enforce the three practical manual categories', async () => {
+test('Admin itinerary writes enforce practical categories and automatic chronological ordering', async () => {
   const saveFn = await readFile(new URL('../netlify/functions/admin-save-itinerary-item.ts', import.meta.url), 'utf8');
-  assert.match(saveFn, /\['travel', 'accommodation', 'dinner'\]/);
-  assert.match(saveFn, /Itinerary type must be travel, accommodation or dinner/);
+  assert.match(saveFn, /\['flight', 'travel', 'accommodation', 'dinner'\]/);
+  assert.match(saveFn, /Flights require departure and landing times/);
+  assert.match(saveFn, /end_time_label: endTimeLabel/);
+  assert.match(saveFn, /automaticSortOrder/);
   assert.match(saveFn, /tour_id: tourId/);
+});
+
+test('Admin itinerary uses real flight times and hides internal sort controls', async () => {
+  const component = await readFile(new URL('../src/components/AdminTourItinerary.tsx', import.meta.url), 'utf8');
+  assert.match(component, /'Departure time'/);
+  assert.match(component, /'Landing time'/);
+  assert.match(component, /type="time"/);
+  assert.doesNotMatch(component, />Sort order</);
 });
 
 test('team shirt colours have tour-scoped admin read, save and delete paths', async () => {
@@ -131,7 +152,7 @@ test('the 2026 helper no longer creates or deletes schedule placeholders', async
 test('public Tour information is a single schedule with daily shirts and no handbook cards', async () => {
   const info = await readFile(new URL('../src/pages/TourInfo.tsx', import.meta.url), 'utf8');
   const publicData = await readFile(new URL('../netlify/functions/_publicData.ts', import.meta.url), 'utf8');
-  assert.match(info, /title="Tour itinerary"/);
+  assert.match(info, /title="Itinerary"/);
   assert.match(info, /First tee/);
   assert.match(info, /Team shirt colours/);
   assert.match(info, /Itinerary TBC\./);
@@ -140,12 +161,29 @@ test('public Tour information is a single schedule with daily shirts and no hand
   assert.match(publicData, /handbookSections: \[\]/);
 });
 
-test('itinerary day headings use a defined dark background so cream text remains visible', async () => {
+test('itinerary day tabs use the Roegusta dark green and gold treatment', async () => {
   const css = await readFile(new URL('../src/styles/experience.css', import.meta.url), 'utf8');
-  const headerRule = css.match(/\.itinerary-day-header\s*{[^}]+}/s)?.[0] ?? '';
-  assert.match(headerRule, /--rt-green-950,\s*#062b22/);
-  assert.match(headerRule, /--rt-green-850,\s*#0a3e34/);
-  assert.doesNotMatch(headerRule, /--rt-green-800/);
+  const tabsRule = css.match(/\.itinerary-day-tabs\s*{[^}]+}/s)?.[0] ?? '';
+  const activeRule = css.match(/\.itinerary-day-tabs button\.is-active\s*{[^}]+}/s)?.[0] ?? '';
+  assert.match(tabsRule, /--rt-green-950,\s*#062b22/);
+  assert.match(tabsRule, /--rt-green-850,\s*#0a3e34/);
+  assert.match(activeRule, /--rt-gold/);
+});
+
+test('public itinerary uses selectable day tabs and a visual event timeline', async () => {
+  const info = await readFile(new URL('../src/pages/TourInfo.tsx', import.meta.url), 'utf8');
+  assert.match(info, /role="tablist"/);
+  assert.match(info, /role="tabpanel"/);
+  assert.match(info, /itinerary-event-rail/);
+  assert.match(info, /formatItineraryTime/);
+  assert.match(info, /tourDateRange\(startDate, endDate\)/);
+});
+
+test('flight arrival-time migration is additive and preserves existing itinerary rows', async () => {
+  const migration = await readFile(new URL('../supabase/migrations/202607260001_itinerary_flight_times.sql', import.meta.url), 'utf8');
+  assert.match(migration, /add column if not exists end_time_label text/);
+  assert.match(migration, /set source_type = 'flight'/);
+  assert.doesNotMatch(migration, /\bdelete\b|\btruncate\b/i);
 });
 
 test('Bet Punto CSS stacks tables on mobile instead of requiring horizontal scrolling', async () => {
