@@ -132,6 +132,15 @@ export function Dashboard() {
       <Scoreboard scores={teamRows} href="/score" />
     </section>
 
+    {!tourComplete && <section className="overview-highlight-grid">
+      <a className="card tappable-card victory-card" href="/score">
+        <p className="eyebrow">Points target</p>
+        <h3>{pointsToWinOutright === undefined ? 'Target TBC' : `${formatPoints(pointsToWinOutright)} to win`}</h3>
+        {pointsToWinOutright !== undefined && <p>{formatPoints(totalPointsAvailable)} available · {formatPoints(remainingPoints)} remaining</p>}
+        <span className="card-chevron" aria-hidden="true">›</span>
+      </a>
+    </section>}
+
     {!tourComplete && <a className="card tappable-card home-up-next" href="/matches">
       <div className="up-next-copy">
         <p className="eyebrow">{tourLive ? 'On course' : 'Up next'}</p>
@@ -142,25 +151,18 @@ export function Dashboard() {
       <div className="up-next-time"><small>First tee</small><strong>{upNextTime}</strong><span className="card-chevron" aria-hidden="true">›</span></div>
     </a>}
 
-    {tourComplete && latestResultCard}
-
     <CourseRail compact title="Know the courses" eyebrow={tourCourses.map((course) => course.shortName).join(' · ') || 'Course preparation'} courses={tourCourses} />
 
+    {latestResultCard}
+
     <a className="card tappable-card home-this-tour-card" href="/tours">
-      <div><p className="eyebrow">This tour</p><h2>Teams, courses & itinerary</h2><p>Players, course guides and the practical tour schedule live together under Tours.</p></div>
-      <span className="card-chevron" aria-hidden="true">›</span>
+      <div className="home-this-tour-copy">
+        <p className="eyebrow">This tour</p>
+        <h2>{formatTourDisplayName(tour)}</h2>
+        <p>Teams, players, course guides and itinerary</p>
+      </div>
+      <div className="home-this-tour-action"><span>Open tour hub</span><span className="card-chevron" aria-hidden="true">›</span></div>
     </a>
-
-    {!tourComplete && <section className="overview-highlight-grid">
-      <a className="card tappable-card victory-card" href="/score">
-        <p className="eyebrow">Points target</p>
-        <h3>{pointsToWinOutright === undefined ? 'Target TBC' : `${formatPoints(pointsToWinOutright)} to win`}</h3>
-        {pointsToWinOutright !== undefined && <p>{formatPoints(totalPointsAvailable)} available · {formatPoints(remainingPoints)} remaining</p>}
-        <span className="card-chevron" aria-hidden="true">›</span>
-      </a>
-    </section>}
-
-    {!tourComplete && latestResultCard}
 
   </div>;
 }
