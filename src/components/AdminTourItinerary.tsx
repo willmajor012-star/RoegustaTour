@@ -31,11 +31,11 @@ type ItineraryForm = {
   kind: ManualItineraryKind;
   itemDate: string;
   timeLabel: string;
+  endTimeLabel: string;
   activity: string;
   location: string;
   notes: string;
   isPlaceholder: boolean;
-  sortOrder: string;
 };
 
 type KitForm = {
@@ -43,26 +43,26 @@ type KitForm = {
   kitDate: string;
   teamId: string;
   colourLabel: string;
-  sortOrder: string;
 };
 
 const emptyItineraryForm = (tour?: Tour): ItineraryForm => ({
   kind: 'travel',
   itemDate: tour?.startDate ?? '',
   timeLabel: '',
+  endTimeLabel: '',
   activity: manualItineraryKindLabels.travel,
   location: '',
   notes: '',
   isPlaceholder: false,
-  sortOrder: '10',
 });
 
 const emptyKitForm = (tour?: Tour): KitForm => ({
   kitDate: tour?.startDate ?? '',
   teamId: '',
   colourLabel: '',
-  sortOrder: '10',
 });
+
+const timeInputValue = (value?: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value ?? '') ? value ?? '' : '';
 
 type FormStatus = { saving: boolean; error?: string; success?: string };
 
@@ -93,13 +93,12 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
 
   const submitItinerary = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const sortOrder = Number(itineraryForm.sortOrder);
     if (!itineraryForm.itemDate || !itineraryForm.activity.trim()) {
       setStatus({ saving: false, error: 'Add a date and a clear schedule label.' });
       return;
     }
-    if (!Number.isFinite(sortOrder)) {
-      setStatus({ saving: false, error: 'Sort order must be numeric.' });
+    if (itineraryForm.kind === 'flight' && !itineraryForm.isPlaceholder && (!itineraryForm.timeLabel || !itineraryForm.endTimeLabel)) {
+      setStatus({ saving: false, error: 'Add both departure and landing times, or mark the flight as TBC.' });
       return;
     }
     void runSave(async () => {
@@ -109,11 +108,11 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
         itemDate: itineraryForm.itemDate,
         dayLabel: null,
         timeLabel: itineraryForm.timeLabel || null,
+        endTimeLabel: itineraryForm.endTimeLabel || null,
         activity: itineraryForm.activity.trim(),
         location: itineraryForm.location || null,
         notes: itineraryForm.notes || null,
         isPlaceholder: itineraryForm.isPlaceholder,
-        sortOrder,
         sourceType: itineraryForm.kind,
         sourceId: null,
       });
@@ -128,12 +127,12 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
       id: item.id,
       kind,
       itemDate: item.itemDate ?? '',
-      timeLabel: item.timeLabel ?? '',
+      timeLabel: timeInputValue(item.timeLabel),
+      endTimeLabel: timeInputValue(item.endTimeLabel),
       activity: item.activity,
       location: item.location ?? '',
       notes: item.notes ?? '',
       isPlaceholder: item.isPlaceholder,
-      sortOrder: String(item.sortOrder),
     });
   };
 
@@ -144,13 +143,8 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
 
   const submitKit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const sortOrder = Number(kitForm.sortOrder);
     if (!kitForm.kitDate || !kitForm.teamId || !kitForm.colourLabel.trim()) {
       setStatus({ saving: false, error: 'Choose the date and team, then add the shirt colour.' });
-      return;
-    }
-    if (!Number.isFinite(sortOrder)) {
-      setStatus({ saving: false, error: 'Sort order must be numeric.' });
       return;
     }
     void runSave(async () => {
@@ -160,7 +154,7 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
         teamId: kitForm.teamId,
         kitDate: kitForm.kitDate,
         colourLabel: kitForm.colourLabel.trim(),
-        sortOrder,
+        sortOrder: Math.max(0, data.tourTeams.findIndex((team) => team.id === kitForm.teamId)),
       });
       setKitForm(emptyKitForm(tour));
     }, kitForm.id ? 'Shirt colour updated.' : 'Shirt colour added.');
@@ -171,7 +165,6 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
     kitDate: kit.kitDate,
     teamId: kit.teamId,
     colourLabel: kit.colourLabel,
-    sortOrder: String(kit.sortOrder),
   });
 
   const removeKit = (kit: TourTeamDayKit) => {
@@ -184,7 +177,7 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
       <div><p className="eyebrow">Tour itinerary</p><h3>Where to be, when, and what to wear</h3></div>
       <AdminContextHelpButton label="Tour itinerary" onClick={onHelp} />
     </div>
-    <p>Enter travel, accommodation and dinners here. Golf is pulled directly from Rounds &amp; tee times, so it is never entered twice.</p>
+    <p>Enter flights, travel, accommodation and dinners here. Items are ordered automatically by date and time. Golf is pulled directly from Rounds &amp; tee times, so it is never entered twice.</p>
     {status.error ? <p className="form-error">{status.error}</p> : null}
     {status.success ? <p className="form-success">{status.success}</p> : null}
 
@@ -199,11 +192,16 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
         <label>Type<select value={itineraryForm.kind} onChange={(event) => {
           const kind = event.target.value as ManualItineraryKind;
           const oldDefault = manualItineraryKindLabels[itineraryForm.kind];
-          setItineraryForm({ ...itineraryForm, kind, activity: itineraryForm.activity === oldDefault ? manualItineraryKindLabels[kind] : itineraryForm.activity });
+          setItineraryForm({
+            ...itineraryForm,
+            kind,
+            activity: itineraryForm.activity === oldDefault ? manualItineraryKindLabels[kind] : itineraryForm.activity,
+            endTimeLabel: kind === 'flight' || kind === 'travel' ? itineraryForm.endTimeLabel : '',
+          });
         }}>{manualItineraryKinds.map((kind) => <option value={kind} key={kind}>{manualItineraryKindLabels[kind]}</option>)}</select></label>
         <label>Date<input type="date" required value={itineraryForm.itemDate} onChange={(event) => setItineraryForm({ ...itineraryForm, itemDate: event.target.value })} /></label>
-        <label>Time<input value={itineraryForm.timeLabel} onChange={(event) => setItineraryForm({ ...itineraryForm, timeLabel: event.target.value })} placeholder="e.g. 17:40 or TBC" /></label>
-        <label>Sort order<input value={itineraryForm.sortOrder} onChange={(event) => setItineraryForm({ ...itineraryForm, sortOrder: event.target.value })} inputMode="numeric" /></label>
+        <label>{itineraryForm.kind === 'flight' ? 'Departure time' : itineraryForm.kind === 'travel' ? 'Departure time' : 'Time'}<input type="time" required={itineraryForm.kind === 'flight' && !itineraryForm.isPlaceholder} value={itineraryForm.timeLabel} onChange={(event) => setItineraryForm({ ...itineraryForm, timeLabel: event.target.value })} /></label>
+        {itineraryForm.kind === 'flight' || itineraryForm.kind === 'travel' ? <label>{itineraryForm.kind === 'flight' ? 'Landing time' : 'Arrival time'}<input type="time" required={itineraryForm.kind === 'flight' && !itineraryForm.isPlaceholder} value={itineraryForm.endTimeLabel} onChange={(event) => setItineraryForm({ ...itineraryForm, endTimeLabel: event.target.value })} /></label> : null}
         <label className="admin-full-span">Label<input value={itineraryForm.activity} onChange={(event) => setItineraryForm({ ...itineraryForm, activity: event.target.value })} /></label>
         <label className="admin-full-span">Location<input value={itineraryForm.location} onChange={(event) => setItineraryForm({ ...itineraryForm, location: event.target.value })} placeholder="Airport, hotel or restaurant" /></label>
         <label className="admin-full-span">Basic details<textarea value={itineraryForm.notes} onChange={(event) => setItineraryForm({ ...itineraryForm, notes: event.target.value })} placeholder="Flight number, address, booking name or other essential detail" /></label>
@@ -211,7 +209,7 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
         <button type="submit" disabled={status.saving}>{itineraryForm.id ? 'Save schedule item' : 'Add schedule item'}</button>
         {itineraryForm.id ? <button type="button" onClick={() => setItineraryForm(emptyItineraryForm(tour))}>Cancel edit</button> : null}
       </form>
-      <div className="admin-card-list">{manualItems.length === 0 ? <p>No travel, accommodation or dinner information has been added for this tour.</p> : manualItems.map((item) => <article className="admin-mini-card" key={item.id}><div><strong>{item.activity}{item.isPlaceholder ? ' · TBC' : ''}</strong><span>{formatDate(item.itemDate)} · {item.timeLabel ?? 'No fixed time'} · {manualItineraryKindLabels[manualItineraryKind(item) as ManualItineraryKind]}</span>{item.location ? <p>{item.location}</p> : null}{item.notes ? <p>{item.notes}</p> : null}</div><div className="admin-mini-actions"><button type="button" onClick={() => editItinerary(item)}>Edit</button><button type="button" onClick={() => removeItinerary(item)}>Delete</button></div></article>)}</div>
+      <div className="admin-card-list">{manualItems.length === 0 ? <p>No flights, travel, accommodation or dinner information has been added for this tour.</p> : manualItems.map((item) => <article className="admin-mini-card" key={item.id}><div><strong>{item.activity}{item.isPlaceholder ? ' · TBC' : ''}</strong><span>{formatDate(item.itemDate)} · {item.timeLabel ?? 'No fixed time'}{item.endTimeLabel ? `–${item.endTimeLabel}` : ''} · {manualItineraryKindLabels[manualItineraryKind(item) as ManualItineraryKind]}</span>{item.location ? <p>{item.location}</p> : null}{item.notes ? <p>{item.notes}</p> : null}</div><div className="admin-mini-actions"><button type="button" onClick={() => editItinerary(item)}>Edit</button><button type="button" onClick={() => removeItinerary(item)}>Delete</button></div></article>)}</div>
       {inactiveLegacyCount > 0 ? <p className="muted">{inactiveLegacyCount} old handbook or duplicated schedule row{inactiveLegacyCount === 1 ? ' is' : 's are'} preserved in storage but hidden from the live itinerary.</p> : null}
     </div>
 
@@ -221,7 +219,6 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
         <label>Date<input type="date" required value={kitForm.kitDate} onChange={(event) => setKitForm({ ...kitForm, kitDate: event.target.value })} /></label>
         <label>Team<select required value={kitForm.teamId} onChange={(event) => setKitForm({ ...kitForm, teamId: event.target.value })}><option value="">Choose team</option>{data.tourTeams.map((team) => <option value={team.id} key={team.id}>{team.name}</option>)}</select></label>
         <label>Shirt colour<input value={kitForm.colourLabel} onChange={(event) => setKitForm({ ...kitForm, colourLabel: event.target.value })} placeholder="e.g. Navy" /></label>
-        <label>Sort order<input value={kitForm.sortOrder} onChange={(event) => setKitForm({ ...kitForm, sortOrder: event.target.value })} inputMode="numeric" /></label>
         <button type="submit" disabled={status.saving}>{kitForm.id ? 'Save shirt colour' : 'Add shirt colour'}</button>
         {kitForm.id ? <button type="button" onClick={() => setKitForm(emptyKitForm(tour))}>Cancel edit</button> : null}
       </form>

@@ -1,21 +1,22 @@
 import type { TourItineraryItem } from './publicApi';
 import type { Round } from './types';
 
-export const manualItineraryKinds = ['travel', 'accommodation', 'dinner'] as const;
+export const manualItineraryKinds = ['flight', 'travel', 'accommodation', 'dinner'] as const;
 export type ManualItineraryKind = typeof manualItineraryKinds[number];
 
 export const manualItineraryKindLabels: Record<ManualItineraryKind, string> = {
-  travel: 'Flight / travel',
+  flight: 'Flight',
+  travel: 'Travel / transfer',
   accommodation: 'Accommodation',
   dinner: 'Dinner',
 };
 
 const sourceAliases: Record<string, ManualItineraryKind> = {
   travel: 'travel',
-  flight: 'travel',
-  flights: 'travel',
+  flight: 'flight',
+  flights: 'flight',
   transfer: 'travel',
-  flights_travel: 'travel',
+  flights_travel: 'flight',
   accommodation: 'accommodation',
   hotel: 'accommodation',
   stay: 'accommodation',
@@ -25,7 +26,8 @@ const sourceAliases: Record<string, ManualItineraryKind> = {
 };
 
 const activityPatterns: Array<[ManualItineraryKind, RegExp]> = [
-  ['travel', /\b(flight|airport|arrival|depart(?:ure)?|travel|transfer|coach|minibus|train)\b/i],
+  ['flight', /\bflight\b/i],
+  ['travel', /\b(airport|arrival|depart(?:ure)?|travel|transfer|coach|minibus|train|carriages)\b/i],
   ['accommodation', /\b(accommodation|hotel|check[ -]?(?:in|out)|rooms?|villa)\b/i],
   ['dinner', /\b(dinner|restaurant|supper|evening meal)\b/i],
 ];
@@ -33,6 +35,7 @@ const activityPatterns: Array<[ManualItineraryKind, RegExp]> = [
 export function manualItineraryKind(item: Pick<TourItineraryItem, 'activity' | 'sourceType'>): ManualItineraryKind | undefined {
   const sourceType = item.sourceType?.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_') ?? '';
   if (sourceType === 'round') return undefined;
+  if (sourceType === 'travel' && /\bflight\b/i.test(item.activity)) return 'flight';
   const direct = sourceAliases[sourceType];
   if (direct) return direct;
   return activityPatterns.find(([, pattern]) => pattern.test(item.activity))?.[0];
@@ -56,6 +59,7 @@ export type TourScheduleEntry = {
   itemDate?: string;
   dayLabel?: string;
   timeLabel?: string;
+  endTimeLabel?: string;
   activity: string;
   location?: string;
   notes?: string;
@@ -66,9 +70,18 @@ export type TourScheduleEntry = {
   courseId?: string;
 };
 
-function itineraryClock(value?: string | null) {
+export function itineraryClock(value?: string | null) {
   const clock = value?.match(/\b([01]\d|2[0-3]):([0-5]\d)\b/);
   return clock ? `${clock[1]}:${clock[2]}` : '99:99';
+}
+
+export function formatItineraryTime(value?: string | null) {
+  const clock = value?.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!clock) return value || 'TBC';
+  const hour = Number(clock[1]);
+  const suffix = hour >= 12 ? 'pm' : 'am';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${clock[2]}${suffix}`;
 }
 
 function compareScheduleEntries(a: TourScheduleEntry, b: TourScheduleEntry) {

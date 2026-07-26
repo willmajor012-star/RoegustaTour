@@ -164,7 +164,7 @@ export type PublicAccessSettingsResponse = { ok: true; configured: boolean; requ
 export type SavePublicAccessSettingsPayload = { password: string; forceExpire?: boolean };
 
 export type SaveHandbookSectionPayload = { id?: string; tourId: string; sectionKey: string; title: string; body?: string | null; sortOrder: number };
-export type SaveItineraryItemPayload = { id?: string; tourId: string; itemDate?: string | null; dayLabel?: string | null; timeLabel?: string | null; activity: string; location?: string | null; notes?: string | null; isPlaceholder: boolean; sortOrder: number; sourceType?: string | null; sourceId?: string | null };
+export type SaveItineraryItemPayload = { id?: string; tourId: string; itemDate?: string | null; dayLabel?: string | null; timeLabel?: string | null; endTimeLabel?: string | null; activity: string; location?: string | null; notes?: string | null; isPlaceholder: boolean; sourceType?: string | null; sourceId?: string | null };
 export type SaveTeamDayKitPayload = { id?: string; tourId: string; teamId: string; kitDate: string; colourLabel: string; sortOrder: number };
 export type SaveCoursePayload = Omit<CourseGuide, 'id' | 'tourId'> & { id?: string; tourId: string };
 

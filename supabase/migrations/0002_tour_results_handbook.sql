@@ -36,6 +36,7 @@ create table if not exists tour_itinerary_items (
   item_date date,
   day_label text,
   time_label text,
+  end_time_label text,
   activity text not null,
   location text,
   notes text,

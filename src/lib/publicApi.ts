@@ -83,6 +83,7 @@ export type TourItineraryItem = {
   itemDate?: string;
   dayLabel?: string;
   timeLabel?: string;
+  endTimeLabel?: string;
   activity: string;
   location?: string;
   notes?: string;

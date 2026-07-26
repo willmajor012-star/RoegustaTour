@@ -359,6 +359,7 @@ export function mapTourItineraryItem(row: Row): TourItineraryItem {
     itemDate: asString(row.item_date),
     dayLabel: asString(row.day_label),
     timeLabel: asString(row.time_label),
+    endTimeLabel: asString(row.end_time_label),
     activity: requiredString(row, 'activity'),
     location: asString(row.location),
     notes: publicItineraryNotes(row.notes),

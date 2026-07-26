@@ -10,21 +10,31 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const id = optionalString(body.id);
   const activity = optionalString(body.activity);
   const sourceType = optionalString(body.sourceType);
-  const sortOrder = Number(body.sortOrder ?? 0);
+  const itemDate = optionalString(body.itemDate);
+  const timeLabel = optionalString(body.timeLabel);
+  const endTimeLabel = optionalString(body.endTimeLabel);
+  const isPlaceholder = Boolean(body.isPlaceholder);
   if (!tourId) return badRequest('Tour ID is required.');
+  if (!itemDate || !/^\d{4}-\d{2}-\d{2}$/.test(itemDate)) return badRequest('A valid itinerary date is required.');
   if (!activity) return badRequest('Activity is required.');
-  if (!sourceType || !['travel', 'accommodation', 'dinner'].includes(sourceType)) return badRequest('Itinerary type must be travel, accommodation or dinner.');
-  if (!Number.isFinite(sortOrder)) return badRequest('Sort order must be numeric.');
+  if (!sourceType || !['flight', 'travel', 'accommodation', 'dinner'].includes(sourceType)) return badRequest('Itinerary type must be flight, travel, accommodation or dinner.');
+  if (timeLabel && !/^([01]\d|2[0-3]):[0-5]\d$/.test(timeLabel)) return badRequest('Time must use HH:MM.');
+  if (endTimeLabel && !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTimeLabel)) return badRequest('Arrival time must use HH:MM.');
+  if (sourceType === 'flight' && !isPlaceholder && (!timeLabel || !endTimeLabel)) return badRequest('Flights require departure and landing times, or must be marked TBC.');
+  const automaticSortOrder = timeLabel
+    ? (Number(timeLabel.slice(0, 2)) * 60) + Number(timeLabel.slice(3, 5))
+    : 24 * 60;
   const values = {
     tour_id: tourId,
-    item_date: optionalString(body.itemDate) || null,
+    item_date: itemDate,
     day_label: optionalString(body.dayLabel) || null,
-    time_label: optionalString(body.timeLabel) || null,
+    time_label: timeLabel,
+    end_time_label: endTimeLabel,
     activity,
     location: optionalString(body.location) || null,
     notes: optionalString(body.notes) || null,
-    is_placeholder: Boolean(body.isPlaceholder),
-    sort_order: sortOrder,
+    is_placeholder: isPlaceholder,
+    sort_order: automaticSortOrder,
     source_type: sourceType,
     source_id: optionalString(body.sourceId) || null,
   };

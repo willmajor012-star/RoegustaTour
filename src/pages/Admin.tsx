@@ -755,9 +755,10 @@ const adminGuideSections: AdminGuideSection[] = [
       {
         heading: 'Single-source rules',
         items: [
-          'Travel, accommodation and dinners are entered once in Tour itinerary.',
+          'Flights, transfers, accommodation and dinners are entered once in Tour itinerary.',
           'Golf course and first tee time come directly from Rounds & tee times and are never duplicated as manual schedule rows.',
           'Daily shirt colours are saved by tour, date and team.',
+          'Entries are ordered automatically by date and time; there is no manual sort number to maintain.',
           'Old handbook and miscellaneous schedule records remain preserved but are hidden from the live itinerary.',
         ],
       },
@@ -765,7 +766,8 @@ const adminGuideSections: AdminGuideSection[] = [
         heading: 'Step-by-step',
         items: [
           'Open Tour itinerary.',
-          'Add each flight or transfer with its date, fixed time, location and essential details.',
+          'Add each flight with its date, departure time, landing time, airports or location, and essential details. Mark it TBC only when the times are not confirmed.',
+          'Add transfers separately with departure and arrival times where known.',
           'Add the accommodation once with basic location or booking information.',
           'Add each dinner with its date, time and location.',
           'Add each team shirt colour against the relevant date.',
