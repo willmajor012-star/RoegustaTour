@@ -287,10 +287,6 @@
   font-size: 1.8rem;
 }
 
-.course-source-note {
-  border-left: 5px solid var(--rt-gold);
-}
-
 .course-guide-topbar {
   display: flex;
   align-items: center;
