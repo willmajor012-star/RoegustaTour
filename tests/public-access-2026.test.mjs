@@ -51,7 +51,8 @@ test('2026 helper creates agreed rounds and no Friday golf', () => {
   assert.match(templateSource, /Extra non-complete rounds remain/);
   assert.doesNotMatch(templateSource, /Academy|Par 3 Course/i);
   assert.doesNotMatch(templateSource, /tee_time: existing\?\.tee_time \|\| 'TBC'/);
-  assert.doesNotMatch(templateSource, /published: true/);
+  assert.match(templateSource, /\{ published: true, showOnHome: true \}/);
+  assert.doesNotMatch(templateSource, /const row = \{[^}]*published: true/);
   assert.doesNotMatch(templateSource, /2026-11-06[\s\S]{0,120}Course/);
 });
 

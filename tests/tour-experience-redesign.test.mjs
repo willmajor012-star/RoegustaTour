@@ -37,7 +37,8 @@ test('course guides show yards and preserve the official-commentary boundary', (
   assert.match(courseData, /slug: 'oconnor'[\s\S]*noteAvailability: 'course-only'/);
   assert.match(courseData, /slug: 'old-course'[\s\S]*noteAvailability: 'hole-by-hole'/);
   assert.match(coursePage, /No official note is saved for this hole/);
-  assert.match(coursesPage, /without invented strategy/);
+  assert.match(coursePage, /without adding third-party or invented strategy/);
+  assert.doesNotMatch(coursesPage, /Source standard|Course information without the filler/);
   assert.match(courseData, /AGR_Faldo_13Tee_2_amendoeira\.jpg/);
   assert.match(courseData, /AGR_Oconner_Tee_18_Amendoeira\.jpg/);
   assert.doesNotMatch(courseData, /Designer%20/);

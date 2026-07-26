@@ -68,6 +68,7 @@ test('tour dates reject reversed ranges and accept partial or ordered dates', as
   assert.equal(validateTourDateRange('2026-11-09', '2026-11-06'), 'Tour end date must be on or after the start date.');
   assert.equal(validateTourDateRange('2026-11-06', '2026-11-09'), null);
   assert.equal(validateTourDateRange('2026-11-06', null), null);
+  assert.equal(validateTourDateRange('2026-11-06', null, true), 'Start date and end date are required for a planned, active or complete tour.');
 });
 
 test('Admin consolidation retains every working editor in six task-based areas', async () => {

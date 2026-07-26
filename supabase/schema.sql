@@ -22,6 +22,7 @@ create table tours (
   status text not null check (status in ('planned','active','complete','archived')),
   description text,
   is_current_public boolean not null default false,
+  is_test boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint tours_date_order_check check (start_date is null or end_date is null or start_date <= end_date)
@@ -48,7 +49,6 @@ create table tour_teams (
   captain_player_id uuid references players(id) on delete set null,
   sort_order integer not null default 0,
   published boolean not null default false,
-  show_on_home boolean not null default true,
   created_at timestamptz not null default now(),
   unique (tour_id, name)
 );
@@ -145,6 +145,7 @@ create table tour_courses (
   holes jsonb not null default '[]'::jsonb,
   sort_order integer not null default 0,
   published boolean not null default false,
+  show_on_home boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (tour_id, slug)

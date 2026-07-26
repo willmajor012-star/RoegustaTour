@@ -17,11 +17,13 @@ import {
 } from '../lib/tourItinerary';
 import type { Tour } from '../lib/types';
 import type { TourItineraryItem, TourTeamDayKit } from '../lib/publicApi';
+import { AdminContextHelpButton } from './AdminContextHelpButton';
 
 type Props = {
   data: AdminDataResponse;
   tour: Tour;
   onRefresh: () => Promise<void> | void;
+  onHelp: () => void;
 };
 
 type ItineraryForm = {
@@ -64,7 +66,7 @@ const emptyKitForm = (tour?: Tour): KitForm => ({
 
 type FormStatus = { saving: boolean; error?: string; success?: string };
 
-export function AdminTourItinerary({ data, tour, onRefresh }: Props) {
+export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
   const [itineraryForm, setItineraryForm] = useState<ItineraryForm>(() => emptyItineraryForm(tour));
   const [kitForm, setKitForm] = useState<KitForm>(() => emptyKitForm(tour));
   const [status, setStatus] = useState<FormStatus>({ saving: false });
@@ -178,20 +180,21 @@ export function AdminTourItinerary({ data, tour, onRefresh }: Props) {
   };
 
   return <section className="card admin-panel">
-    <p className="eyebrow">Tour itinerary</p>
-    <h3>Where to be, when, and what to wear</h3>
+    <div className="section-heading">
+      <div><p className="eyebrow">Tour itinerary</p><h3>Where to be, when, and what to wear</h3></div>
+      <AdminContextHelpButton label="Tour itinerary" onClick={onHelp} />
+    </div>
     <p>Enter travel, accommodation and dinners here. Golf is pulled directly from Rounds &amp; tee times, so it is never entered twice.</p>
     {status.error ? <p className="form-error">{status.error}</p> : null}
     {status.success ? <p className="form-success">{status.success}</p> : null}
 
     <div className="premium-inset">
-      <p className="eyebrow">Golf from rounds</p>
-      <h4>Automatic schedule entries</h4>
+      <div className="section-heading"><div><p className="eyebrow">Golf from rounds</p><h4>Automatic schedule entries</h4></div><AdminContextHelpButton label="Automatic golf itinerary entries" onClick={onHelp} /></div>
       {data.rounds.length === 0 ? <p>No rounds have been added for this tour.</p> : <div className="admin-card-list">{data.rounds.map((round, index) => <article className="admin-mini-card" key={round.id}><div><strong>{formatRoundContextLabel(round, index)}</strong><span>{formatDate(round.roundDate)} · First tee {formatTeeTimeDisplay(round.teeTime)}</span><p>{round.courseName ?? 'Course TBC'}</p></div></article>)}</div>}
     </div>
 
     <div className="premium-inset">
-      <p className="eyebrow">Travel, stay and dinner</p>
+      <div className="section-heading"><p className="eyebrow">Travel, stay and dinner</p><AdminContextHelpButton label="Travel and accommodation itinerary" onClick={onHelp} /></div>
       <form className="admin-form-grid" onSubmit={submitItinerary}>
         <label>Type<select value={itineraryForm.kind} onChange={(event) => {
           const kind = event.target.value as ManualItineraryKind;
@@ -213,8 +216,7 @@ export function AdminTourItinerary({ data, tour, onRefresh }: Props) {
     </div>
 
     <div className="premium-inset">
-      <p className="eyebrow">Team shirts</p>
-      <h4>Colours by day</h4>
+      <div className="section-heading"><div><p className="eyebrow">Team shirts</p><h4>Colours by day</h4></div><AdminContextHelpButton label="Daily team shirt colours" onClick={onHelp} /></div>
       <form className="admin-form-grid" onSubmit={submitKit}>
         <label>Date<input type="date" required value={kitForm.kitDate} onChange={(event) => setKitForm({ ...kitForm, kitDate: event.target.value })} /></label>
         <label>Team<select required value={kitForm.teamId} onChange={(event) => setKitForm({ ...kitForm, teamId: event.target.value })}><option value="">Choose team</option>{data.tourTeams.map((team) => <option value={team.id} key={team.id}>{team.name}</option>)}</select></label>

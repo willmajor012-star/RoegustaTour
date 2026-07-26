@@ -21,6 +21,7 @@ export type Tour = {
   status: 'planned' | 'active' | 'complete' | 'archived';
   description?: string;
   isCurrentPublic?: boolean;
+  isTest?: boolean;
 };
 
 export type TourPlayer = {
