@@ -357,6 +357,41 @@
   min-height: 0;
 }
 
+.home-this-tour-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  overflow: hidden;
+  border-top: 5px solid var(--rt-gold);
+  padding: 18px;
+}
+
+.home-this-tour-copy h2 {
+  margin: .15rem 0 .35rem;
+  font-size: clamp(1.35rem, 5vw, 1.85rem);
+}
+
+.home-this-tour-copy p:last-child {
+  margin: 0;
+  color: var(--rt-text-muted);
+  font-weight: 700;
+}
+
+.home-this-tour-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--rt-green-900);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.home-this-tour-action .card-chevron {
+  color: var(--rt-gold-dark);
+  font-size: 1.7rem;
+}
+
 /* Round-led Golf presentation */
 .golf-score-strip {
   display: grid;
@@ -930,6 +965,18 @@
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px;
     padding: 14px;
+  }
+
+  .home-this-tour-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .home-this-tour-action {
+    justify-content: space-between;
+    border-top: 1px solid rgba(184, 154, 93, .3);
+    padding-top: 11px;
   }
 
   .up-next-time {
