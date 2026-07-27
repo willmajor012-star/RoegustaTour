@@ -21,6 +21,7 @@ create table tours (
   end_date date,
   status text not null check (status in ('planned','active','complete','archived')),
   description text,
+  prize_fund jsonb,
   is_current_public boolean not null default false,
   is_test boolean not null default false,
   created_at timestamptz not null default now(),

@@ -44,20 +44,21 @@ test('one tour itinerary admin workflow replaces the public handbook editor', as
   assert.match(admin, /'Tour itinerary'/);
   assert.match(admin, /<AdminTourItinerary/);
   assert.doesNotMatch(admin.match(/const tabs = \[[^\]]+\]/)?.[0] ?? '', /'Handbook'/);
-  for (const copy of ['Travel, stay and dinner', 'Golf from rounds', 'Team shirts', 'Golf is pulled directly from Rounds &amp; tee times']) assert.match(component, new RegExp(copy));
+  for (const copy of ['Travel, stay, food & activities', 'Golf from rounds', 'Team shirts', 'Golf is pulled directly from Rounds &amp; tee times']) assert.match(component, new RegExp(copy));
 });
 
-test('only flights, travel, accommodation and dinner rows feed the manual itinerary', async () => {
+test('flights, travel, accommodation, food and activities feed the manual itinerary', async () => {
   const { activeManualItineraryItems } = await loadItineraryModule();
   const rows = [
     item('flight', 'tour-1', 'Outbound flight', { sourceType: 'travel' }),
     item('hotel', 'tour-1', 'Hotel check-in'),
     item('dinner', 'tour-1', 'Dinner', { sourceType: 'dinner' }),
+    item('briefing', 'tour-1', 'Pairings announcement', { sourceType: 'activity' }),
     item('old-golf', 'tour-1', 'Tour matches', { sourceType: 'template_2026' }),
     item('round-copy', 'tour-1', 'Saturday golf', { sourceType: 'round', sourceId: 'round-1' }),
     item('other-tour', 'tour-2', 'Dinner', { sourceType: 'dinner' }),
   ];
-  assert.deepEqual(activeManualItineraryItems(rows, 'tour-1').map((row) => row.id).sort(), ['dinner', 'flight', 'hotel']);
+  assert.deepEqual(activeManualItineraryItems(rows, 'tour-1').map((row) => row.id).sort(), ['briefing', 'dinner', 'flight', 'hotel']);
 });
 
 test('legacy travel flights are recognised as flights and entries order by clock time', async () => {
@@ -115,7 +116,7 @@ test('archived and future tour itinerary records remain isolated', async () => {
 
 test('Admin itinerary writes enforce practical categories and automatic chronological ordering', async () => {
   const saveFn = await readFile(new URL('../netlify/functions/admin-save-itinerary-item.ts', import.meta.url), 'utf8');
-  assert.match(saveFn, /\['flight', 'travel', 'accommodation', 'dinner'\]/);
+  assert.match(saveFn, /\['flight', 'travel', 'accommodation', 'food', 'activity', 'dinner'\]/);
   assert.match(saveFn, /Flights require departure and landing times/);
   assert.match(saveFn, /end_time_label: endTimeLabel/);
   assert.match(saveFn, /automaticSortOrder/);

@@ -17,7 +17,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (!tourId) return badRequest('Tour ID is required.');
   if (!itemDate || !/^\d{4}-\d{2}-\d{2}$/.test(itemDate)) return badRequest('A valid itinerary date is required.');
   if (!activity) return badRequest('Activity is required.');
-  if (!sourceType || !['flight', 'travel', 'accommodation', 'dinner'].includes(sourceType)) return badRequest('Itinerary type must be flight, travel, accommodation or dinner.');
+  if (!sourceType || !['flight', 'travel', 'accommodation', 'food', 'activity', 'dinner'].includes(sourceType)) return badRequest('Itinerary type must be flight, travel, accommodation, food or activity.');
   if (timeLabel && !/^([01]\d|2[0-3]):[0-5]\d$/.test(timeLabel)) return badRequest('Time must use HH:MM.');
   if (endTimeLabel && !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTimeLabel)) return badRequest('Arrival time must use HH:MM.');
   if (sourceType === 'flight' && !isPlaceholder && (!timeLabel || !endTimeLabel)) return badRequest('Flights require departure and landing times, or must be marked TBC.');

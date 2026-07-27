@@ -69,7 +69,7 @@ function ScheduleEntry({ entry, courses }: { entry: TourScheduleEntry; courses: 
   const label = entry.kind === 'golf' ? 'Golf' : manualItineraryKindLabels[entry.kind];
   const time = entry.kind === 'golf'
     ? formatItineraryTime(formatTeeTimeDisplay(entry.timeLabel))
-    : entry.timeLabel ? formatItineraryTime(entry.timeLabel) : (entry.kind === 'accommodation' ? 'Stay' : 'TBC');
+    : entry.timeLabel ? formatItineraryTime(entry.timeLabel) : (entry.kind === 'accommodation' ? 'Stay' : entry.kind === 'activity' ? 'Info' : 'TBC');
   const timeContext = entry.kind === 'golf' ? 'First tee' : entry.kind === 'flight' || entry.kind === 'travel' ? 'Departs' : label;
   const arrival = entry.endTimeLabel
     ? `${entry.kind === 'flight' ? 'Lands' : 'Arrives'} ${formatItineraryTime(entry.endTimeLabel)}`
@@ -133,7 +133,8 @@ function ScheduleKindIcon({ kind }: { kind: TourScheduleEntry['kind'] }) {
   if (kind === 'flight') return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 11 18-7-7 18-3-8-8-3Z" /><path d="m11 14 4-4" /></svg>;
   if (kind === 'travel') return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 17h14l-1-7H6l-1 7Z" /><path d="m7 10 2-4h6l2 4M7 17v2m10-2v2" /><circle cx="8" cy="14" r="1" /><circle cx="16" cy="14" r="1" /></svg>;
   if (kind === 'accommodation') return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 18V9m18 9V12H8v6M3 14h5M5 9h3v5H3v-3a2 2 0 0 1 2-2Z" /><path d="M3 18v2m18-2v2" /></svg>;
-  if (kind === 'dinner') return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3v8m-3-8v5a3 3 0 0 0 6 0V3M7 11v10M17 3v18m0-18c-3 2-3 8 0 9" /></svg>;
+  if (kind === 'food') return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3v8m-3-8v5a3 3 0 0 0 6 0V3M7 11v10M17 3v18m0-18c-3 2-3 8 0 9" /></svg>;
+  if (kind === 'activity') return <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><path d="M12 8v5m0 3h.01" /></svg>;
   return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 21V3m0 1h9l-2 4 2 4H7" /><circle cx="7" cy="21" r="1.5" /></svg>;
 }
 

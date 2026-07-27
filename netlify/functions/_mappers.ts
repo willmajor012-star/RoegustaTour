@@ -1,4 +1,4 @@
-import type { Bet, BetMarket, BetOption, CourseGuide, CourseHole, CourseTee, HistoricalPlayerStats, Match, MatchParticipant, Player, PlayerMatchResult, Round, RoundPrizeResult, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from '../../src/lib/types';
+import type { Bet, BetMarket, BetOption, CourseGuide, CourseHole, CourseTee, HistoricalPlayerStats, Match, MatchParticipant, Player, PlayerMatchResult, Round, RoundPrizeResult, Tour, TourPlayer, TourPrizeFund, TourTeam, TourTeamMember, TourTeamResult } from '../../src/lib/types';
 import type { TourHandbookSection, TourItineraryItem, TourTeamDayKit } from '../../src/lib/publicApi';
 
 type Row = Record<string, unknown>;
@@ -62,6 +62,30 @@ function mapCourseHole(value: unknown): CourseHole | undefined {
   return { number, par, strokeIndex, yards, officialNote: asString(row.officialNote) };
 }
 
+function mapTourPrizeFund(value: unknown): TourPrizeFund | undefined {
+  const row = value && typeof value === 'object' ? value as Row : {};
+  const contributionPence = asNumber(row.contributionPence);
+  if (contributionPence === undefined || contributionPence < 0) return undefined;
+  const rounds = asArray(row.rounds).map((candidate) => {
+    const round = candidate && typeof candidate === 'object' ? candidate as Row : {};
+    const roundNumber = asNumber(round.roundNumber);
+    const paidPer = round.paidPer === 'player' ? 'player' as const : round.paidPer === 'pair' ? 'pair' as const : undefined;
+    const payoutsPence = asArray(round.payoutsPence)
+      .map(asNumber)
+      .filter((amount): amount is number => amount !== undefined && amount >= 0);
+    return roundNumber !== undefined && paidPer && payoutsPence.length > 0
+      ? { roundNumber, paidPer, payoutsPence }
+      : undefined;
+  }).filter((round): round is TourPrizeFund['rounds'][number] => Boolean(round));
+  if (rounds.length === 0) return undefined;
+  return {
+    contributionPence,
+    totalPence: asNumber(row.totalPence),
+    rules: asArray(row.rules).map(asString).filter((rule): rule is string => Boolean(rule)),
+    rounds,
+  };
+}
+
 export function mapPlayer(row: Row): Player {
   return {
     id: requiredString(row, 'id'),
@@ -87,6 +111,7 @@ export function mapTour(row: Row): Tour {
     endDate: asString(row.end_date),
     status: requiredString(row, 'status') as Tour['status'],
     description: asString(row.description),
+    prizeFund: mapTourPrizeFund(row.prize_fund),
     isCurrentPublic: asBoolean(row.is_current_public),
     isTest: asBoolean(row.is_test),
   };

@@ -35,25 +35,30 @@ test('admin can change public password without showing current password', () => 
   assert.doesNotMatch(adminSource, /current password/i);
 });
 
-test('2026 helper creates agreed rounds and no Friday golf', () => {
+test('2026 helper creates the confirmed four-session schedule', () => {
   assert.match(templateSource, /Faldo Course/);
   assert.match(templateSource, /Amendoeira Par 3/);
   assert.doesNotMatch(templateSource, /O'Connor Jnr\. Course/);
   assert.match(templateSource, /Old Course/);
-  assert.match(templateSource, /Course TBC/);
+  assert.match(templateSource, /O’Connor Course/);
+  assert.match(templateSource, /round_date: '2026-11-06'/);
   assert.match(templateSource, /round_date: '2026-11-07'/);
+  assert.match(templateSource, /tee_time: '19:20'/);
+  assert.match(templateSource, /tee_time: '11:24'/);
   assert.match(templateSource, /holes: 9/);
+  assert.match(templateSource, /Friday Par 3 Pairs Scramble/);
+  assert.match(templateSource, /Pairs Scramble \(Scratch\)/);
+  assert.match(templateSource, /4BBB \(Full Handicap\)/);
   assert.match(templateSource, /format: 'better_ball'/);
   assert.match(templateSource, /format: 'scramble'/);
   assert.match(templateSource, /format: 'singles'/);
-  assert.match(templateSource, /tee_time: existing\?\.tee_time \|\| null/);
+  assert.match(templateSource, /update\(\{ format: round\.format \}\)/);
   assert.match(templateSource, /published: existing\?\.published \?\? false/);
   assert.match(templateSource, /Extra non-complete rounds remain/);
   assert.doesNotMatch(templateSource, /Academy|Par 3 Course/i);
-  assert.doesNotMatch(templateSource, /tee_time: existing\?\.tee_time \|\| 'TBC'/);
+  assert.doesNotMatch(templateSource, /tee_time: existing\?\.tee_time/);
   assert.match(templateSource, /\{ published: true, showOnHome: true \}/);
   assert.doesNotMatch(templateSource, /const row = \{[^}]*published: true/);
-  assert.doesNotMatch(templateSource, /2026-11-06[\s\S]{0,120}Course/);
 });
 
 test('2026 secondary prize slots and focused home next-round summary are present', () => {

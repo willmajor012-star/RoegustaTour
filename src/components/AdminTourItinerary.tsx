@@ -177,7 +177,7 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
       <div><p className="eyebrow">Tour itinerary</p><h3>Where to be, when, and what to wear</h3></div>
       <AdminContextHelpButton label="Tour itinerary" onClick={onHelp} />
     </div>
-    <p>Enter flights, travel, accommodation and dinners here. Items are ordered automatically by date and time. Golf is pulled directly from Rounds &amp; tee times, so it is never entered twice.</p>
+    <p>Enter flights, travel, accommodation, food, social plans and practical information here. Items are ordered automatically by date and time. Golf is pulled directly from Rounds &amp; tee times, so it is never entered twice.</p>
     {status.error ? <p className="form-error">{status.error}</p> : null}
     {status.success ? <p className="form-success">{status.success}</p> : null}
 
@@ -187,7 +187,7 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
     </div>
 
     <div className="premium-inset">
-      <div className="section-heading"><p className="eyebrow">Travel, stay and dinner</p><AdminContextHelpButton label="Travel and accommodation itinerary" onClick={onHelp} /></div>
+      <div className="section-heading"><p className="eyebrow">Travel, stay, food & activities</p><AdminContextHelpButton label="Travel, accommodation and activity itinerary" onClick={onHelp} /></div>
       <form className="admin-form-grid" onSubmit={submitItinerary}>
         <label>Type<select value={itineraryForm.kind} onChange={(event) => {
           const kind = event.target.value as ManualItineraryKind;
@@ -209,7 +209,7 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
         <button type="submit" disabled={status.saving}>{itineraryForm.id ? 'Save schedule item' : 'Add schedule item'}</button>
         {itineraryForm.id ? <button type="button" onClick={() => setItineraryForm(emptyItineraryForm(tour))}>Cancel edit</button> : null}
       </form>
-      <div className="admin-card-list">{manualItems.length === 0 ? <p>No flights, travel, accommodation or dinner information has been added for this tour.</p> : manualItems.map((item) => <article className="admin-mini-card" key={item.id}><div><strong>{item.activity}{item.isPlaceholder ? ' · TBC' : ''}</strong><span>{formatDate(item.itemDate)} · {item.timeLabel ?? 'No fixed time'}{item.endTimeLabel ? `–${item.endTimeLabel}` : ''} · {manualItineraryKindLabels[manualItineraryKind(item) as ManualItineraryKind]}</span>{item.location ? <p>{item.location}</p> : null}{item.notes ? <p>{item.notes}</p> : null}</div><div className="admin-mini-actions"><button type="button" onClick={() => editItinerary(item)}>Edit</button><button type="button" onClick={() => removeItinerary(item)}>Delete</button></div></article>)}</div>
+      <div className="admin-card-list">{manualItems.length === 0 ? <p>No flights, travel, accommodation, food or activity information has been added for this tour.</p> : manualItems.map((item) => <article className="admin-mini-card" key={item.id}><div><strong>{item.activity}{item.isPlaceholder ? ' · TBC' : ''}</strong><span>{formatDate(item.itemDate)} · {item.timeLabel ?? 'No fixed time'}{item.endTimeLabel ? `–${item.endTimeLabel}` : ''} · {manualItineraryKindLabels[manualItineraryKind(item) as ManualItineraryKind]}</span>{item.location ? <p>{item.location}</p> : null}{item.notes ? <p>{item.notes}</p> : null}</div><div className="admin-mini-actions"><button type="button" onClick={() => editItinerary(item)}>Edit</button><button type="button" onClick={() => removeItinerary(item)}>Delete</button></div></article>)}</div>
       {inactiveLegacyCount > 0 ? <p className="muted">{inactiveLegacyCount} old handbook or duplicated schedule row{inactiveLegacyCount === 1 ? ' is' : 's are'} preserved in storage but hidden from the live itinerary.</p> : null}
     </div>
 

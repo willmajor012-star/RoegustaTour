@@ -8,16 +8,16 @@ import type { MatchFormat } from '../../src/lib/types';
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 type RoundRow = { id: string; round_number: number; tee_time?: string | null; status?: string | null; published?: boolean | null };
 
-type TemplateRound = { round_number: number; name: string; round_date: string; session: 'AM' | 'PM'; course_name: string; course_slug?: string; format: MatchFormat; format_label: string; holes: 9 | 18; status: 'planned' };
+type TemplateRound = { round_number: number; name: string; round_date: string; session: 'AM' | 'PM'; course_name: string; course_slug?: string; tee_time: string; format: MatchFormat; format_label: string; holes: 9 | 18; schedule_note: string; status: 'planned' };
 
 const template: TemplateRound[] = [
-  { round_number: 1, name: 'Saturday AM 4BBB', round_date: '2026-11-07', session: 'AM', course_name: 'Faldo Course', course_slug: 'faldo', format: 'better_ball', format_label: '4BBB', holes: 18, status: 'planned' },
-  { round_number: 2, name: 'Saturday PM Par 3 Scramble', round_date: '2026-11-07', session: 'PM', course_name: 'Amendoeira Par 3', format: 'scramble', format_label: 'Scramble', holes: 9, status: 'planned' },
-  { round_number: 3, name: 'Sunday Singles', round_date: '2026-11-08', session: 'AM', course_name: 'Old Course', course_slug: 'old-course', format: 'singles', format_label: 'Singles', holes: 18, status: 'planned' },
-  { round_number: 4, name: 'Monday 9-hole 4BBB', round_date: '2026-11-09', session: 'AM', course_name: 'Course TBC', format: 'better_ball', format_label: '4BBB', holes: 9, status: 'planned' },
+  { round_number: 1, name: 'Friday Par 3 Pairs Scramble', round_date: '2026-11-06', session: 'PM', course_name: 'Amendoeira Par 3', tee_time: '19:20', format: 'scramble', format_label: 'Pairs Scramble (Scratch)', holes: 18, schedule_note: 'Minimum 6 tee shots each. Use Golf Gamebook for live secondary-format scoring throughout the tour.', status: 'planned' },
+  { round_number: 2, name: 'Saturday Faldo 4BBB', round_date: '2026-11-07', session: 'AM', course_name: 'Faldo Course', course_slug: 'faldo', tee_time: '10:00', format: 'better_ball', format_label: '4BBB (Full Handicap)', holes: 18, schedule_note: 'Tee times 10:00–10:50. Secondary format: pairs Stableford.', status: 'planned' },
+  { round_number: 3, name: 'Sunday Old Course Singles', round_date: '2026-11-08', session: 'AM', course_name: 'Old Course', course_slug: 'old-course', tee_time: '11:24', format: 'singles', format_label: 'Singles (Full Handicap)', holes: 18, schedule_note: 'Tee times 11:24–12:14. Secondary format: individual Stableford.', status: 'planned' },
+  { round_number: 4, name: 'Monday O’Connor 9-hole 4BBB', round_date: '2026-11-09', session: 'AM', course_name: 'O’Connor Course', course_slug: 'oconnor', tee_time: '10:00', format: 'better_ball', format_label: '4BBB (Full Handicap)', holes: 9, schedule_note: 'Tee times 10:00–10:50. Secondary format: pairs Stableford.', status: 'planned' },
 ];
 
-function notes(session: string) { return `[Session: ${session}]`; }
+function notes(round: TemplateRound) { return `[Session: ${round.session}]\n${round.schedule_note}`; }
 
 export const handler: Handler = (event) => withAdminSupabase(event, 'POST', async (supabase, body) => {
   const tourId = optionalString(body.tourId);
@@ -53,16 +53,19 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     const courseId = round.course_slug
       ? courseRows.find((course) => course.slug === round.course_slug)?.id ?? null
       : null;
-    const { course_slug: _courseSlug, ...roundValues } = round;
-    const row = { tour_id: tourId, ...roundValues, course_id: courseId, tee_time: existing?.tee_time || null, notes: notes(round.session), published: existing?.published ?? false };
+    const { course_slug: _courseSlug, schedule_note: _scheduleNote, ...roundValues } = round;
+    const roundId = existing?.id ?? crypto.randomUUID();
+    const row = { tour_id: tourId, ...roundValues, course_id: courseId, notes: notes(round), published: existing?.published ?? false };
     if (existing) {
       if (existing.status === 'complete') continue;
       const { error } = await supabase.from('rounds').update(row).eq('id', existing.id).eq('tour_id', tourId);
       if (error) throw new Error(`update 2026 round ${round.round_number}: ${error.message}`);
     } else {
-      const { error } = await supabase.from('rounds').insert({ id: crypto.randomUUID(), ...row });
+      const { error } = await supabase.from('rounds').insert({ id: roundId, ...row });
       if (error) throw new Error(`create 2026 round ${round.round_number}: ${error.message}`);
     }
+    const matchUpdate = await supabase.from('matches').update({ format: round.format }).eq('round_id', roundId).in('status', ['draft', 'planned']);
+    if (matchUpdate.error) throw new Error(`update 2026 round ${round.round_number} match formats: ${matchUpdate.error.message}`);
   }
 
   const [roundRows, itemRows] = await Promise.all([

@@ -1,14 +1,15 @@
 import type { TourItineraryItem } from './publicApi';
 import type { Round } from './types';
 
-export const manualItineraryKinds = ['flight', 'travel', 'accommodation', 'dinner'] as const;
+export const manualItineraryKinds = ['flight', 'travel', 'accommodation', 'food', 'activity'] as const;
 export type ManualItineraryKind = typeof manualItineraryKinds[number];
 
 export const manualItineraryKindLabels: Record<ManualItineraryKind, string> = {
   flight: 'Flight',
   travel: 'Travel / transfer',
   accommodation: 'Accommodation',
-  dinner: 'Dinner',
+  food: 'Food & drink',
+  activity: 'Activity / information',
 };
 
 const sourceAliases: Record<string, ManualItineraryKind> = {
@@ -20,16 +21,22 @@ const sourceAliases: Record<string, ManualItineraryKind> = {
   accommodation: 'accommodation',
   hotel: 'accommodation',
   stay: 'accommodation',
-  dinner: 'dinner',
-  dinner_social: 'dinner',
-  restaurant: 'dinner',
+  food: 'food',
+  meal: 'food',
+  dinner: 'food',
+  dinner_social: 'food',
+  restaurant: 'food',
+  activity: 'activity',
+  information: 'activity',
+  social: 'activity',
 };
 
 const activityPatterns: Array<[ManualItineraryKind, RegExp]> = [
   ['flight', /\bflight\b/i],
   ['travel', /\b(airport|arrival|depart(?:ure)?|travel|transfer|coach|minibus|train|carriages)\b/i],
   ['accommodation', /\b(accommodation|hotel|check[ -]?(?:in|out)|rooms?|villa)\b/i],
-  ['dinner', /\b(dinner|restaurant|supper|evening meal)\b/i],
+  ['food', /\b(breakfast|brunch|lunch|dinner|drinks?|restaurant|supper|meal)\b/i],
+  ['activity', /\b(activity|meet|meeting|announcement|padel|information)\b/i],
 ];
 
 export function manualItineraryKind(item: Pick<TourItineraryItem, 'activity' | 'sourceType'>): ManualItineraryKind | undefined {
@@ -91,6 +98,11 @@ function compareScheduleEntries(a: TourScheduleEntry, b: TourScheduleEntry) {
     || a.activity.localeCompare(b.activity);
 }
 
+function roundItineraryNotes(notes?: string) {
+  const publicNotes = notes?.replace(/\[Session:\s*(?:AM|PM)\]\s*/gi, '').trim();
+  return publicNotes || undefined;
+}
+
 export function buildTourSchedule(tourId: string, rounds: Round[], items: TourItineraryItem[]): TourScheduleEntry[] {
   const manualEntries = activeManualItineraryItems(items, tourId).map((item) => ({
     ...item,
@@ -105,6 +117,7 @@ export function buildTourSchedule(tourId: string, rounds: Round[], items: TourIt
       timeLabel: round.teeTime,
       activity: round.name || `Round ${round.roundNumber}`,
       location: round.courseName,
+      notes: roundItineraryNotes(round.notes),
       isPlaceholder: !round.teeTime || !round.courseName,
       sortOrder: round.roundNumber,
       kind: 'golf' as const,

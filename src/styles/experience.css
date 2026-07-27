@@ -1770,8 +1770,12 @@
   --event-accent: #b96343;
 }
 
-.itinerary-event-dinner {
+.itinerary-event-food {
   --event-accent: #2c8a61;
+}
+
+.itinerary-event-activity {
+  --event-accent: #6a537b;
 }
 
 .itinerary-event-golf {
