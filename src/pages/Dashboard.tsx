@@ -80,13 +80,16 @@ export function Dashboard() {
   const roundById = useMemo(() => new Map(rounds.map((round) => [round.id, round])), [rounds]);
   const visibleMatches = activeData.matches.filter(isPublicVisibleMatch);
   const teamRows = teamScoreRows(activeData.scores, activeData.tourTeams);
-  const totalPointsAvailable = projectedTourPoints(
-    rounds,
-    visibleMatches,
-    activeData.tourTeams,
-    activeData.tourTeamMembers,
-    activeData.tourPlayers,
-  );
+  const totalPointsAvailable = activeData.projectedTotalPoints && activeData.projectedTotalPoints > 0
+    ? activeData.projectedTotalPoints
+    : projectedTourPoints(
+      rounds,
+      visibleMatches,
+      activeData.tourTeams,
+      activeData.tourTeamMembers,
+      activeData.tourPlayers,
+      activeData.attendingPlayerCount,
+    );
   const remainingPoints = totalPointsAvailable - awardedPoints(visibleMatches);
   const pointsToWinOutright = pointsRequiredToWinOutright(totalPointsAvailable);
   const scheduled = visibleMatches

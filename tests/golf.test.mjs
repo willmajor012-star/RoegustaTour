@@ -55,7 +55,7 @@ test('Home projects the full target from rounds and the two-team roster before p
   assert.equal(projectedTourPoints(rounds, [], teams, members, tourPlayers), 30);
 });
 
-test('Home trusts created matches for a round instead of double-counting its projection', () => {
+test('Home does not let a partial match sheet reduce a round projection', () => {
   const teams = [
     { id: 'a', tourId: 'tour', name: 'A', sortOrder: 0 },
     { id: 'b', tourId: 'tour', name: 'B', sortOrder: 1 },
@@ -75,5 +75,18 @@ test('Home trusts created matches for a round instead of double-counting its pro
     pointsAvailable: 1,
   }));
 
-  assert.equal(projectedTourPoints(rounds, matches, teams, members, tourPlayers), 3);
+  assert.equal(projectedTourPoints(rounds, matches, teams, members, tourPlayers), 4);
+});
+
+test('Home can project from the private attending-player count without exposing the unassigned roster', () => {
+  const teams = [
+    { id: 'a', tourId: 'tour', name: 'A', sortOrder: 0 },
+    { id: 'b', tourId: 'tour', name: 'B', sortOrder: 1 },
+  ];
+  const rounds = [
+    { id: 'pairs', tourId: 'tour', roundNumber: 1, name: 'Pairs', format: 'better_ball', holes: 18, status: 'planned' },
+    { id: 'singles', tourId: 'tour', roundNumber: 2, name: 'Singles', format: 'singles', holes: 18, status: 'planned' },
+  ];
+
+  assert.equal(projectedTourPoints(rounds, [], teams, [], [], 24), 18);
 });

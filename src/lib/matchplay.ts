@@ -61,7 +61,12 @@ function playersPerSide(format?: Round['format']) {
   return undefined;
 }
 
-function availablePlayersPerTeam(teams: TourTeam[], members: TourTeamMember[], tourPlayers: TourPlayer[]) {
+function availablePlayersPerTeam(
+  teams: TourTeam[],
+  members: TourTeamMember[],
+  tourPlayers: TourPlayer[],
+  attendingPlayerCount?: number,
+) {
   const attendanceByPlayer = new Map(tourPlayers.map((player) => [player.playerId, player.attending]));
   const teamCounts = teams.slice(0, 2).map((team) => new Set(
     members
@@ -70,7 +75,10 @@ function availablePlayersPerTeam(teams: TourTeam[], members: TourTeamMember[], t
   ).size);
   if (teamCounts.length === 2 && teamCounts.every((count) => count > 0)) return Math.min(...teamCounts);
 
-  const attendingPlayers = tourPlayers.filter((player) => player.attending).length;
+  const attendingPlayers = Math.max(
+    tourPlayers.filter((player) => player.attending).length,
+    attendingPlayerCount ?? 0,
+  );
   return teams.length >= 2 ? Math.floor(attendingPlayers / 2) : 0;
 }
 
@@ -85,8 +93,9 @@ export function projectedTourPoints(
   teams: TourTeam[],
   members: TourTeamMember[],
   tourPlayers: TourPlayer[],
+  attendingPlayerCount?: number,
 ) {
-  const playersOnEachTeam = availablePlayersPerTeam(teams, members, tourPlayers);
+  const playersOnEachTeam = availablePlayersPerTeam(teams, members, tourPlayers, attendingPlayerCount);
   return rounds
     .filter((round) => round.status !== 'draft')
     .reduce((tourTotal, round) => {
@@ -95,10 +104,11 @@ export function projectedTourPoints(
         && match.status !== 'void'
         && match.winningSide !== 'void'
       ));
-      if (roundMatches.length > 0) return tourTotal + totalAvailablePoints(roundMatches);
-
       const sideSize = playersPerSide(round.format);
-      if (!sideSize || playersOnEachTeam <= 0) return tourTotal;
-      return tourTotal + Math.floor(playersOnEachTeam / sideSize);
+      const projectedRoundPoints = sideSize && playersOnEachTeam > 0
+        ? Math.floor(playersOnEachTeam / sideSize)
+        : 0;
+      const ledgerRoundPoints = totalAvailablePoints(roundMatches);
+      return tourTotal + Math.max(projectedRoundPoints, ledgerRoundPoints);
     }, 0);
 }
