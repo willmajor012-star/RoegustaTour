@@ -1,4 +1,4 @@
-import type { Match } from './types';
+import type { Match, Round, TourPlayer, TourTeam, TourTeamMember } from './types';
 
 export const MATCHPLAY_RESULT_OPTIONS = [
   'AS', '1 Up', '2 Up', '2 & 1', '3 & 2', '3 & 1', '4 & 3', '4 & 2', '5 & 4', '5 & 3',
@@ -53,4 +53,52 @@ export function awardedPoints(matches: Match[]) {
 
 export function pointsRequiredToWinOutright(totalAvailable: number) {
   return totalAvailable > 0 ? Math.floor(totalAvailable + 1) / 2 : undefined;
+}
+
+function playersPerSide(format?: Round['format']) {
+  if (format === 'singles') return 1;
+  if (format === 'better_ball' || format === 'foursomes' || format === 'scramble') return 2;
+  return undefined;
+}
+
+function availablePlayersPerTeam(teams: TourTeam[], members: TourTeamMember[], tourPlayers: TourPlayer[]) {
+  const attendanceByPlayer = new Map(tourPlayers.map((player) => [player.playerId, player.attending]));
+  const teamCounts = teams.slice(0, 2).map((team) => new Set(
+    members
+      .filter((member) => member.teamId === team.id && attendanceByPlayer.get(member.playerId) !== false)
+      .map((member) => member.playerId),
+  ).size);
+  if (teamCounts.length === 2 && teamCounts.every((count) => count > 0)) return Math.min(...teamCounts);
+
+  const attendingPlayers = tourPlayers.filter((player) => player.attending).length;
+  return teams.length >= 2 ? Math.floor(attendingPlayers / 2) : 0;
+}
+
+/**
+ * Use the real match ledger wherever it exists. Before pairings are created,
+ * infer one-point matches from the round format and the available two-team
+ * roster so the Home target remains useful throughout tour setup.
+ */
+export function projectedTourPoints(
+  rounds: Round[],
+  matches: Match[],
+  teams: TourTeam[],
+  members: TourTeamMember[],
+  tourPlayers: TourPlayer[],
+) {
+  const playersOnEachTeam = availablePlayersPerTeam(teams, members, tourPlayers);
+  return rounds
+    .filter((round) => round.status !== 'draft')
+    .reduce((tourTotal, round) => {
+      const roundMatches = matches.filter((match) => (
+        match.roundId === round.id
+        && match.status !== 'void'
+        && match.winningSide !== 'void'
+      ));
+      if (roundMatches.length > 0) return tourTotal + totalAvailablePoints(roundMatches);
+
+      const sideSize = playersPerSide(round.format);
+      if (!sideSize || playersOnEachTeam <= 0) return tourTotal;
+      return tourTotal + Math.floor(playersOnEachTeam / sideSize);
+    }, 0);
 }

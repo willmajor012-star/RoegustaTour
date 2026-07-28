@@ -174,6 +174,8 @@ test('the confirmed 2026 itinerary migration includes every dinner and the compl
   for (const shirt of ['Sunday Special', 'Navy', 'White', 'Red']) assert.match(migration, new RegExp(`'${shirt}'`));
   assert.match(migration, /TEAM VERBEEK/);
   assert.match(migration, /TEAM MAJOR/);
+  assert.match(migration, /'Team Verbeek', '#8E2638', 1/);
+  assert.match(migration, /'Team Major', '#173B68', 0/);
   assert.match(migration, /where not exists/i);
   assert.doesNotMatch(migration, /\bdelete\b|\btruncate\b/i);
 });

@@ -25,21 +25,24 @@ test('the old Players route is removed and canonicalised to Teams & Players', ()
   assert.match(readFileSync('src/app/AppShell.tsx', 'utf8'), /window\.location\.pathname === '\/players'[\s\S]*'\/teams'/);
 });
 
-test('home follows the score, target, on-course, courses, results and tour hierarchy', () => {
+test('home keeps the intelligent target inside the score card before on-course content', () => {
   assert.match(dashboardSource, /home-up-next/);
   assert.match(dashboardSource, /<CourseRail/);
   assert.match(dashboardSource, /href="\/tours"/);
   assert.match(dashboardSource, /Teams, players, course guides and itinerary/);
   assert.match(dashboardSource, /tourLive/);
   assert.match(dashboardSource, /tourComplete/);
+  assert.match(dashboardSource, /projectedTourPoints/);
+  assert.doesNotMatch(dashboardSource, /overview-highlight-grid|victory-card/);
 
   const score = dashboardSource.indexOf('score-feature card');
-  const target = dashboardSource.indexOf('overview-highlight-grid');
+  const target = dashboardSource.indexOf('score-target');
+  const scoreboard = dashboardSource.indexOf('<Scoreboard');
   const onCourse = dashboardSource.indexOf('home-up-next');
   const courses = dashboardSource.indexOf('<CourseRail');
   const results = dashboardSource.indexOf('{latestResultCard}');
   const thisTour = dashboardSource.indexOf('home-this-tour-card');
-  assert.ok(score < target && target < onCourse && onCourse < courses && courses < results && results < thisTour);
+  assert.ok(score < target && target < scoreboard && scoreboard < onCourse && onCourse < courses && courses < results && results < thisTour);
 });
 
 test('Golf is round-led and separates tee sheet, results and prizes', () => {

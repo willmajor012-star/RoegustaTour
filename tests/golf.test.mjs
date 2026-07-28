@@ -12,6 +12,7 @@ function loadTsModule(path) {
 }
 
 const { tourPointsTarget } = loadTsModule('src/lib/golf.ts');
+const { projectedTourPoints } = loadTsModule('src/lib/matchplay.ts');
 
 test('Golf points target uses every non-void tour match', () => {
   const base = { id: 'm', tourId: 't', roundId: 'r', matchNumber: 1, format: 'singles', sideATeamId: 'a', sideBTeamId: 'b', pointsAvailable: 1, status: 'planned' };
@@ -25,4 +26,54 @@ test('Golf points target uses every non-void tour match', () => {
     { ...base, id: 'void-status', status: 'void' },
     { ...base, id: 'void-winner', winningSide: 'void' },
   ]), { totalAvailablePoints: 3, pointsToWin: 2 });
+});
+
+test('Home projects the full target from rounds and the two-team roster before pairings exist', () => {
+  const teams = [
+    { id: 'major', tourId: 'tour', name: 'Team Major', sortOrder: 0 },
+    { id: 'verbeek', tourId: 'tour', name: 'Team Verbeek', sortOrder: 1 },
+  ];
+  const tourPlayers = Array.from({ length: 24 }, (_, index) => ({
+    id: `tour-player-${index}`,
+    tourId: 'tour',
+    playerId: `player-${index}`,
+    attending: true,
+  }));
+  const members = tourPlayers.map((player, index) => ({
+    id: `member-${index}`,
+    tourId: 'tour',
+    teamId: index < 12 ? 'major' : 'verbeek',
+    playerId: player.playerId,
+  }));
+  const rounds = [
+    { id: 'par-3', tourId: 'tour', roundNumber: 1, name: 'Par 3', format: 'scramble', holes: 18, status: 'planned' },
+    { id: 'faldo', tourId: 'tour', roundNumber: 2, name: 'Faldo', format: 'better_ball', holes: 18, status: 'planned' },
+    { id: 'old', tourId: 'tour', roundNumber: 3, name: 'Old Course', format: 'singles', holes: 18, status: 'planned' },
+    { id: 'oconnor', tourId: 'tour', roundNumber: 4, name: 'O’Connor', format: 'better_ball', holes: 9, status: 'planned' },
+  ];
+
+  assert.equal(projectedTourPoints(rounds, [], teams, members, tourPlayers), 30);
+});
+
+test('Home trusts created matches for a round instead of double-counting its projection', () => {
+  const teams = [
+    { id: 'a', tourId: 'tour', name: 'A', sortOrder: 0 },
+    { id: 'b', tourId: 'tour', name: 'B', sortOrder: 1 },
+  ];
+  const tourPlayers = Array.from({ length: 8 }, (_, index) => ({ id: `tp-${index}`, tourId: 'tour', playerId: `p-${index}`, attending: true }));
+  const members = tourPlayers.map((player, index) => ({ id: `tm-${index}`, tourId: 'tour', teamId: index < 4 ? 'a' : 'b', playerId: player.playerId }));
+  const rounds = [{ id: 'round', tourId: 'tour', roundNumber: 1, name: 'Round', format: 'singles', holes: 18, status: 'planned' }];
+  const matches = Array.from({ length: 3 }, (_, index) => ({
+    id: `match-${index}`,
+    tourId: 'tour',
+    roundId: 'round',
+    matchNumber: index + 1,
+    format: 'singles',
+    status: 'planned',
+    sideATeamId: 'a',
+    sideBTeamId: 'b',
+    pointsAvailable: 1,
+  }));
+
+  assert.equal(projectedTourPoints(rounds, matches, teams, members, tourPlayers), 3);
 });

@@ -47,26 +47,26 @@ begin
 
   if verbeek_team_id is null then
     insert into public.tour_teams (id, tour_id, name, colour, sort_order, published)
-    values (gen_random_uuid(), selected_tour_id, 'Team Verbeek', '#173B68', 0, true)
+    values (gen_random_uuid(), selected_tour_id, 'Team Verbeek', '#8E2638', 1, true)
     returning id into verbeek_team_id;
   else
     update public.tour_teams
     set name = 'Team Verbeek',
-        colour = '#173B68',
-        sort_order = 0,
+        colour = '#8E2638',
+        sort_order = 1,
         published = true
     where id = verbeek_team_id;
   end if;
 
   if major_team_id is null then
     insert into public.tour_teams (id, tour_id, name, colour, sort_order, published)
-    values (gen_random_uuid(), selected_tour_id, 'Team Major', '#8E2638', 1, true)
+    values (gen_random_uuid(), selected_tour_id, 'Team Major', '#173B68', 0, true)
     returning id into major_team_id;
   else
     update public.tour_teams
     set name = 'Team Major',
-        colour = '#8E2638',
-        sort_order = 1,
+        colour = '#173B68',
+        sort_order = 0,
         published = true
     where id = major_team_id;
   end if;
