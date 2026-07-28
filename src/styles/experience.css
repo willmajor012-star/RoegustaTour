@@ -1741,6 +1741,25 @@
   color: var(--rt-green-900);
 }
 
+.team-kit-panel {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 13px 14px;
+  border: 1px solid rgba(184, 154, 93, .38);
+  border-left: 5px solid var(--rt-gold);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 250, 240, .96), rgba(238, 226, 199, .72));
+}
+
+.team-kit-panel strong {
+  color: var(--rt-green-900);
+}
+
+.team-kit-panel .team-kit-chip-list {
+  margin: 0;
+}
+
 .itinerary-selected-day-header .eyebrow {
   margin-bottom: 4px;
 }

@@ -156,10 +156,26 @@ test('public Tour information is a single schedule with daily shirts and no hand
   assert.match(info, /title="Itinerary"/);
   assert.match(info, /First tee/);
   assert.match(info, /Team shirt colours/);
+  assert.match(info, /What to wear/);
+  assert.match(info, /team-kit-panel/);
   assert.match(info, /Itinerary TBC\./);
   assert.doesNotMatch(info, /Key notes|handbookSections\.map|Secondary prize/);
   assert.match(publicData, /activeManualItineraryItems/);
   assert.match(publicData, /handbookSections: \[\]/);
+});
+
+test('the confirmed 2026 itinerary migration includes every dinner and the complete shirt rotation', async () => {
+  const migration = await readFile(new URL('../supabase/migrations/202607280001_complete_2026_itinerary.sql', import.meta.url), 'utf8');
+  for (const dinner of [
+    'Check-in & dinner at the Clubhouse',
+    'Dinner, initiations & singles announcement',
+    'Dinner at the Old Course',
+  ]) assert.match(migration, new RegExp(dinner.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
+  for (const shirt of ['Sunday Special', 'Navy', 'White', 'Red']) assert.match(migration, new RegExp(`'${shirt}'`));
+  assert.match(migration, /TEAM VERBEEK/);
+  assert.match(migration, /TEAM MAJOR/);
+  assert.match(migration, /where not exists/i);
+  assert.doesNotMatch(migration, /\bdelete\b|\btruncate\b/i);
 });
 
 test('itinerary day tabs use the Roegusta dark green and gold treatment', async () => {

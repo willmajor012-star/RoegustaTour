@@ -53,8 +53,8 @@ export function TourInfo() {
         {selectedGroup ? <section className="itinerary-selected-day" id={`itinerary-day-${selectedGroup.date}`} role="tabpanel">
           <header className="itinerary-selected-day-header">
             <div><p className="eyebrow">Today’s plan</p><h2>{selectedGroup.label}</h2></div>
-            <TeamKitChips kits={selectedGroup.kits} teams={activeData.tourTeams} />
           </header>
+          <TeamKitPanel kits={selectedGroup.kits} teams={activeData.tourTeams} />
           {selectedGroup.entries.length > 0
             ? <div className="itinerary-event-list">{selectedGroup.entries.map((entry) => <ScheduleEntry entry={entry} courses={activeData.tourCourses} key={entry.id} />)}</div>
             : <p className="itinerary-empty-day">No activities have been added for this day yet.</p>}
@@ -138,10 +138,13 @@ function ScheduleKindIcon({ kind }: { kind: TourScheduleEntry['kind'] }) {
   return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 21V3m0 1h9l-2 4 2 4H7" /><circle cx="7" cy="21" r="1.5" /></svg>;
 }
 
-function TeamKitChips({ kits, teams }: { kits: TourTeamDayKit[]; teams: TourTeam[] }) {
+function TeamKitPanel({ kits, teams }: { kits: TourTeamDayKit[]; teams: TourTeam[] }) {
   if (kits.length === 0) return null;
-  return <div className="team-kit-chip-list" aria-label="Team shirt colours">{kits.map((kit, index) => {
-    const team = teams.find((candidate) => candidate.id === kit.teamId);
-    return <span className="team-kit-chip" key={kit.id} style={{ '--team-colour': normalizeTeamColour(team?.colour, index) } as CSSProperties}><i aria-hidden="true" />{team?.name ?? 'Team TBC'} · {kit.colourLabel}</span>;
-  })}</div>;
+  return <aside className="team-kit-panel" aria-label="Team shirt colours">
+    <div><p className="eyebrow">What to wear</p><strong>Team shirts</strong></div>
+    <div className="team-kit-chip-list">{kits.map((kit, index) => {
+      const team = teams.find((candidate) => candidate.id === kit.teamId);
+      return <span className="team-kit-chip" key={kit.id} style={{ '--team-colour': normalizeTeamColour(team?.colour, index) } as CSSProperties}><i aria-hidden="true" />{team?.name ?? 'Team TBC'} · {kit.colourLabel}</span>;
+    })}</div>
+  </aside>;
 }
