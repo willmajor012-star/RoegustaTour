@@ -8,7 +8,7 @@ import { compareTeeTimeValues, formatRoundDisplayName, formatTeeTimeDisplay, get
 import { tourPointsTarget } from '../lib/golf';
 import { calculateTeamScoreByTour } from '../lib/scoring';
 import { normalizeTeamColour } from '../lib/teamColours';
-import type { Match, MatchParticipant, Player, Round, RoundPrizeResult, TourPlayer, TourTeam, TourTeamMember } from '../lib/types';
+import type { Match, MatchParticipant, Player, Round, RoundPrizeResult, TourPlayer, TourPrizeFund, TourTeam, TourTeamMember } from '../lib/types';
 import { courseGuideForRound, courseGuidePath, courseGuidesForTour } from '../data/courseGuides';
 
 const emptyMatchesData: Omit<PublicMatchesResponse, 'source'> = { tour: undefined, rounds: [], matches: [], matchParticipants: [], players: [], tourPlayers: [], tourTeams: [], tourTeamMembers: [], roundPrizeResults: [], tourCourses: [] };
@@ -48,6 +48,15 @@ function roundTabTitle(round: Round) {
   const day = formatShortDate(round.roundDate).split(',')[0];
   const session = roundSession(round);
   return [day !== 'TBC' ? day : `Round ${round.roundNumber}`, session].filter(Boolean).join(' ') || `Round ${round.roundNumber}`;
+}
+
+function formatPrizeMoney(pence: number) {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: pence % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(pence / 100);
 }
 
 export function Matches() {
@@ -108,7 +117,7 @@ export function Matches() {
 
         {section === 'tee-sheet' && selectedRound && <GolfTeeTimes selectedRound={selectedRound} matches={teeSheetMatches} players={activeData.players} teams={activeData.tourTeams} participants={activeData.matchParticipants} />}
         {section === 'results' && selectedRound && <GolfResults selectedRound={selectedRound} matches={selectedRoundMatches} data={activeData} teams={activeData.tourTeams} />}
-        {section === 'prizes' && selectedRound && <GolfPrizes selectedRound={selectedRound} prizes={selectedPrizes} players={activeData.players} teams={activeData.tourTeams} />}
+        {section === 'prizes' && selectedRound && <GolfPrizes selectedRound={selectedRound} prizeFund={activeData.tour?.prizeFund} prizes={selectedPrizes} players={activeData.players} teams={activeData.tourTeams} />}
         {section === 'teams' && <GolfTeams teams={activeData.tourTeams} members={activeData.tourTeamMembers} players={activeData.players} tourPlayers={activeData.tourPlayers} />}
       </>}
     </>}
@@ -130,10 +139,23 @@ function GolfResults({ selectedRound, matches, data, teams }: { selectedRound: R
   </section>;
 }
 
-function GolfPrizes({ selectedRound, prizes, players, teams }: { selectedRound: Round; prizes: RoundPrizeResult[]; players: Player[]; teams: TourTeam[] }) {
+function GolfPrizes({ selectedRound, prizeFund, prizes, players, teams }: { selectedRound: Round; prizeFund?: TourPrizeFund; prizes: RoundPrizeResult[]; players: Player[]; teams: TourTeam[] }) {
+  const payout = prizeFund?.rounds.find((round) => round.roundNumber === selectedRound.roundNumber);
   return <section className="tour-detail-section card round-prizes-panel">
-    <div className="section-heading"><div><p className="eyebrow">Secondary prizes</p><h3>{formatRoundDisplayName(selectedRound)}</h3></div></div>
-    {prizes.length === 0 ? <p>Prize details and winners will appear here once published.</p> : <div className="round-prize-list">{prizes.map((prize) => {
+    <div className="section-heading"><div><p className="eyebrow">Prize fund & payouts</p><h3>{formatRoundDisplayName(selectedRound)}</h3></div></div>
+    {payout && prizeFund ? <div className="prize-fund-card">
+      <div className="prize-fund-summary">
+        <span><small>Contribution</small><strong>{formatPrizeMoney(prizeFund.contributionPence)} each</strong></span>
+        {prizeFund.totalPence !== undefined ? <span><small>Total fund</small><strong>{formatPrizeMoney(prizeFund.totalPence)}</strong></span> : null}
+        <span><small>Paid per</small><strong>{payout.paidPer}</strong></span>
+      </div>
+      <div className="prize-payout-grid" aria-label={`${formatRoundDisplayName(selectedRound)} prize payouts`}>
+        {payout.payoutsPence.map((amount, index) => <span key={`${selectedRound.id}-${index}`}><small>{index + 1}{index === 0 ? 'st' : index === 1 ? 'nd' : index === 2 ? 'rd' : 'th'}</small><strong>{formatPrizeMoney(amount)}</strong></span>)}
+      </div>
+      {prizeFund.rules.length > 0 ? <ul className="prize-fund-rules">{prizeFund.rules.map((rule) => <li key={rule}>{rule}</li>)}</ul> : null}
+    </div> : <p>The payout schedule has not been published for this tour.</p>}
+    <div className="section-heading prize-winners-heading"><div><p className="eyebrow">Published winner</p><h4>Secondary-format result</h4></div></div>
+    {prizes.length === 0 ? <p>Winner and score will appear here once published.</p> : <div className="round-prize-list">{prizes.map((prize) => {
       const winner = players.find((player) => player.id === prize.winnerPlayerId)?.displayName ?? teams.find((team) => team.id === prize.winnerTeamId)?.name ?? 'Winner TBC';
       const score = prize.winningScoreText ?? [prize.scoreValue, prize.scoreUnit].filter(Boolean).join(' ');
       return <article key={prize.id}><span>Prize</span><h4>{prize.title}</h4><strong>{winner}</strong>{score && <small>{score}</small>}</article>;

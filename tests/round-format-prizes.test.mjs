@@ -10,6 +10,7 @@ const publicSource = readFileSync(new URL('../src/pages/Matches.tsx', import.met
 const resetSource = readFileSync(new URL('../netlify/functions/admin-reset-bet-punto-tour.ts', import.meta.url), 'utf8');
 const savePrizeSource = readFileSync(new URL('../netlify/functions/admin-save-round-prize-result.ts', import.meta.url), 'utf8');
 const tourInfoSource = readFileSync(new URL('../src/pages/TourInfo.tsx', import.meta.url), 'utf8');
+const prizeFundMigration = readFileSync(new URL('../supabase/migrations/202607270001_tour_prize_fund.sql', import.meta.url), 'utf8');
 
 function pointsRequiredToWinOutright(totalAvailable) {
   return totalAvailable > 0 ? Math.floor(totalAvailable + 1) / 2 : undefined;
@@ -42,6 +43,7 @@ describe('points to win target', () => {
     assert.equal(pointsRequiredToWinOutright(4), 2.5);
     assert.equal(pointsRequiredToWinOutright(5), 3);
     assert.equal(pointsRequiredToWinOutright(24), 12.5);
+    assert.equal(pointsRequiredToWinOutright(30), 15.5);
   });
 
   it('uses the same strictly-greater-than-half formula in matchplay and golf helpers', () => {
@@ -67,7 +69,18 @@ describe('secondary prize result support', () => {
     assert.match(publicSource, /function GolfPrizes/);
     assert.match(publicSource, /selectedPrizes/);
     assert.match(publicSource, /section === 'prizes'/);
-    assert.match(publicSource, /Secondary prizes/);
+    assert.match(publicSource, /Published winner/);
+  });
+
+  it('publishes the fixed tour payout reference separately from prize winners', () => {
+    assert.match(publicSource, /Prize fund & payouts/);
+    assert.match(publicSource, /prizeFund\?\.rounds\.find/);
+    assert.match(prizeFundMigration, /add column if not exists prize_fund jsonb/);
+    assert.match(prizeFundMigration, /'contributionPence', 3750/);
+    assert.match(prizeFundMigration, /'totalPence', 90000/);
+    assert.match(prizeFundMigration, /'roundNumber', 3, 'paidPer', 'player'/);
+    assert.match(prizeFundMigration, /and prize_fund is null/);
+    assert.doesNotMatch(prizeFundMigration, /\bdelete\b|\btruncate\b/i);
   });
 
   it('Tour itinerary does not duplicate secondary prize information from Golf', () => {

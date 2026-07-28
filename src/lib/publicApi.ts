@@ -37,6 +37,8 @@ export type PublicDashboardResponse = PublicMatchesResponse & {
   recentResults: Match[];
   openMarkets: BetMarket[];
   scores: TeamScoreRow[];
+  attendingPlayerCount?: number;
+  projectedTotalPoints?: number;
 };
 
 export type PublicTourHeaderResponse = PublicResponse<{ tour?: Tour }>;

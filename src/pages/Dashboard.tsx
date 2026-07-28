@@ -8,7 +8,7 @@ import type { Match, Round, TeamScoreRow, TourTeam } from '../lib/types';
 import { formatRoundDisplayName, formatTourDisplayName, getDateOnlyScheduledDate, getScheduledDate, getScheduleSortTime, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
 import { usePublicData } from '../lib/usePublicData';
 import { TEAM_COLOUR_FALLBACKS, normalizeTeamColour } from '../lib/teamColours';
-import { awardedPoints, pointsRequiredToWinOutright, totalAvailablePoints } from '../lib/matchplay';
+import { awardedPoints, pointsRequiredToWinOutright, projectedTourPoints } from '../lib/matchplay';
 import { courseGuidesForTour } from '../data/courseGuides';
 
 const emptyDashboardData: PublicDashboardResponse = {
@@ -80,7 +80,16 @@ export function Dashboard() {
   const roundById = useMemo(() => new Map(rounds.map((round) => [round.id, round])), [rounds]);
   const visibleMatches = activeData.matches.filter(isPublicVisibleMatch);
   const teamRows = teamScoreRows(activeData.scores, activeData.tourTeams);
-  const totalPointsAvailable = totalAvailablePoints(visibleMatches);
+  const totalPointsAvailable = activeData.projectedTotalPoints && activeData.projectedTotalPoints > 0
+    ? activeData.projectedTotalPoints
+    : projectedTourPoints(
+      rounds,
+      visibleMatches,
+      activeData.tourTeams,
+      activeData.tourTeamMembers,
+      activeData.tourPlayers,
+      activeData.attendingPlayerCount,
+    );
   const remainingPoints = totalPointsAvailable - awardedPoints(visibleMatches);
   const pointsToWinOutright = pointsRequiredToWinOutright(totalPointsAvailable);
   const scheduled = visibleMatches
@@ -129,17 +138,13 @@ export function Dashboard() {
 
     <section className="score-feature card">
       <div className="section-heading"><div><p className="eyebrow">{tourComplete ? 'Final score' : tourLive ? 'Live team score' : 'Team score'}</p><h2>{tourComplete ? 'Final score' : 'Team score'}</h2></div><span className="card-chevron" aria-hidden="true">›</span></div>
+      {!tourComplete && <div className="score-target" aria-label="Points target">
+        <span>Points target</span>
+        <strong>{pointsToWinOutright === undefined ? 'Target TBC' : `${formatPoints(pointsToWinOutright)} to win`}</strong>
+        {pointsToWinOutright !== undefined && <small>{formatPoints(totalPointsAvailable)} available · {formatPoints(remainingPoints)} remaining</small>}
+      </div>}
       <Scoreboard scores={teamRows} href="/score" />
     </section>
-
-    {!tourComplete && <section className="overview-highlight-grid">
-      <a className="card tappable-card victory-card" href="/score">
-        <p className="eyebrow">Points target</p>
-        <h3>{pointsToWinOutright === undefined ? 'Target TBC' : `${formatPoints(pointsToWinOutright)} to win`}</h3>
-        {pointsToWinOutright !== undefined && <p>{formatPoints(totalPointsAvailable)} available · {formatPoints(remainingPoints)} remaining</p>}
-        <span className="card-chevron" aria-hidden="true">›</span>
-      </a>
-    </section>}
 
     {!tourComplete && <a className="card tappable-card home-up-next" href="/matches">
       <div className="up-next-copy">

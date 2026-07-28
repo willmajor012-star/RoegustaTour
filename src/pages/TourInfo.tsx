@@ -53,8 +53,8 @@ export function TourInfo() {
         {selectedGroup ? <section className="itinerary-selected-day" id={`itinerary-day-${selectedGroup.date}`} role="tabpanel">
           <header className="itinerary-selected-day-header">
             <div><p className="eyebrow">Today’s plan</p><h2>{selectedGroup.label}</h2></div>
-            <TeamKitChips kits={selectedGroup.kits} teams={activeData.tourTeams} />
           </header>
+          <TeamKitPanel kits={selectedGroup.kits} teams={activeData.tourTeams} />
           {selectedGroup.entries.length > 0
             ? <div className="itinerary-event-list">{selectedGroup.entries.map((entry) => <ScheduleEntry entry={entry} courses={activeData.tourCourses} key={entry.id} />)}</div>
             : <p className="itinerary-empty-day">No activities have been added for this day yet.</p>}
@@ -69,7 +69,7 @@ function ScheduleEntry({ entry, courses }: { entry: TourScheduleEntry; courses: 
   const label = entry.kind === 'golf' ? 'Golf' : manualItineraryKindLabels[entry.kind];
   const time = entry.kind === 'golf'
     ? formatItineraryTime(formatTeeTimeDisplay(entry.timeLabel))
-    : entry.timeLabel ? formatItineraryTime(entry.timeLabel) : (entry.kind === 'accommodation' ? 'Stay' : 'TBC');
+    : entry.timeLabel ? formatItineraryTime(entry.timeLabel) : (entry.kind === 'accommodation' ? 'Stay' : entry.kind === 'activity' ? 'Info' : 'TBC');
   const timeContext = entry.kind === 'golf' ? 'First tee' : entry.kind === 'flight' || entry.kind === 'travel' ? 'Departs' : label;
   const arrival = entry.endTimeLabel
     ? `${entry.kind === 'flight' ? 'Lands' : 'Arrives'} ${formatItineraryTime(entry.endTimeLabel)}`
@@ -133,14 +133,18 @@ function ScheduleKindIcon({ kind }: { kind: TourScheduleEntry['kind'] }) {
   if (kind === 'flight') return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m3 11 18-7-7 18-3-8-8-3Z" /><path d="m11 14 4-4" /></svg>;
   if (kind === 'travel') return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 17h14l-1-7H6l-1 7Z" /><path d="m7 10 2-4h6l2 4M7 17v2m10-2v2" /><circle cx="8" cy="14" r="1" /><circle cx="16" cy="14" r="1" /></svg>;
   if (kind === 'accommodation') return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M3 18V9m18 9V12H8v6M3 14h5M5 9h3v5H3v-3a2 2 0 0 1 2-2Z" /><path d="M3 18v2m18-2v2" /></svg>;
-  if (kind === 'dinner') return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3v8m-3-8v5a3 3 0 0 0 6 0V3M7 11v10M17 3v18m0-18c-3 2-3 8 0 9" /></svg>;
+  if (kind === 'food') return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3v8m-3-8v5a3 3 0 0 0 6 0V3M7 11v10M17 3v18m0-18c-3 2-3 8 0 9" /></svg>;
+  if (kind === 'activity') return <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><path d="M12 8v5m0 3h.01" /></svg>;
   return <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 21V3m0 1h9l-2 4 2 4H7" /><circle cx="7" cy="21" r="1.5" /></svg>;
 }
 
-function TeamKitChips({ kits, teams }: { kits: TourTeamDayKit[]; teams: TourTeam[] }) {
+function TeamKitPanel({ kits, teams }: { kits: TourTeamDayKit[]; teams: TourTeam[] }) {
   if (kits.length === 0) return null;
-  return <div className="team-kit-chip-list" aria-label="Team shirt colours">{kits.map((kit, index) => {
-    const team = teams.find((candidate) => candidate.id === kit.teamId);
-    return <span className="team-kit-chip" key={kit.id} style={{ '--team-colour': normalizeTeamColour(team?.colour, index) } as CSSProperties}><i aria-hidden="true" />{team?.name ?? 'Team TBC'} · {kit.colourLabel}</span>;
-  })}</div>;
+  return <aside className="team-kit-panel" aria-label="Team shirt colours">
+    <div><p className="eyebrow">What to wear</p><strong>Team shirts</strong></div>
+    <div className="team-kit-chip-list">{kits.map((kit, index) => {
+      const team = teams.find((candidate) => candidate.id === kit.teamId);
+      return <span className="team-kit-chip" key={kit.id} style={{ '--team-colour': normalizeTeamColour(team?.colour, index) } as CSSProperties}><i aria-hidden="true" />{team?.name ?? 'Team TBC'} · {kit.colourLabel}</span>;
+    })}</div>
+  </aside>;
 }

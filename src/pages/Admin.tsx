@@ -2709,7 +2709,7 @@ export function Admin() {
     if (!selectedTour) return;
     if (
       !window.confirm(
-        'Apply the agreed 2026 setup to this tour? This installs any missing Faldo, O’Connor and Old Course guides as published Home guides; links Faldo and Old Course to their matching rounds by saved guide ID; leaves the Par 3 without a guide; and updates or creates planned rounds. Existing guide edits, matches and results are preserved.',
+        'Apply the agreed 2026 setup to this tour? This installs any missing Faldo, O’Connor and Old Course guides as published Home guides; sets Friday Par 3, Saturday Faldo, Sunday Old Course and Monday O’Connor with their confirmed first tee times; links the three saved guides by ID; leaves the Par 3 without a guide; and updates draft/planned match formats to follow their round. Existing guide edits, pairings and results are preserved.',
       )
     )
       return;

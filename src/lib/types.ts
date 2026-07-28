@@ -10,6 +10,19 @@ export type Player = {
   createdAt: string;
 };
 
+export type TourPrizeFundRound = {
+  roundNumber: number;
+  paidPer: 'pair' | 'player';
+  payoutsPence: number[];
+};
+
+export type TourPrizeFund = {
+  contributionPence: number;
+  totalPence?: number;
+  rules: string[];
+  rounds: TourPrizeFundRound[];
+};
+
 export type Tour = {
   id: string;
   name: string;
@@ -20,6 +33,7 @@ export type Tour = {
   endDate?: string;
   status: 'planned' | 'active' | 'complete' | 'archived';
   description?: string;
+  prizeFund?: TourPrizeFund;
   isCurrentPublic?: boolean;
   isTest?: boolean;
 };

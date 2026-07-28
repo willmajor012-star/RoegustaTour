@@ -167,6 +167,10 @@ main { padding: 14px; }
 .countdown-card span { color: var(--rt-ink-muted, #6f6a5d); font-weight: 700; }
 .score-feature.card { background: linear-gradient(180deg, rgba(255,250,240,.98), rgba(245,241,232,.95)); border: 1px solid rgba(184,154,93,.38); box-shadow: 0 18px 48px rgba(15,47,36,.14); border-radius: 22px; padding: 12px; }
 .score-feature>.section-heading { padding: 0; }
+.score-target { display: flex; align-items: baseline; gap: 8px 12px; flex-wrap: wrap; margin: 0 2px 10px; padding: 10px 12px; border: 1px solid rgba(184,154,93,.28); border-radius: 14px; background: rgba(255,255,255,.48); color: var(--rt-green-900); }
+.score-target span { color: var(--rt-gold); font-size: .68rem; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.score-target strong { font-family: 'Libre Baskerville',Georgia,serif; font-size: 1.15rem; }
+.score-target small { margin-left: auto; color: var(--rt-ink-muted); font-weight: 700; }
 .score-feature .scoreboard { border-radius: 18px; padding: 14px; }
 .victory-card, .next-tee-card, .latest-result-card { position: relative; }
 .victory-card h3, .next-tee-card h3 { margin: .2rem 0; color: var(--rt-green-900); font-size: 1.5rem; }

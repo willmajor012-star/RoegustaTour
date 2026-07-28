@@ -8,6 +8,7 @@ import { activeManualItineraryItems } from '../../src/lib/tourItinerary';
 import { selectDefaultTour } from './_tourResolution';
 import { applyAutomaticBetDefaultsForTour } from './_betDefaults';
 import { calculateTeamScoreByTour } from '../../src/lib/scoring';
+import { projectedTourPoints } from '../../src/lib/matchplay';
 import { filterPublicRounds, filterPublicTeamMembers, filterPublicTeams, isPublicMatch, isPublicRound, isPublicTeamRoster, isPublicTour } from '../../src/lib/publicVisibility';
 
 export { isPublicMatch, isPublicRound, isPublicTeamRoster, isPublicTour };
@@ -105,14 +106,28 @@ export async function getPublicMatchBundle(supabase: SupabaseClient) {
     runQuery(table(supabase, 'tour_courses').select('*').eq('tour_id', tour.id).eq('published', true).order('sort_order', { ascending: true }), 'public tour courses').catch(() => []),
   ]);
 
-  const rounds = publicRoundsOrLegacyCurrent(roundRows.map(mapRound), tour);
+  const allRounds = roundRows.map(mapRound);
+  const allMatches = matchRows.map(mapMatch);
+  const allTourPlayers = tourPlayerRows.map(mapTourPlayer);
+  const allTourTeams = teamRows.map(mapTourTeam);
+  const allTourTeamMembers = memberRows.map(mapTourTeamMember);
+  const attendingPlayerCount = allTourPlayers.filter((tourPlayer) => tourPlayer.attending).length;
+  const projectedTotalPoints = projectedTourPoints(
+    allRounds,
+    allMatches,
+    allTourTeams,
+    allTourTeamMembers,
+    allTourPlayers,
+    attendingPlayerCount,
+  );
+  const rounds = publicRoundsOrLegacyCurrent(allRounds, tour);
   const roundById = rowsById(rounds);
-  const matches = publicMatchesOrLegacyCurrent(matchRows.map(mapMatch), roundById, tour);
+  const matches = publicMatchesOrLegacyCurrent(allMatches, roundById, tour);
   const matchIds = matches.map((match) => match.id);
   const participantRows = matchIds.length > 0 ? await runQuery(table(supabase, 'match_participants').select('*').in('match_id', matchIds), 'public match participants') : [];
   const matchParticipants = participantRows.map(mapMatchParticipant);
-  const tourTeams = publicTeamsOrLegacyCurrent(teamRows.map(mapTourTeam), tour);
-  const tourTeamMembers = filterPublicTeamMembers(memberRows.map(mapTourTeamMember), tourTeams);
+  const tourTeams = publicTeamsOrLegacyCurrent(allTourTeams, tour);
+  const tourTeamMembers = filterPublicTeamMembers(allTourTeamMembers, tourTeams);
   const roundPrizeResults = prizeRows.map(mapRoundPrizeResult).filter((prize) => roundById.has(prize.roundId));
   const publicPlayerIds = new Set([
     ...matchParticipants.map((participant) => participant.playerId),
@@ -126,9 +141,11 @@ export async function getPublicMatchBundle(supabase: SupabaseClient) {
     matches,
     matchParticipants,
     players: playerRows.map(mapPlayer).filter((player) => publicPlayerIds.has(player.id)),
-    tourPlayers: tourPlayerRows.map(mapTourPlayer).filter((tourPlayer) => publicPlayerIds.has(tourPlayer.playerId)),
+    tourPlayers: allTourPlayers.filter((tourPlayer) => publicPlayerIds.has(tourPlayer.playerId)),
     tourTeams,
     tourTeamMembers,
+    attendingPlayerCount,
+    projectedTotalPoints,
     roundPrizeResults,
     tourCourses: courseRows.map(mapCourseGuide),
   };
