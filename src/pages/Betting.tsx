@@ -55,6 +55,8 @@ export function Betting() {
   const [savedBets, setSavedBets] = useState<Bet[]>([]);
   const [submitMessages, setSubmitMessages] = useState<Record<string, string>>({});
   const [editingBetId, setEditingBetId] = useState<string | null>(null);
+  const [betChangeError, setBetChangeError] = useState('');
+  const [changingBet, setChangingBet] = useState(false);
   const [editDraft, setEditDraft] = useState({ optionId: '', stake: '', comment: '' });
   const bets = [...savedBets, ...activeData.bets.filter((bet) => !savedBets.some((savedBet) => savedBet.id === bet.id))];
   const activeBets = bets.filter((bet) => bet.status === 'active');
@@ -150,6 +152,19 @@ export function Betting() {
     setEditDraft({ optionId: bet.optionId, stake: String(((bet.stakeAmountPence ?? 0) / 100).toFixed(2)), comment: bet.comment ?? '' });
   };
 
+  const changeBet = async (operation: () => Promise<void>) => {
+    if (changingBet) return;
+    setChangingBet(true);
+    setBetChangeError('');
+    try {
+      await operation();
+    } catch (error) {
+      setBetChangeError(error instanceof Error ? error.message : 'Your pick could not be changed. Please try again.');
+    } finally {
+      setChangingBet(false);
+    }
+  };
+
   return (
     <div className="page-stack betting-page">
       <PageHeader className="bet-punto-header" eyebrow="Friendly tour betting" title="Bet Punto" />
@@ -205,12 +220,13 @@ export function Betting() {
 
         <section className="card bet-tracker-card">
           <div className="section-heading"><div><p className="eyebrow">Your bets</p><h3>{selectedBettorPlayer?.displayName ?? 'Choose your name'}</h3></div><strong>{myBets.length}</strong></div>
+          {betChangeError ? <p role="alert" className="form-error">{betChangeError}</p> : null}
           {!selectedBettorPlayer ? <p>Choose your name to see and manage your bets.</p> : myBets.length === 0 ? <p>You have not placed a bet yet.</p> : <div className="bet-tracker-list">{myBets.map((bet) => {
           const market = activeData.betMarkets.find((candidate) => candidate.id === bet.marketId);
           const option = activeData.betOptions.find((candidate) => candidate.id === bet.optionId);
           const round = market?.roundId ? activeData.rounds.find((candidate) => candidate.id === market.roundId) : undefined;
           const editable = Boolean(market && isMarketPubliclyEditable(market) && betEditToken(bet.id));
-          return <article key={bet.id}><strong>{market?.title ?? 'Bet Punto market'}</strong><span>{option?.label ?? 'Option'} · {formatStakeCurrency(bet)} · {marketStatusLabel(market?.status)}{round ? ` · Round ${round.roundNumber}` : ''}</span>{bet.entrySource === 'automatic_default' ? <small>Automatic first-tee default</small> : bet.comment ? <small>{bet.comment}</small> : null}{editable && editingBetId !== bet.id ? <div className="chip-list"><button className="pill" type="button" onClick={() => beginEditBet(bet)}>Edit pick</button><button className="pill" type="button" onClick={() => void voidBet(bet)}>Cancel pick</button></div> : null}{editable && editingBetId === bet.id ? <div className="bet-form"><select value={editDraft.optionId} onChange={(event) => setEditDraft({ ...editDraft, optionId: event.target.value })}>{activeData.betOptions.filter((candidate) => candidate.marketId === bet.marketId).map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.label}</option>)}</select><input inputMode="decimal" value={editDraft.stake} onChange={(event) => setEditDraft({ ...editDraft, stake: event.target.value })} /><input value={editDraft.comment} onChange={(event) => setEditDraft({ ...editDraft, comment: event.target.value })} /><button type="button" onClick={() => void editBet(bet)}>Save edit</button><button type="button" onClick={() => setEditingBetId(null)}>Cancel edit</button></div> : null}</article>;
+          return <article key={bet.id}><strong>{market?.title ?? 'Bet Punto market'}</strong><span>{option?.label ?? 'Option'} · {formatStakeCurrency(bet)} · {marketStatusLabel(market?.status)}{round ? ` · Round ${round.roundNumber}` : ''}</span>{bet.entrySource === 'automatic_default' ? <small>Automatic first-tee default</small> : bet.comment ? <small>{bet.comment}</small> : null}{editable && editingBetId !== bet.id ? <div className="chip-list"><button className="pill" type="button" onClick={() => beginEditBet(bet)}>Edit pick</button><button className="pill" type="button" disabled={changingBet} onClick={() => void changeBet(() => voidBet(bet))}>Cancel pick</button></div> : null}{editable && editingBetId === bet.id ? <div className="bet-form"><select value={editDraft.optionId} onChange={(event) => setEditDraft({ ...editDraft, optionId: event.target.value })}>{activeData.betOptions.filter((candidate) => candidate.marketId === bet.marketId).map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.label}</option>)}</select><input inputMode="decimal" value={editDraft.stake} onChange={(event) => setEditDraft({ ...editDraft, stake: event.target.value })} /><input value={editDraft.comment} onChange={(event) => setEditDraft({ ...editDraft, comment: event.target.value })} /><button type="button" disabled={changingBet} onClick={() => void changeBet(() => editBet(bet))}>Save edit</button><button type="button" onClick={() => setEditingBetId(null)}>Cancel edit</button></div> : null}</article>;
           })}</div>}
         </section>
 

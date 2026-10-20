@@ -21,7 +21,7 @@ export function CourseGuidePage({ slug }: Props) {
     if (!course) return;
     setSelectedTee(course.tees.some((tee) => tee.key === 'yellow') ? 'yellow' : course.tees[0]?.key ?? '');
     setSelectedHoleNumber(1);
-  }, [course]);
+  }, [course?.id, course?.slug]);
 
   const selectedHole = course?.holes.find((hole) => hole.number === selectedHoleNumber) ?? course?.holes[0];
   const selectedTeeDetails = course?.tees.find((tee) => tee.key === selectedTee) ?? course?.tees[0];

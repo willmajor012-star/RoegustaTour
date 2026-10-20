@@ -3,6 +3,8 @@ import { badRequest, optionalString, runRows, runSingle, withAdminSupabase } fro
 import { mapRound } from './_mappers';
 import { syncRequiredMarketDeadlinesForRound } from './_betMarketDeadline';
 import type { MatchFormat, Round } from '../../src/lib/types';
+import { isRealIsoDate } from '../../src/lib/tourValidation';
+import { normalizeClockTime } from '../../src/lib/tourTime';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -25,6 +27,8 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const status = optionalString(body.status) as Round['status'] | null;
   const format = (optionalString(body.format) ?? 'custom') as MatchFormat;
   const holes = typeof body.holes === 'number' ? body.holes : Number(body.holes ?? 18);
+  const roundDate = optionalString(body.roundDate);
+  const teeTime = optionalString(body.teeTime);
 
   if (!tourId) return badRequest('Tour ID is required.');
   if (!Number.isInteger(roundNumber) || roundNumber < 1 || roundNumber > 99) return badRequest('Round number is invalid.');
@@ -32,6 +36,8 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (!status || !allowedStatuses.includes(status)) return badRequest('Round status is invalid.');
   if (!allowedFormats.includes(format)) return badRequest('Round format is invalid.');
   if (![9, 18].includes(holes)) return badRequest('Round holes must be 9 or 18.');
+  if (roundDate && !isRealIsoDate(roundDate)) return badRequest('Round date is invalid.');
+  if (teeTime && !/^tbc$/i.test(teeTime) && !normalizeClockTime(teeTime)) return badRequest('Tee time must use HH:MM or TBC.');
 
   const tours = await runRows(supabase.from('tours').select('id').eq('id', tourId).limit(1), 'find round tour');
   if (tours.length === 0) return badRequest('Tour must exist.');
@@ -61,10 +67,10 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     tour_id: tourId,
     round_number: roundNumber,
     name,
-    round_date: optionalString(body.roundDate),
+    round_date: roundDate,
     course_id: courseId,
     course_name: courseName,
-    tee_time: optionalString(body.teeTime),
+    tee_time: teeTime ? normalizeClockTime(teeTime) ?? 'TBC' : null,
     format,
     format_label: optionalString(body.formatLabel) ?? formatLabels[format],
     notes: optionalString(body.notes),

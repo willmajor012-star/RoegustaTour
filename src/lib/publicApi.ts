@@ -138,9 +138,12 @@ export type PublicTourInfoResponse = PublicResponse<{
 const publicResponseCache = new Map<string, { expiresAt: number; value: unknown }>();
 const publicRequestsInFlight = new Map<string, Promise<unknown>>();
 const PUBLIC_RESPONSE_CACHE_MS = 4_000;
+let publicCacheGeneration = 0;
 
 export function clearPublicDataCache() {
+  publicCacheGeneration += 1;
   publicResponseCache.clear();
+  publicRequestsInFlight.clear();
 }
 
 async function fetchPublicJson<T>(path: string): Promise<T> {
@@ -149,9 +152,14 @@ async function fetchPublicJson<T>(path: string): Promise<T> {
   const pending = publicRequestsInFlight.get(path);
   if (pending) return pending as Promise<T>;
 
+  const generation = publicCacheGeneration;
   const request = (async () => {
     const response = await fetch(path);
     if (!response.ok) {
+      if (response.status === 401) {
+        clearPublicDataCache();
+        window.dispatchEvent(new CustomEvent('public-access-expired'));
+      }
       let detail = '';
       try {
         const text = await response.text();
@@ -162,14 +170,14 @@ async function fetchPublicJson<T>(path: string): Promise<T> {
       throw new Error(`Public data request failed for ${path} with ${response.status}${detail}`);
     }
     const value = await response.json() as T;
-    publicResponseCache.set(path, { expiresAt: Date.now() + PUBLIC_RESPONSE_CACHE_MS, value });
+    if (generation === publicCacheGeneration) publicResponseCache.set(path, { expiresAt: Date.now() + PUBLIC_RESPONSE_CACHE_MS, value });
     return value;
   })();
   publicRequestsInFlight.set(path, request);
   try {
     return await request;
   } finally {
-    publicRequestsInFlight.delete(path);
+    if (publicRequestsInFlight.get(path) === request) publicRequestsInFlight.delete(path);
   }
 }
 

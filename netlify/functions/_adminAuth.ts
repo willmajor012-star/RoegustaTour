@@ -44,6 +44,7 @@ function getEnv(name: string): string {
 function jsonHeaders(extra?: Record<string, string>): Record<string, string> {
   return {
     'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
     ...extra,
   };
 }

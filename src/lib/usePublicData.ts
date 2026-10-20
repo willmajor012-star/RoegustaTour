@@ -62,6 +62,8 @@ export function usePublicData<T extends { source: PublicDataSource }>(loader: ()
     const interval = window.setInterval(refreshIfUseful, refreshMs);
     const handleManualRefresh = () => {
       clearPublicDataCache();
+      requestIdRef.current += 1;
+      inFlightRef.current = null;
       lastSuccessfulAtRef.current = 0;
       void refresh(false);
     };
@@ -75,6 +77,9 @@ export function usePublicData<T extends { source: PublicDataSource }>(loader: ()
     return () => {
       mountedRef.current = false;
       requestIdRef.current += 1;
+      // A replacement effect must start its own request. The old request was
+      // invalidated above, including during React StrictMode's setup replay.
+      inFlightRef.current = null;
       window.clearInterval(interval);
       window.removeEventListener(PUBLIC_DATA_REFRESH_EVENT, handleManualRefresh);
       window.removeEventListener('focus', refreshIfUseful);

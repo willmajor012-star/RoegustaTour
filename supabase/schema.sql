@@ -334,3 +334,24 @@ create table public_access_settings (
   updated_by text,
   constraint public_access_settings_singleton check (id = 'default')
 );
+
+-- The application accesses the database only through authenticated Netlify
+-- functions using service_role. Browser roles must not bypass those checks.
+do $$
+declare
+  table_name text;
+begin
+  foreach table_name in array array[
+    'players', 'tours', 'tour_players', 'tour_teams', 'tour_team_members',
+    'tour_team_results', 'tour_handbook_sections', 'tour_itinerary_items',
+    'tour_team_day_kit', 'tour_courses', 'rounds', 'matches',
+    'match_participants', 'player_match_results', 'historical_player_stats',
+    'bet_markets', 'bet_options', 'bets', 'audit_log', 'public_access_settings',
+    'round_prize_results'
+  ] loop
+    if to_regclass('public.' || table_name) is not null then
+      execute format('alter table public.%I enable row level security', table_name);
+      execute format('revoke all on table public.%I from anon, authenticated', table_name);
+    end if;
+  end loop;
+end $$;

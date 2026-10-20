@@ -1,6 +1,6 @@
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
-function isRealIsoDate(value: string): boolean {
+export function isRealIsoDate(value: string): boolean {
   if (!isoDatePattern.test(value)) return false;
   const [year, month, day] = value.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));

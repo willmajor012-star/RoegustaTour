@@ -1,7 +1,7 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
 import { badRequest, optionalNumber, optionalString, runSingle, withAdminSupabase } from './_adminSupabase';
 import { mapMatch, mapPlayerMatchResult, mapTourTeamResult } from './_mappers';
-import { validateMatchplayResultText, validateResultPoints } from './_resultHelpers';
+import { validateMatchplayResultText, validateResultConsistency, validateResultPoints } from './_resultHelpers';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 type MatchRow = {
@@ -47,6 +47,8 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (!clearResult) {
     const pointError = validateResultPoints(pointsSideA!, pointsSideB!, asNumber(match.points_available));
     if (pointError) return badRequest(pointError);
+    const consistencyError = validateResultConsistency(resultText!, pointsSideA!, pointsSideB!);
+    if (consistencyError) return badRequest(consistencyError);
   }
 
   const saved = await runSingle<AtomicResultSave>(supabase.rpc('admin_submit_match_result_atomic', {

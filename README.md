@@ -75,3 +75,9 @@ See `.env.example`:
 - `TOUR_PUBLIC_ACCESS_SECRET` — long random value used to sign public-access cookies.
 
 Apply Supabase migrations in filename order before deploying code that depends on a new migration. Migration `202607250001_live_readiness_transactions.sql` supplies the atomic Admin operations, public-access hardening and Portugal timezone repair used by the current app.
+
+## October launch fixes
+
+Use Node 22 (`.nvmrc` and Netlify build configuration). Run `npm ci`, `npm test` and `npm run build` before deployment. Tests include an isolated embedded Postgres migration and transaction rehearsal.
+
+Apply `202610200001_friday_launch_hardening.sql` **before** deploying the new function code. It enables table RLS, restricts browser-role RPC access, and adds atomic roster, result, cutoff and public-bet operations. Netlify must use the server-side Supabase secret with service-role access. See [the launch review](docs/qa/2026-10-20-launch-review.md) for findings, verification limits and the production rollout sequence.

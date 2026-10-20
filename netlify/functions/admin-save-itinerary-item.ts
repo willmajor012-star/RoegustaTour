@@ -2,6 +2,7 @@ import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_admi
 import { badRequest, optionalString, runSingle, withAdminSupabase } from './_adminSupabase';
 import { mapTourItineraryItem } from './_mappers';
 import { writeAuditLog } from './_audit';
+import { isRealIsoDate } from '../../src/lib/tourValidation';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -15,7 +16,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const endTimeLabel = optionalString(body.endTimeLabel);
   const isPlaceholder = Boolean(body.isPlaceholder);
   if (!tourId) return badRequest('Tour ID is required.');
-  if (!itemDate || !/^\d{4}-\d{2}-\d{2}$/.test(itemDate)) return badRequest('A valid itinerary date is required.');
+  if (!itemDate || !isRealIsoDate(itemDate)) return badRequest('A valid itinerary date is required.');
   if (!activity) return badRequest('Activity is required.');
   if (!sourceType || !['flight', 'travel', 'accommodation', 'food', 'activity', 'dinner'].includes(sourceType)) return badRequest('Itinerary type must be flight, travel, accommodation, food or activity.');
   if (timeLabel && !/^([01]\d|2[0-3]):[0-5]\d$/.test(timeLabel)) return badRequest('Time must use HH:MM.');

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { checkPublicAccess, loginPublicAccess } from '../lib/publicAccess';
+import { clearPublicDataCache } from '../lib/publicApi';
 
 type Props = { children: ReactNode; isAdminRoute: boolean };
 
@@ -8,6 +9,16 @@ export function PublicPasswordGate({ children, isAdminRoute }: Props) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const lock = () => {
+      clearPublicDataCache();
+      setAccessState('locked');
+      setError('Tour access has expired. Enter the tour password again.');
+    };
+    window.addEventListener('public-access-expired', lock);
+    return () => window.removeEventListener('public-access-expired', lock);
+  }, []);
 
   useEffect(() => {
     if (isAdminRoute) { setAccessState('unlocked'); return; }
@@ -23,6 +34,7 @@ export function PublicPasswordGate({ children, isAdminRoute }: Props) {
     setError('');
     try {
       await loginPublicAccess(password);
+      clearPublicDataCache();
       setPassword('');
       setAccessState('unlocked');
       window.dispatchEvent(new CustomEvent('public-access-changed'));

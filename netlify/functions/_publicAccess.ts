@@ -19,7 +19,7 @@ const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
 function json(statusCode: number, payload: unknown, headers?: Record<string, string>): PublicAccessResponse {
-  return { statusCode, headers: { 'content-type': 'application/json; charset=utf-8', ...headers }, body: JSON.stringify(payload) };
+  return { statusCode, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers }, body: JSON.stringify(payload) };
 }
 
 function bytesToHex(bytes: Uint8Array) { return Array.from(bytes).map((byte) => byte.toString(16).padStart(2, '0')).join(''); }

@@ -11,6 +11,7 @@ const homeVisibilityMigration = readFileSync('supabase/migrations/202607250002_c
 const liveReadinessMigration = readFileSync('supabase/migrations/202607250001_live_readiness_transactions.sql', 'utf8');
 const deadline = readFileSync('netlify/functions/_betMarketDeadline.ts', 'utf8');
 const defaults = readFileSync('netlify/functions/_betDefaults.ts', 'utf8');
+const launchMigration = readFileSync('supabase/migrations/202610200001_friday_launch_hardening.sql', 'utf8');
 const publicBet = readFileSync('netlify/functions/public-save-bet.ts', 'utf8');
 const savePrize = readFileSync('netlify/functions/admin-save-round-prize-result.ts', 'utf8');
 const betting = readFileSync('src/pages/Betting.tsx', 'utf8');
@@ -69,10 +70,10 @@ test('required markets close at the timezone-aware first tee and auto-default in
   assert.match(deadline, /eq\('required', true\)/);
   assert.match(defaults, /BET_PUNTO_MINIMUM_STAKE_PENCE/);
   assert.match(defaults, /BET_PUNTO_STAKE_INCREMENT_PENCE/);
-  assert.match(defaults, /linked_player_id === player\.id/);
-  assert.match(defaults, /linked_team_id === teamByPlayer\.get\(player\.id\)/);
-  assert.match(defaults, /entry_source: 'automatic_default'/);
-  assert.match(defaults, /status: 'closed'/);
+  assert.match(defaults, /apply_bet_defaults_atomic/);
+  assert.match(launchMigration, /o\.linked_player_id=player\.id/);
+  assert.match(launchMigration, /'automatic_default'/);
+  assert.match(launchMigration, /status='open' then 'closed'/);
   assert.match(publicBet, /stakes must be in £5 increments/);
   assert.match(publicData, /return \{\s*tour,\s*rounds,/);
   assert.match(betMarketCard, /timeZone=\{activeData\.tour\?\.timezone\}|timeZone\?: string/);

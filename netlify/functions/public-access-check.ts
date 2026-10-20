@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from './_supabase';
 import { readPublicAccessSession } from './_publicAccess';
 
 type Event = { headers?: Record<string, string | undefined> };
-function json(statusCode: number, payload: unknown) { return { statusCode, headers: { 'content-type': 'application/json; charset=utf-8' }, body: JSON.stringify(payload) }; }
+function json(statusCode: number, payload: unknown) { return { statusCode, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }, body: JSON.stringify(payload) }; }
 
 export const handler = async (event: Event) => {
   try {
