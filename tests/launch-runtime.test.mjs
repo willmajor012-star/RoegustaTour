@@ -164,3 +164,35 @@ test('future tour dates override an active flag and use the tour timezone', () =
   assert.equal(tourLifecycle(tour, Date.parse('2026-11-10T00:00Z')).complete, true);
   assert.equal(tourLifecycle({ ...tour, timezone: 'Europe/Lisbon', startDate: '2026-07-06', endDate: '2026-07-09' }, Date.parse('2026-07-05T23:30Z')).live, true);
 });
+
+test('tour cards and overview agree on date-aware final winners', async () => {
+  const originalNow = Date.now;
+  Date.now = () => Date.parse('2026-10-20T12:00Z');
+  try {
+    for (const scenario of [
+      { status: 'active', ended: true, points: [2, 1], outcome: 'Alpha won' },
+      { status: 'planned', ended: true, points: [2, 1], outcome: 'Alpha won' },
+      { status: 'active', ended: true, points: [1, 1], outcome: 'Winner TBC' },
+      { status: 'active', ended: false, points: [2, 1], outcome: 'Alpha leading' },
+    ]) {
+      const current = { id: 'current', name: 'Current tour', year: 2027, status: 'planned', startDate: '2027-11-06', endDate: '2027-11-09' };
+      const tour = { id: 'review', name: 'Review tour', year: 2026, status: scenario.status, timezone: 'Europe/Lisbon', startDate: '2026-07-06', endDate: scenario.ended ? '2026-07-09' : '2026-11-09' };
+      const teams = ['Alpha', 'Beta'].map((name, i) => ({ id: name, name, tourId: tour.id, sortOrder: i }));
+      const payload = { currentTour: current, tours: [current, tour], players: [], tourPlayers: [], tourTeams: teams, tourTeamMembers: [], tourTeamResults: teams.map((team, i) => ({ tourId: tour.id, teamId: team.id, finalPoints: scenario.points[i], resultStatus: 'tbd' })), rounds: [], matches: [], matchParticipants: [] };
+      const { Tours } = loadTs('src/pages/Tours.tsx', {
+        [`${process.cwd()}/src/lib/usePublicData.ts`]: `export function usePublicData() { return { data: ${JSON.stringify(payload)}, loading: false }; }`,
+      });
+      const root = createRoot(document.getElementById('root'));
+      try {
+        await act(async () => root.render(React.createElement(Tours)));
+        const card = document.querySelector('.tour-archive-card');
+        assert.equal(card.querySelector('.tour-status-badge').textContent, scenario.ended ? 'Final' : 'Live');
+        assert.ok(card.textContent.includes(scenario.outcome), card.textContent);
+        await act(async () => card.click());
+        const winnerStat = [...document.querySelectorAll('.tour-overview-grid article')].find((entry) => entry.querySelector('span').textContent === 'Winner');
+        assert.equal(winnerStat.querySelector('strong').textContent, scenario.ended ? scenario.outcome : 'TBC');
+        assert.equal(document.querySelector('.selected-tour-hero strong')?.textContent, scenario.ended && scenario.points[0] > scenario.points[1] ? 'Alpha won' : undefined);
+      } finally { await act(async () => root.unmount()); }
+    }
+  } finally { Date.now = originalNow; }
+});

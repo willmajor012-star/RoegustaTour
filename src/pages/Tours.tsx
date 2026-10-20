@@ -30,7 +30,7 @@ function statusLabel(tour: Tour) {
 }
 
 function isCompletedTour(tour: Tour) {
-  return tour.status === 'complete' || tour.status === 'archived';
+  return tourLifecycle(tour).complete;
 }
 
 function tourLeaderboard(data: AdvancedStatsData, tourId: string): LeaderboardRow[] {
