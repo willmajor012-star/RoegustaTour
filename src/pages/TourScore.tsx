@@ -11,7 +11,7 @@ export function TourScore() {
   const { data, loading, error } = usePublicData(fetchPublicScore);
   const activeData = data ?? emptyScoreData;
   const completedCount = activeData.matches.filter((match) => match.status === 'complete').length;
-  const remaining = activeData.matches.filter((match) => match.status !== 'complete').reduce((sum, match) => sum + match.pointsAvailable, 0);
+  const remaining = activeData.matches.filter((match) => match.status !== 'complete' && match.status !== 'void').reduce((sum, match) => sum + match.pointsAvailable, 0);
   const leader = activeData.scores[0];
   const tied = activeData.scores.length > 1 && activeData.scores[0]?.points === activeData.scores[1]?.points;
 

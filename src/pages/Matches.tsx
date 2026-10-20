@@ -73,7 +73,7 @@ export function Matches() {
   const teeSheetMatches = [...selectedRoundMatches].sort((a, b) => compareTeeTimeValues(a.teeTime, b.teeTime) || a.matchNumber - b.matchNumber);
   const selectedPrizes = selectedRound ? activeData.roundPrizeResults.filter((prize) => prize.roundId === selectedRound.id) : [];
   const scoreRows = activeData.tour ? calculateTeamScoreByTour(activeData.tour.id, activeData.tourTeams, activeData.rounds, publicMatches) : [];
-  const { totalAvailablePoints, pointsToWin } = tourPointsTarget(publicMatches);
+  const { totalAvailablePoints, pointsToWin } = tourPointsTarget(publicMatches, activeData.projectedTotalPoints);
 
   useEffect(() => {
     if (!roundId && selectedRound) setRoundId(selectedRound.id);
@@ -87,8 +87,8 @@ export function Matches() {
     {!loading && !error && <>
       <section className="golf-score-strip" aria-label="Tour score summary">
         {scoreRows.length >= 2 ? scoreRows.slice(0, 2).map((row, index) => <span className="team-score-pill" key={row.teamId} style={{ '--team-colour': normalizeTeamColour(row.colour, index) } as CSSProperties}><small>{row.teamName || `Team ${index + 1}`}</small><b>{formatPoints(row.points)}</b></span>) : <span className="golf-summary-pill"><small>Score</small><b>TBC</b></span>}
-        <span className="golf-summary-pill"><small>To win</small><b>{formatPoints(pointsToWin)}</b></span>
-        <span className="golf-summary-pill optional"><small>Available</small><b>{formatPoints(totalAvailablePoints)}</b></span>
+        <span className="golf-summary-pill"><small>To win</small><b>{totalAvailablePoints > 0 ? formatPoints(pointsToWin) : 'TBC'}</b></span>
+        <span className="golf-summary-pill optional"><small>Available</small><b>{totalAvailablePoints > 0 ? formatPoints(totalAvailablePoints) : 'TBC'}</b></span>
       </section>
 
       {orderedRounds.length === 0 ? <p className="card">Rounds, pairings and tee times will appear once published.</p> : <>

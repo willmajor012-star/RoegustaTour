@@ -2,7 +2,7 @@ import { createServerSupabaseClient } from './_supabase';
 import { createPublicAccessCookie, verifyPublicPassword } from './_publicAccess';
 
 type Event = { httpMethod: string; body: string | null };
-function json(statusCode: number, payload: unknown, headers?: Record<string, string>) { return { statusCode, headers: { 'content-type': 'application/json; charset=utf-8', ...(headers ?? {}) }, body: JSON.stringify(payload) }; }
+function json(statusCode: number, payload: unknown, headers?: Record<string, string>) { return { statusCode, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...(headers ?? {}) }, body: JSON.stringify(payload) }; }
 
 export const handler = async (event: Event) => {
   if (event.httpMethod !== 'POST') return json(405, { ok: false, message: 'Method not allowed.' });

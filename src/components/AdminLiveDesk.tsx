@@ -8,6 +8,7 @@ import {
 } from '../lib/adminApi';
 import type { Match, RoundPrizeResult, Tour } from '../lib/types';
 import { AdminContextHelpButton } from './AdminContextHelpButton';
+import { isValidMatchplayResultForHoles, normalizeMatchplayResult } from '../lib/matchplay';
 
 type ResultDraft = {
   winningSide: Exclude<Match['winningSide'], 'void'> | '';
@@ -131,6 +132,15 @@ export function AdminLiveDesk({
       const draft = drafts[match.id] ?? resultDraftFor(match);
       return Boolean(draft.winningSide && draft.resultText.trim());
     });
+    const invalidMatch = readyMatches.find((match) => {
+      const draft = drafts[match.id] ?? resultDraftFor(match);
+      return !isValidMatchplayResultForHoles(draft.resultText, selectedRound.holes)
+        || (normalizeMatchplayResult(draft.resultText) === 'AS') !== (draft.winningSide === 'halved');
+    });
+    if (invalidMatch) {
+      setResultState({ saving: false, error: `Match ${invalidMatch.matchNumber}: choose a valid margin for this round. AS must have a halved result.` });
+      return;
+    }
     if (!publish && readyMatches.length === 0) {
       setResultState({ saving: false, error: 'Enter at least one result before saving a draft.' });
       return;
@@ -174,7 +184,7 @@ export function AdminLiveDesk({
       return;
     }
     const scoreValue = Number(prizeScore);
-    if (!Number.isFinite(scoreValue) || scoreValue < 0) {
+    if (!prizeScore.trim() || !Number.isInteger(scoreValue) || scoreValue < 0) {
       setPrizeState({ saving: false, error: 'Enter a valid winning score.' });
       return;
     }

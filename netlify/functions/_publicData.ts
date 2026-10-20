@@ -38,12 +38,12 @@ export async function withLiveData<T extends object>(event: PublicAccessEvent, r
   try {
     const supabase = createServerSupabaseClient();
     const accessError = await requirePublicAccess(event, supabase);
-    if (accessError) return { ...accessError, headers: { 'content-type': 'application/json; charset=utf-8', ...(accessError.headers ?? {}) } };
+    if (accessError) return { ...accessError, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...(accessError.headers ?? {}) } };
     const data = await read(supabase);
-    return { statusCode: 200, headers: { 'content-type': 'application/json; charset=utf-8' }, body: JSON.stringify({ ...data, source: 'supabase' }) };
+    return { statusCode: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }, body: JSON.stringify({ ...data, source: 'supabase' }) };
   } catch (error) {
     console.error('Public live data request failed:', error);
-    return { statusCode: 500, headers: { 'content-type': 'application/json; charset=utf-8' }, body: JSON.stringify({ ok: false, error: 'Live data unavailable' }) };
+    return { statusCode: 500, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }, body: JSON.stringify({ ok: false, error: 'Live data unavailable' }) };
   }
 }
 
@@ -295,7 +295,14 @@ export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
     tourTeams,
     tourPlayers: tourPlayerRows.map(mapTourPlayer).filter((tourPlayer) => tourById.has(tourPlayer.tourId) && publicPlayerIds.has(tourPlayer.playerId)),
     tourTeamMembers,
-    tourTeamResults: resultRows.map(mapTourTeamResult).filter((result) => tourById.has(result.tourId)),
+    // Aggregates include private drafts. Use public match scores during the
+    // tour; expose final records only once every completed result is visible.
+    tourTeamResults: resultRows.map(mapTourTeamResult).filter((result) => {
+      const tour = tourById.get(result.tourId);
+      return (tour?.status === 'complete' || tour?.status === 'archived')
+        && tourTeams.some((team) => team.id === result.teamId)
+        && completedMatchRows.every((match) => String(match.tour_id) !== result.tourId || matchById.has(String(match.id)));
+    }),
     rounds,
     matches: [...matchById.values()],
     matchParticipants,

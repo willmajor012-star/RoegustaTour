@@ -90,3 +90,8 @@ test('Home can project from the private attending-player count without exposing 
 
   assert.equal(projectedTourPoints(rounds, [], teams, [], [], 24), 18);
 });
+
+test('Golf uses the Home projection until the full match sheet is published', () => {
+  assert.deepEqual(tourPointsTarget([], 30), { totalAvailablePoints: 30, pointsToWin: 15.5 });
+  assert.deepEqual(tourPointsTarget([], Number.NaN), { totalAvailablePoints: 0, pointsToWin: 0 });
+});

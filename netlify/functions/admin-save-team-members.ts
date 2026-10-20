@@ -1,7 +1,6 @@
 import { jsonResponse, type FunctionEvent, type FunctionResponse } from './_adminAuth';
-import { badRequest, optionalString, runRows, withAdminSupabase } from './_adminSupabase';
+import { badRequest, optionalString, runRows, runSingle, withAdminSupabase } from './_adminSupabase';
 import { mapTourTeamMember } from './_mappers';
-import { resetPendingAutomaticDefaultsForTour } from './_betDefaults';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -30,19 +29,10 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
     if (attendingPlayers.length !== playerIds.length) return badRequest('Only attending players can be assigned to a team.');
   }
 
-  const removeTeam = await supabase.from('tour_team_members').delete().eq('tour_id', tourId).eq('team_id', teamId);
-  if (removeTeam.error) throw new Error(`remove team members: ${removeTeam.error.message}`);
-
-  if (playerIds.length > 0) {
-    const removeDuplicates = await supabase.from('tour_team_members').delete().eq('tour_id', tourId).in('player_id', playerIds);
-    if (removeDuplicates.error) throw new Error(`remove duplicate team members: ${removeDuplicates.error.message}`);
-
-    const insertRows = playerIds.map((playerId) => ({ id: crypto.randomUUID(), tour_id: tourId, team_id: teamId, player_id: playerId }));
-    const inserted = await supabase.from('tour_team_members').insert(insertRows);
-    if (inserted.error) throw new Error(`insert team members: ${inserted.error.message}`);
-  }
-
-  await resetPendingAutomaticDefaultsForTour(supabase, tourId);
-  const memberRows = await runRows(supabase.from('tour_team_members').select('*').eq('tour_id', tourId), 'team members after save');
+  const memberRows = await runSingle<Record<string, unknown>[]>(supabase.rpc('admin_save_team_members_atomic', {
+    p_tour_id: tourId,
+    p_team_id: teamId,
+    p_player_ids: playerIds,
+  }), 'save team membership atomically');
   return jsonResponse(200, { ok: true, tourTeamMembers: memberRows.map(mapTourTeamMember) });
 });

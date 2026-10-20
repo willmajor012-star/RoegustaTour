@@ -13,13 +13,15 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2",
-    "vite": "^7.1.0",
-    "typescript": "^5.9.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
     "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.1.0"
+    "@types/react-dom": "^19.1.0",
+    "jsdom": "^30.1.3"
   }
 }

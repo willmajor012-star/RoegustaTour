@@ -52,7 +52,7 @@ export function TourInfo() {
         </nav>
         {selectedGroup ? <section className="itinerary-selected-day" id={`itinerary-day-${selectedGroup.date}`} role="tabpanel">
           <header className="itinerary-selected-day-header">
-            <div><p className="eyebrow">Today’s plan</p><h2>{selectedGroup.label}</h2></div>
+            <div><p className="eyebrow">Day’s plan</p><h2>{selectedGroup.label}</h2></div>
           </header>
           <TeamKitPanel kits={selectedGroup.kits} teams={activeData.tourTeams} />
           {selectedGroup.entries.length > 0

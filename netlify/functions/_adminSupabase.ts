@@ -11,6 +11,9 @@ export function badRequest(message: string): FunctionResponse {
 }
 
 function friendlySchemaMessage(message: string): string {
+  if (/admin_save_team_members_atomic|apply_bet_defaults_atomic|save_public_bet_atomic/i.test(message)) {
+    return 'Apply migration 202610200001_friday_launch_hardening.sql and reload the database schema before using the new launch operations.';
+  }
   if (/admin_set_current_public_tour|admin_publish_tour_content|admin_settle_bet_market_atomic|admin_void_bet_market_atomic|admin_save_round_prize_result_atomic|admin_submit_match_result_atomic|admin_save_match_setup_atomic|defaults_applied_at|requires_change/i.test(message)) {
     return 'The live database is missing the live-readiness transaction functions. Apply migration 202607250001_live_readiness_transactions.sql and reload the Supabase schema cache.';
   }

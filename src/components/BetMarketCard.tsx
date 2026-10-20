@@ -61,6 +61,8 @@ export function BetMarketCard({ market, round, timeZone, options, bets, bettorNa
     try {
       await onSubmit?.(market.id, selectedOptionId, selectedStakePence / 100, selectedStakePence, comment.trim());
       setComment('');
+    } catch {
+      // The parent displays the save error. Keep the pick intact for a retry.
     } finally {
       setIsSubmitting(false);
     }

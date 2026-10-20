@@ -11,6 +11,7 @@ import type { LeaderboardRow, Match, Player, Round, Tour, TourTeam } from '../li
 import { usePublicData } from '../lib/usePublicData';
 import { normalizeTeamColour } from '../lib/teamColours';
 import { tourDisplayPlayer } from '../lib/playerDisplay';
+import { tourLifecycle } from '../lib/tourState';
 
 const emptyToursData: Omit<PublicAdvancedStatsResponse, 'source'> = { players: [], tours: [], tourTeams: [], tourPlayers: [], tourTeamMembers: [], tourTeamResults: [], rounds: [], matches: [], matchParticipants: [] };
 type TourSection = 'overview' | 'results' | 'teams' | 'leaderboard';
@@ -24,13 +25,12 @@ function currentTour(data: Omit<PublicAdvancedStatsResponse, 'source'>) {
 }
 
 function statusLabel(tour: Tour) {
-  if (tour.status === 'planned') return 'Upcoming';
-  if (tour.status === 'active') return 'Live';
-  return 'Final';
+  const { live, complete } = tourLifecycle(tour);
+  return complete ? 'Final' : live ? 'Live' : 'Upcoming';
 }
 
 function isCompletedTour(tour: Tour) {
-  return tour.status === 'complete' || tour.status === 'archived';
+  return tourLifecycle(tour).complete;
 }
 
 function tourLeaderboard(data: AdvancedStatsData, tourId: string): LeaderboardRow[] {

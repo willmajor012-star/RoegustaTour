@@ -5,11 +5,13 @@ import { Scoreboard } from '../components/Scoreboard';
 import { formatMatchFormat, formatPoints, formatShortDate } from '../lib/formatting';
 import { fetchPublicDashboard, type PublicDashboardResponse } from '../lib/publicApi';
 import type { Match, Round, TeamScoreRow, TourTeam } from '../lib/types';
-import { formatRoundDisplayName, formatTourDisplayName, getDateOnlyScheduledDate, getScheduledDate, getScheduleSortTime, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
+import { formatRoundDisplayName, formatTourDisplayName, getScheduledDate, getScheduleSortTime, isPublicVisibleMatch, normalizeTeeTime } from '../lib/display';
 import { usePublicData } from '../lib/usePublicData';
 import { TEAM_COLOUR_FALLBACKS, normalizeTeamColour } from '../lib/teamColours';
 import { awardedPoints, pointsRequiredToWinOutright, projectedTourPoints } from '../lib/matchplay';
 import { courseGuidesForTour } from '../data/courseGuides';
+import { tourLifecycle } from '../lib/tourState';
+import { zonedLocalDateTimeToIso } from '../lib/tourTime';
 
 const emptyDashboardData: PublicDashboardResponse = {
   source: 'supabase',
@@ -27,11 +29,8 @@ const emptyDashboardData: PublicDashboardResponse = {
   scores: [],
 };
 
-function countdownParts(startDate?: string, endDate?: string, status?: string) {
-  if (!startDate) return { state: 'Tour date TBC' };
+function countdownParts(start?: Date, end?: Date, status?: string) {
   const now = new Date();
-  const start = getDateOnlyScheduledDate(startDate);
-  const end = getDateOnlyScheduledDate(endDate, '23:59:59');
   if (!start) return { state: 'Tour date TBC' };
   if (end && now > end && (status === 'complete' || status === 'archived')) return { state: 'Tour complete' };
   if (now >= start && (!end || now <= end)) return { state: 'Tour underway' };
@@ -101,13 +100,14 @@ export function Dashboard() {
   const nextRound = nextTee?.round ?? sortedRounds.find((round) => round.status === 'active') ?? sortedRounds.find((round) => getScheduleSortTime(round.roundDate, round.teeTime) >= Date.now()) ?? sortedRounds[0];
   const latestRound = latestCompletedRound(rounds, visibleMatches);
   const latestResult = latestRound ? undefined : ([...visibleMatches].filter((match) => match.status === 'complete').sort((a, b) => (getScheduledDate(roundById.get(b.roundId)?.roundDate, b.teeTime)?.getTime() ?? 0) - (getScheduledDate(roundById.get(a.roundId)?.roundDate, a.teeTime)?.getTime() ?? 0) || b.matchNumber - a.matchNumber)[0] ?? activeData.recentResults[0]);
-  const countdown = countdownParts(tour?.startDate, tour?.endDate, tour?.status);
-  const tourStart = getDateOnlyScheduledDate(tour?.startDate);
-  const tourEnd = getDateOnlyScheduledDate(tour?.endDate, '23:59:59');
-  const tourComplete = tour?.status === 'complete' || tour?.status === 'archived' || Boolean(tourEnd && Date.now() > tourEnd.getTime());
-  const tourLive = !tourComplete && (tour?.status === 'active' || Boolean(tourStart && tourEnd && Date.now() >= tourStart.getTime() && Date.now() <= tourEnd.getTime()));
+  const { start: tourStart, end: tourEnd, complete: tourComplete, live: tourLive } = tourLifecycle(tour);
+  const countdown = countdownParts(tourStart, tourEnd, tour?.status);
   const upNextFormat = nextRound?.formatLabel ?? (nextTee?.match.format ? formatMatchFormat(nextTee.match.format) : undefined) ?? 'Format TBC';
   const upNextTime = normalizeTeeTime(nextTee?.match.teeTime) ?? normalizeTeeTime(nextRound?.teeTime) ?? 'TBC';
+  const roundStartIso = nextRound?.roundDate ? zonedLocalDateTimeToIso(nextRound.roundDate, upNextTime, tour?.timezone ?? 'Europe/Lisbon') : undefined;
+  const roundEndIso = nextRound?.roundDate ? zonedLocalDateTimeToIso(nextRound.roundDate, '23:59', tour?.timezone ?? 'Europe/Lisbon') : undefined;
+  const onCourse = tourLive && nextRound?.status === 'active' && roundStartIso && roundEndIso
+    && Date.now() >= Date.parse(roundStartIso) && Date.now() <= Date.parse(roundEndIso) + 59_999;
   const tourCourses = courseGuidesForTour(tour, rounds, activeData.tourCourses)
     .filter((course) => course.showOnHome !== false);
 
@@ -148,7 +148,7 @@ export function Dashboard() {
 
     {!tourComplete && <a className="card tappable-card home-up-next" href="/matches">
       <div className="up-next-copy">
-        <p className="eyebrow">{tourLive ? 'On course' : 'Up next'}</p>
+        <p className="eyebrow">{onCourse ? 'On course' : 'Up next'}</p>
         <h2>{nextRound ? formatRoundDisplayName(nextRound) : 'Next round TBC'}</h2>
         <p>{nextRound?.courseName ?? 'Course TBC'}{nextRound?.roundDate ? ` · ${formatShortDate(nextRound.roundDate)}` : ''}</p>
         <div className="up-next-meta"><span>{upNextFormat}</span><span>{nextRound?.holes ?? 18} holes</span></div>

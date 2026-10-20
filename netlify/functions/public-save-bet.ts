@@ -4,7 +4,7 @@ import { applyAutomaticBetDefaultsForMarket } from './_betDefaults';
 import { BET_PUNTO_STAKE_INCREMENT_PENCE } from '../../src/lib/betting';
 
 type FunctionEvent = { httpMethod: string; body: string | null; headers?: Record<string, string | undefined> };
-type FunctionResponse = { statusCode: number; body: string };
+type FunctionResponse = { statusCode: number; headers?: Record<string, string>; body: string };
 
 type Row = Record<string, unknown>;
 
@@ -13,7 +13,7 @@ type SupabaseMany<T> = PromiseLike<{ data: T[] | null; error: { message: string 
 type LivePlayerRow = { player_id: string; players: { id: string; display_name: string; nickname: string | null; active: boolean } | { id: string; display_name: string; nickname: string | null; active: boolean }[] | null };
 
 function jsonResponse(statusCode: number, payload: unknown): FunctionResponse {
-  return { statusCode, body: JSON.stringify(payload) };
+  return { statusCode, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }, body: JSON.stringify(payload) };
 }
 
 function optionalString(value: unknown): string | null {
@@ -149,7 +149,7 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
     }
 
     if (action === 'void') {
-      const saved = await runSingle<Row>(supabase.from('bets').update({ status: 'void', outcome_status: 'void', payout_status: 'not_applicable', payout_amount_pence: null, updated_at: new Date().toISOString(), void_reason: comment?.slice(0, 240) ?? 'Voided by bettor' }).eq('id', betId).select('*').single(), 'void public bet');
+      const saved = await runSingle<Row>(supabase.rpc('save_public_bet_atomic', { p_action: 'void', p_bet_id: betId, p_values: { public_edit_token_hash: existingBet?.public_edit_token_hash, void_reason: comment?.slice(0, 240) ?? 'Voided by bettor' } }), 'void public bet');
       return jsonResponse(200, { ok: true, bet: mapPublicBet(saved) });
     }
 
@@ -158,7 +158,7 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
     if (options[0].linked_player_id && !livePlayers.some((player) => player.id === options[0].linked_player_id)) return jsonResponse(400, { ok: false, message: 'Bet option must be a live attending tour player.' });
 
     if (action === 'edit') {
-      const saved = await runSingle<Row>(supabase.from('bets').update({ option_id: optionId, stake_text: `£${(stakeAmountPence / 100).toFixed(stakeAmountPence % 100 === 0 ? 0 : 2)}`, stake_amount_pence: stakeAmountPence, comment: comment?.slice(0, 240) ?? null, updated_at: new Date().toISOString() }).eq('id', betId).select('*').single(), 'edit public bet');
+      const saved = await runSingle<Row>(supabase.rpc('save_public_bet_atomic', { p_action: 'edit', p_bet_id: betId, p_values: { public_edit_token_hash: existingBet?.public_edit_token_hash, option_id: optionId, stake_text: `£${(stakeAmountPence / 100).toFixed(stakeAmountPence % 100 === 0 ? 0 : 2)}`, stake_amount_pence: stakeAmountPence, comment: comment?.slice(0, 240) ?? null } }), 'edit public bet');
       return jsonResponse(200, { ok: true, bet: mapPublicBet(saved) });
     }
 
@@ -181,10 +181,11 @@ export const handler = async (event: FunctionEvent): Promise<FunctionResponse> =
       public_edit_token_hash: await hashEditToken(newEditToken),
       entry_source: 'public',
     };
-    const saved = await runSingle<Row>(supabase.from('bets').insert(insertRow).select('*').single(), 'save public bet');
+    const saved = await runSingle<Row>(supabase.rpc('save_public_bet_atomic', { p_action: 'create', p_bet_id: null, p_values: insertRow }), 'save public bet');
     return jsonResponse(200, { ok: true, bet: mapPublicBet(saved), editToken: newEditToken });
   } catch (error) {
     console.error('Public bet save failed:', error);
+    if (error instanceof Error && /market has closed for changes/i.test(error.message)) return jsonResponse(400, { ok: false, message: 'This Bet Punto market has closed for changes.' });
     return jsonResponse(500, { ok: false, message: 'Bet Punto pick could not be saved.' });
   }
 };

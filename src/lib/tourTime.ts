@@ -1,3 +1,5 @@
+import { isRealIsoDate } from './tourValidation';
+
 export function isValidTimeZone(value: string) {
   try {
     new Intl.DateTimeFormat('en-GB', { timeZone: value }).format(new Date());
@@ -8,7 +10,7 @@ export function isValidTimeZone(value: string) {
 }
 
 export function normalizeClockTime(value?: string | null) {
-  const match = value?.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  const match = value?.trim().match(/^(\d{1,2}):(\d{2})(?::[0-5]\d)?$/);
   if (!match) return undefined;
   const hour = Number(match[1]);
   const minute = Number(match[2]);
@@ -39,7 +41,7 @@ function zonedParts(date: Date, timeZone: string) {
 }
 
 export function zonedLocalDateTimeToIso(dateValue: string, timeValue: string, timeZone: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue) || !isValidTimeZone(timeZone)) return undefined;
+  if (!isRealIsoDate(dateValue) || !isValidTimeZone(timeZone)) return undefined;
   const normalizedTime = normalizeClockTime(timeValue);
   if (!normalizedTime) return undefined;
   const [year, month, day] = dateValue.split('-').map(Number);
@@ -55,5 +57,8 @@ export function zonedLocalDateTimeToIso(dateValue: string, timeValue: string, ti
     instant = next;
   }
 
+  const resolved = zonedParts(new Date(instant), timeZone);
+  // Reject a clock time that never occurs during the spring DST change.
+  if (resolved.year !== year || resolved.month !== month || resolved.day !== day || resolved.hour !== hour || resolved.minute !== minute) return undefined;
   return new Date(instant).toISOString();
 }

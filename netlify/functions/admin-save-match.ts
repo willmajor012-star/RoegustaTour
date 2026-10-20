@@ -3,6 +3,7 @@ import { badRequest, optionalNumber, optionalString, runRows, runSingle, withAdm
 import { mapMatch, mapMatchParticipant } from './_mappers';
 import { syncRequiredMarketDeadlinesForRound } from './_betMarketDeadline';
 import type { Match, MatchFormat } from '../../src/lib/types';
+import { normalizeClockTime } from '../../src/lib/tourTime';
 
 type Handler = (event: FunctionEvent) => Promise<FunctionResponse>;
 
@@ -39,6 +40,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const pointsSideB = optionalNumber(body.pointsSideB);
   const sideAPlayerIds = playerIdsFrom(body.sideAPlayerIds);
   const sideBPlayerIds = playerIdsFrom(body.sideBPlayerIds);
+  const teeTime = optionalString(body.teeTime);
 
   if (!tourId) return badRequest('Tour ID is required.');
   if (!roundId) return badRequest('Round ID is required.');
@@ -48,6 +50,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (!format || !allowedFormats.includes(format)) return badRequest('Match format is invalid.');
   if (requestedStatus && !allowedStatuses.includes(requestedStatus)) return badRequest('Match status is invalid.');
   if (!sideAPlayerIds || !sideBPlayerIds) return badRequest('Player IDs must be arrays.');
+  if (teeTime && !/^tbc$/i.test(teeTime) && !normalizeClockTime(teeTime)) return badRequest('Tee time must use HH:MM or TBC.');
   if ((pointsSideA !== null && pointsSideA < 0) || (pointsSideB !== null && pointsSideB < 0)) return badRequest('Result points must be zero or greater.');
 
   const allPlayerIds = [...sideAPlayerIds, ...sideBPlayerIds];
@@ -115,7 +118,7 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
       p_side_b_team_id: sideBTeamId,
       p_side_a_label: optionalString(body.sideALabel),
       p_side_b_label: optionalString(body.sideBLabel),
-      p_tee_time: optionalString(body.teeTime),
+      p_tee_time: teeTime ? normalizeClockTime(teeTime) ?? 'TBC' : null,
       p_published: typeof body.published === 'boolean' ? body.published : false,
       p_notes: optionalString(body.notes),
       p_side_a_player_ids: sideAPlayerIds,
