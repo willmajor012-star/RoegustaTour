@@ -153,3 +153,14 @@ test('tee cutoffs respect Portugal timezone and reject invalid calendar times', 
   assert.equal(normalizeClockTime('9:00:59'), '09:00');
   assert.equal(normalizeClockTime('9:00:99'), undefined);
 });
+
+
+test('future tour dates override an active flag and use the tour timezone', () => {
+  const { tourLifecycle } = loadTs('src/lib/tourState.ts');
+  const tour = { startDate: '2026-11-06', endDate: '2026-11-09', timezone: 'Europe/Lisbon', status: 'active' };
+  assert.equal(tourLifecycle(tour, Date.parse('2026-10-20T12:00Z')).live, false);
+  assert.equal(tourLifecycle(tour, Date.parse('2026-11-06T00:00Z')).live, true);
+  assert.equal(tourLifecycle(tour, Date.parse('2026-11-09T23:59:59Z')).live, true);
+  assert.equal(tourLifecycle(tour, Date.parse('2026-11-10T00:00Z')).complete, true);
+  assert.equal(tourLifecycle({ ...tour, timezone: 'Europe/Lisbon', startDate: '2026-07-06', endDate: '2026-07-09' }, Date.parse('2026-07-05T23:30Z')).live, true);
+});

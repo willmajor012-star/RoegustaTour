@@ -22,6 +22,8 @@ export type PublicScoreResponse = PublicResponse<{
 
 export type PublicMatchesResponse = PublicResponse<{
   tour?: Tour;
+  attendingPlayerCount?: number;
+  projectedTotalPoints?: number;
   rounds: Round[];
   matches: Match[];
   matchParticipants: MatchParticipant[];
