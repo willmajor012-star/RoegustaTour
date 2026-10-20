@@ -23,6 +23,16 @@ export function CourseGuidePage({ slug }: Props) {
     setSelectedHoleNumber(1);
   }, [course?.id, course?.slug]);
 
+  useEffect(() => {
+    if (!course) return;
+    setSelectedTee((current) => course.tees.some((tee) => tee.key === current)
+      ? current
+      : course.tees.find((tee) => tee.key === 'yellow')?.key ?? course.tees[0]?.key ?? '');
+    setSelectedHoleNumber((current) => course.holes.some((hole) => hole.number === current)
+      ? current
+      : course.holes[0]?.number ?? 1);
+  }, [course]);
+
   const selectedHole = course?.holes.find((hole) => hole.number === selectedHoleNumber) ?? course?.holes[0];
   const selectedTeeDetails = course?.tees.find((tee) => tee.key === selectedTee) ?? course?.tees[0];
   const frontNine = useMemo(() => course?.holes.slice(0, 9) ?? [], [course]);

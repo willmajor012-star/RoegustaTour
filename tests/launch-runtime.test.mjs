@@ -196,3 +196,46 @@ test('tour cards and overview agree on date-aware final winners', async () => {
     }
   } finally { Date.now = originalNow; }
 });
+
+
+test('course refresh preserves valid selections and resets removed tees and holes', async () => {
+  const { courseGuides } = loadTs('src/data/courseGuides.ts');
+  const original = { ...courseGuides[0], id: 'refresh-course', published: true };
+  globalThis.courseRefreshFixture = { rounds: [], tourCourses: [original] };
+  const { CourseGuidePage } = loadTs('src/pages/CourseGuidePage.tsx', {
+    [`${process.cwd()}/src/lib/usePublicData.ts`]: 'export function usePublicData() { return { data: globalThis.courseRefreshFixture, loading: false }; }',
+  });
+  const root = createRoot(document.getElementById('root'));
+  const render = () => act(async () => root.render(React.createElement(CourseGuidePage, { slug: original.slug })));
+  const tee = (key) => [...document.querySelectorAll('.course-tee-switch button')].find((button) => button.textContent.trim() === original.tees.find((entry) => entry.key === key).label);
+  const hole = (number) => [...document.querySelectorAll('.hole-number-strip button')].find((button) => button.textContent === String(number));
+  try {
+    await render();
+    await act(async () => { tee('white').click(); hole(18).click(); });
+    globalThis.courseRefreshFixture = { rounds: [], tourCourses: [{ ...original, overview: 'Updated content' }] };
+    await render();
+    assert.equal(tee('white').getAttribute('aria-selected'), 'true');
+    assert.equal(document.querySelector('#hole-guide-title').textContent, 'Hole 18');
+
+    const reduced = { ...original, tees: original.tees.filter((entry) => entry.key !== 'white'), holes: original.holes.slice(0, 9) };
+    globalThis.courseRefreshFixture = { rounds: [], tourCourses: [reduced] };
+    await render();
+    assert.equal(tee('yellow').getAttribute('aria-selected'), 'true');
+    assert.equal(document.querySelector('#hole-guide-title').textContent, 'Hole 1');
+    assert.equal(document.querySelector('.course-scorecard-list button.active strong').textContent, '1');
+    const yellowYards = reduced.holes.reduce((sum, entry) => sum + entry.yards.yellow, 0).toLocaleString('en-GB');
+    assert.ok(document.querySelector('.course-nine-heading span').textContent.includes(yellowYards + ' yds'));
+    await act(async () => document.querySelector('.hole-guide-actions button:last-child').click());
+    assert.equal(document.querySelector('#hole-guide-title').textContent, 'Hole 2');
+
+    globalThis.courseRefreshFixture = { rounds: [], tourCourses: [{ ...reduced, tees: reduced.tees.filter((entry) => entry.key === 'red') }] };
+    await render();
+    assert.equal(tee('red').getAttribute('aria-selected'), 'true');
+    assert.equal(document.querySelector('#hole-guide-title').textContent, 'Hole 2');
+    const redYards = reduced.holes.reduce((sum, entry) => sum + entry.yards.red, 0).toLocaleString('en-GB');
+    assert.ok(document.querySelector('.course-nine-heading span').textContent.includes(redYards + ' yds'));
+  } finally {
+    await act(async () => root.unmount());
+    delete globalThis.courseRefreshFixture;
+  }
+});
