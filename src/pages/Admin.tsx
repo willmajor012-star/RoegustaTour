@@ -727,7 +727,7 @@ const adminGuideSections: AdminGuideSection[] = [
       {
         heading: 'Step-by-step',
         items: [
-          'Open Bet Punto and build missing daily markets.',
+          'Open Bet Punto, expand Prepare or edit betting markets, then build missing daily markets.',
           'Non-scramble rounds use Highest Stableford; scramble rounds use Lowest scramble gross.',
           'The backend fixes each market close to the selected tour timezone and earliest tee time for its round.',
           'Users choose £5 increments and must reach £10 in total across the required markets for each playing day.',
@@ -1044,6 +1044,7 @@ function addMinutesToTeeTime(value: string, minutes: number) {
 }
 
 export function Admin() {
+  const betMarketEditorRef = useRef<HTMLDetailsElement>(null);
   const [storedSession, setStoredSession] = useState<StoredAdminSession | null>(
     null,
   );
@@ -2047,7 +2048,7 @@ export function Admin() {
     }
     void runSave(
       'plan-rounds',
-      'Round setup saved. The correct daily markets were prepared when eligible options were available.',
+      'Round setup saved. Daily markets are prepared when eligible options, a round date and a tee time are available.',
       async () => {
         for (let index = 0; index < count; index += 1) {
           const roundNumber = index + 1;
@@ -2407,6 +2408,10 @@ export function Admin() {
 
   const createDailyMarketForRound = async (round: Round) => {
     if (!selectedTour || !adminData) return false;
+    const closesAt = roundCutoffDefault(round, adminData.matches);
+    // Planning rounds comes before scheduling. Required markets cannot be saved
+    // without their first-tee cutoff, so defer them until the round is scheduled.
+    if (!closesAt) return false;
     const isScramble = round.format === 'scramble';
     const expectedType: BetMarket['marketType'] = isScramble
       ? 'team_result'
@@ -2454,9 +2459,7 @@ export function Admin() {
       marketScope: 'general_pot',
       status: 'draft',
       required: true,
-      closesAt: datetimeLocalToIso(
-        roundCutoffDefault(round, adminData.matches),
-      ),
+      closesAt: datetimeLocalToIso(closesAt),
       resultOptionId: null,
       resultText: null,
       options: options.map((option, index) => ({
@@ -3058,6 +3061,7 @@ export function Admin() {
                 Change tour
                 <select
                   value={selectedTour?.id ?? ''}
+                  disabled={dataLoading}
                   onChange={(event) =>
                     void loadAdminData(event.target.value || undefined)
                   }
@@ -3093,16 +3097,25 @@ export function Admin() {
           {dataLoading ? (
             <p className="card">Loading live admin data…</p>
           ) : null}
-          {dataError ? <p className="card form-error">{dataError}</p> : null}
-          {!dataLoading && !dataError && adminData ? (
+          {dataError ? (
+            <div className="card form-error">
+              <p>{dataError}</p>
+              <button type="button" disabled={dataLoading} onClick={() => void loadAdminData()}>Retry loading admin data</button>
+            </div>
+          ) : null}
+          {adminData && (activeWorkspace === 'live' || (!dataLoading && !dataError)) ? (
             <>
               {activeWorkspace === 'live' && selectedTour ? (
-                <AdminLiveDesk
-                  data={adminData}
-                  tour={selectedTour}
-                  onRefresh={() => loadAdminData(selectedTour.id)}
-                  onHelp={setContextHelpId}
-                />
+                <div aria-busy={dataLoading} inert={dataLoading || Boolean(dataError)}>
+                  <AdminLiveDesk
+                    key={selectedTour.id}
+                    data={adminData}
+                    tour={selectedTour}
+                    onRefresh={() => loadAdminData(selectedTour.id)}
+                    onHelp={setContextHelpId}
+                    onOpenBetting={() => selectWorkspace('bet-punto')}
+                  />
+                </div>
               ) : null}
               {activeWorkspace !== 'live' ? (
                 <>
@@ -5772,34 +5785,8 @@ export function Admin() {
                           label="Save public password"
                         />
                       </form>
-                    </section>
-                  ) : null}
-                  {activeTab === 'Bet Punto' ? (
-                    <section className="card admin-panel">
-                      <div className="section-heading">
-                        <div><p className="eyebrow">Bet Punto</p><h3>Markets, options and indicative returns</h3></div>
-                        <AdminContextHelpButton label="Bet Punto markets, defaults and settlement" onClick={() => setContextHelpId('guide-bet-punto')} />
-                      </div>
-                      {betPuntoVisibilityWarnings.length > 0 ? (
-                        <div className="premium-inset form-error">
-                          <strong>Public visibility warnings</strong>
-                          {betPuntoVisibilityWarnings.map((warning) => {
-                            const market = adminData?.betMarkets.find(
-                              (candidate) => candidate.id === warning.marketId,
-                            );
-                            return (
-                              <p key={warning.marketId}>
-                                {market?.title ?? 'Bet Punto market'}:{' '}
-                                {warning.reason}
-                              </p>
-                            );
-                          })}
-                        </div>
-                      ) : null}
-                      {!selectedTour ? (
-                        <p>No tour is available.</p>
-                      ) : (
-                        <>
+                      {selectedTour ? <details className="admin-setup-disclosure">
+                        <summary>Reset Bet Punto for {selectedTour.name}</summary>
                           <div className="premium-inset">
                             <div className="section-heading">
                               <div><p className="eyebrow">Clean slate</p><h4>Reset Bet Punto for this tour</h4></div>
@@ -5848,41 +5835,36 @@ export function Admin() {
                               onClick={resetSelectedTourBetPunto}
                             />
                           </div>
-                          <div className="premium-inset">
-                            <div className="section-heading">
-                              <p className="eyebrow">Quick market setup</p>
-                              <AdminContextHelpButton label="Building required Bet Punto markets" onClick={() => setContextHelpId('guide-bet-punto')} />
-                            </div>
-                            <p>
-                              Bet Punto uses two round-linked markets only:
-                              highest individual Stableford, or lowest team
-                              gross for a scramble. Options come from attending
-                              players or the teams in that round.
-                            </p>
-                            <div className="chip-list">
-                              <button
-                                className="pill"
-                                type="button"
-                                onClick={createDailyMarketsForRounds}
-                              >
-                                Build missing daily markets
-                              </button>
-                              <button
-                                className="pill"
-                                type="button"
-                                onClick={applyStablefordWinnerOptions}
-                              >
-                                Build highest Stableford market
-                              </button>
-                              <button
-                                className="pill"
-                                type="button"
-                                onClick={applyRoundTeamScoreOptions}
-                              >
-                                Build lowest scramble gross market
-                              </button>
-                            </div>
-                          </div>
+
+                      </details> : null}
+                    </section>
+                  ) : null}
+                  {activeTab === 'Bet Punto' ? (
+                    <section className="card admin-panel">
+                      <div className="section-heading">
+                        <div><p className="eyebrow">Bet Punto</p><h3>Markets, options and indicative returns</h3></div>
+                        <AdminContextHelpButton label="Bet Punto markets, defaults and settlement" onClick={() => setContextHelpId('guide-bet-punto')} />
+                      </div>
+                      {betPuntoVisibilityWarnings.length > 0 ? (
+                        <div className="premium-inset form-error">
+                          <strong>Public visibility warnings</strong>
+                          {betPuntoVisibilityWarnings.map((warning) => {
+                            const market = adminData?.betMarkets.find(
+                              (candidate) => candidate.id === warning.marketId,
+                            );
+                            return (
+                              <p key={warning.marketId}>
+                                {market?.title ?? 'Bet Punto market'}:{' '}
+                                {warning.reason}
+                              </p>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                      {!selectedTour ? (
+                        <p>No tour is available.</p>
+                      ) : (
+                        <>
                           <div className="bet-admin-summary">
                             <div className="stat-grid">
                               <div className="stat-card">
@@ -6018,6 +6000,43 @@ export function Admin() {
                                   )}
                                 </tbody>
                               </table>
+                            </div>
+                          </div>
+                          <details ref={betMarketEditorRef} className="admin-setup-disclosure">
+                            <summary>Prepare or edit betting markets</summary>
+                          <div className="premium-inset">
+                            <div className="section-heading">
+                              <p className="eyebrow">Quick market setup</p>
+                              <AdminContextHelpButton label="Building required Bet Punto markets" onClick={() => setContextHelpId('guide-bet-punto')} />
+                            </div>
+                            <p>
+                              Bet Punto uses two round-linked markets only:
+                              highest individual Stableford, or lowest team
+                              gross for a scramble. Options come from attending
+                              players or the teams in that round.
+                            </p>
+                            <div className="chip-list">
+                              <button
+                                className="pill"
+                                type="button"
+                                onClick={createDailyMarketsForRounds}
+                              >
+                                Build missing daily markets
+                              </button>
+                              <button
+                                className="pill"
+                                type="button"
+                                onClick={applyStablefordWinnerOptions}
+                              >
+                                Build highest Stableford market
+                              </button>
+                              <button
+                                className="pill"
+                                type="button"
+                                onClick={applyRoundTeamScoreOptions}
+                              >
+                                Build lowest scramble gross market
+                              </button>
                             </div>
                           </div>
                           <form
@@ -6270,6 +6289,7 @@ export function Admin() {
                               />
                             ) : null}
                           </form>
+                          </details>
                           <div className="admin-card-list">
                             {adminData.betMarkets.length === 0 ? (
                               <p>No Bet Punto markets yet.</p>
@@ -6292,6 +6312,8 @@ export function Admin() {
                                         · {market.status} · {marketBets.length}{' '}
                                         bets
                                       </span>
+                                      <details className="admin-market-options">
+                                        <summary>View betting options</summary>
                                       <div className="chip-list">
                                         {adminData.betOptions
                                           .filter(
@@ -6310,6 +6332,7 @@ export function Admin() {
                                             </span>
                                           ))}
                                       </div>
+                                      </details>
                                       <label>
                                         Winner/result
                                         <select
@@ -6355,11 +6378,13 @@ export function Admin() {
                                       <button
                                         type="button"
                                         disabled={states['bet-market']?.saving}
-                                        onClick={() =>
-                                          setBetMarketForm(
-                                            betFormFromMarket(market),
-                                          )
-                                        }
+                                        onClick={() => {
+                                          setBetMarketForm(betFormFromMarket(market));
+                                          if (betMarketEditorRef.current) {
+                                            betMarketEditorRef.current.open = true;
+                                            betMarketEditorRef.current.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+                                          }
+                                        }}
                                       >
                                         Edit market
                                       </button>

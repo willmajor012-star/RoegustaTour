@@ -60,7 +60,7 @@ export const adminWorkspaces: AdminWorkspace[] = [
     label: 'Settings',
     description: 'Access, help and archive tools',
     tabs: [
-      { id: 'Settings', label: 'Public access' },
+      { id: 'Settings', label: 'Access & resets' },
       { id: 'Admin guide', label: 'Admin guide' },
       { id: 'Handbook', label: 'Legacy archive', legacy: true },
     ],
