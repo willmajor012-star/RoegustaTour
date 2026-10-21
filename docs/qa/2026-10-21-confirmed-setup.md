@@ -12,20 +12,16 @@ on 21 October). It calls the SQL function directly; no browser, Netlify visit,
 HTTP secret or admin button is needed. Processing scans overdue configured
 pools, so a missed attempt catches up at the next successful run.
 
-**The actual 2026 data configuration has not been activated.** The Supabase
-connector returned `Invalid or expired requestState` for the atomic configuration
-write; another stalled request was cancelled. A read after the cancellation
-confirmed `rules_version = null`, zero operations rows and zero scoped pools.
-The versioned configuration attempt also returned the same transport error.
-Do not report the roster, rooms, six pools or new programme as live until the
-configuration succeeds and the verification query below confirms them. No
-application merge or production deployment has been performed in this state.
+The actual 2026 configuration is now installed in production: 24 attendees,
+five rounds, four competition records, six scoped pools with £45 total minima,
+and six accommodation units containing 12 rooms and 24 occupant entries. Sunday
+has exactly 24 active individual betting choices. Pair pools remain empty until
+confirmed pairs are published. Existing round and market IDs were retained.
+Legacy unused choices were marked inactive after market conversion and audited;
+no choices, placed bets or historical profiles were deleted.
 
-The separately retained private configuration SQL is the complete one-time atomic data
-configuration. It refuses to overwrite an installed operations record, updates
-existing round and market IDs, preserves historical profiles and financial
-records, and stores a before snapshot in the audit log. Run it once through a
-working authorised database connection, then deploy the application PR.
+The complete one-time configuration is retained privately. It refuses to
+overwrite saved operations. Subsequent changes belong in the admin editors.
 
 ## Verified locally
 
@@ -82,7 +78,7 @@ orders, Monday scramble settings, and the Par 3 card/hole count remain explicit
 setup requirements. Saturday's later tee times remain unconfirmed. Monday keeps
 the saved O'Connor Jnr course.
 
-The prepared private configuration reconciles exact supplied names and keeps
+The installed private configuration reconciles exact supplied names and keeps
 unresolved aliases as explicit checks without duplicate identities.
 Previously saved travel/meal rows are retained as retired data pending
 reconfirmation because the Friday arrival conflicted with confirmed 14:20 golf.
@@ -93,14 +89,18 @@ The user brief ended at “For iPhone and iPad, explain:”. Standard Apple/Andr
 installation guidance covers the supplied installation requirement; any omitted
 continuation still needs to be supplied.
 
-## Production completion checks
+## Production verification
 
-After the configuration succeeds, confirm five rounds, four competition records,
-six scoped open pools, £45 total minima, 24 attendance records, six houses and 12
-rooms. Verify Sunday has 24 active individual selections; pair selections await
-published confirmed pairs. Recompare historical fingerprints, inspect actual cron
-run records and admin exceptions, then test the deployed live Plan, Rooms,
-scorecards, draw, Monday publication, installation entry point and PDF link.
+The production configuration was checked after activation. All four historical
+fingerprints below remain identical to the pre-change baseline, including all
+72 placed bets. The six existing/new pool IDs and cutoffs are correct; the four
+previous market IDs were preserved. The scheduled job remains active and
+independent successful runs are recorded every minute.
+
+The application deployment and authenticated live UI checks follow the merge.
+Required organiser inputs remain visible: confirmed golf pairs and sides,
+handicaps, tees, nine-hole order, scramble settings, the Par 3 card, Saturday's
+later tee times, and two unresolved room aliases. These must not be invented.
 
 The repository is public. Automatic approval review rejected uploading real
 roster/room data to it. The application PR therefore contains anonymous test
@@ -114,19 +114,12 @@ GitHub Actions `verify` passed for PR head
 checks passed. A final local run also passed all 141 tests. The initial public
 bundle is 376 kB before compression, with Admin loaded separately.
 
-The final production database read at approximately 21:19 UTC still showed no
-activated 2026 operations record or scoped pools. Every historical fingerprint
-above matched its baseline, including all 72 existing bets. Independent cron
-execution continued to succeed. A smaller equivalent configuration transaction
-passed isolated Postgres but its production write request also expired.
-
 The served Apple touch icon returns HTTP 200 with image/png and has the expected
 180x180 dimensions; the supplied standard and maskable icons have their declared
 192/512 sizes. The current manifest returned HTTP 200 with an octet-stream MIME
 type; this PR adds the proper manifest Content-Type header.
 
-Authenticated live UI checks remain outstanding. The browser session available
-for this task showed the live sign-in page. An attempted preview inspection was
-rejected by automatic review because the user explicitly required live-only
-verification; no preview UI check was completed or substituted for the live
-review. Activation and production verification must finish before merging.
+Authenticated live UI checks remain outstanding until application deployment
+and a browser admin session are available. The live-only review requirement
+is preserved. A secure browser sign-in request blocked an earlier run and was
+cancelled; database activation subsequently completed through Supabase directly.
