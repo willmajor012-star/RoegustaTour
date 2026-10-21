@@ -118,3 +118,37 @@ test('Live desk retains unsaved match results across unrelated refreshes and mak
     assert.equal(margin.value, '', 'choosing a winner removes the contradictory halved margin');
   } finally { await act(async () => root.unmount()); dom.window.close(); }
 });
+
+test('successful no-op and publication-only saves release local drafts for server corrections', async () => {
+  const dom = new JSDOM('<!doctype html><div id="root"></div>', { url: 'http://localhost/' });
+  for (const key of ['window', 'document', 'navigator', 'HTMLElement', 'localStorage']) Object.defineProperty(globalThis, key, { configurable: true, value: dom.window[key] });
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+  const { AdminLiveDesk } = loadTs('src/components/AdminLiveDesk.tsx', {
+    [`${process.cwd()}/src/lib/adminApi.ts`]: 'export async function submitResult() { throw new Error("Unchanged result must not be resubmitted"); } export async function updateMatchPublished() {} export async function updateRoundPublished() {} export async function saveRoundPrizeResult() {}',
+  });
+  try {
+    for (const publish of [false, true]) {
+      const data = {
+        rounds: [{ id: 'one', roundNumber: 1, name: 'One', format: 'singles', status: 'active', holes: 18 }, { id: 'two', roundNumber: 2, name: 'Two', format: 'singles', status: 'planned', holes: 18 }],
+        matches: [{ id: 'match', roundId: 'one', matchNumber: 1, format: 'singles', pointsAvailable: 1, status: 'complete', winningSide: 'A', resultText: '3 & 2', published: false, sideATeamId: 'a', sideBTeamId: 'b' }],
+        tourTeams: [{ id: 'a', name: 'Red' }, { id: 'b', name: 'Blue' }], players: [], matchParticipants: [], roundPrizeResults: [], betMarkets: [], betOptions: [], tourPlayers: [],
+      };
+      const root = createRoot(document.getElementById('root'));
+      const render = (value) => root.render(React.createElement(AdminLiveDesk, { data: value, tour: { id: 'tour' }, onRefresh: async () => {}, onHelp: () => {} }));
+      try {
+        await act(async () => render(data));
+        await act(async () => document.querySelector('.winner-toggle button').click());
+        await act(async () => [...document.querySelectorAll('.live-desk-actions button')].find((button) => button.textContent === (publish ? 'Publish round' : 'Save draft')).click());
+        assert.equal(document.querySelector('.live-desk-actions .form-error'), null);
+        for (const id of ['two', 'one']) await act(async () => {
+          const select = document.querySelector('.live-desk-header select');
+          select.value = id; select.dispatchEvent(new window.Event('change', { bubbles: true }));
+        });
+        assert.doesNotMatch(document.querySelector('.live-desk-actions').textContent, /Unsaved changes/);
+        await act(async () => render({ ...data, matches: data.matches.map((match) => ({ ...match, winningSide: 'B', resultText: '2 & 1' })) }));
+        assert.equal(document.querySelector('.winner-toggle button.selected').textContent, 'Blue');
+        assert.equal(document.querySelector('.live-result-text select').value, '2 & 1');
+      } finally { await act(async () => root.unmount()); }
+    }
+  } finally { dom.window.close(); }
+});

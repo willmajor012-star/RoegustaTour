@@ -180,10 +180,10 @@ export function AdminLiveDesk({
             published: publish,
             correctionReason: match.status === 'complete' ? 'Updated from the live results desk.' : null,
           });
-          dirtyMatchIds.current.delete(match.id);
         } else if (publish && !match.published) {
           await updateMatchPublished({ tourId: tour.id, matchId: match.id, published: true });
         }
+        dirtyMatchIds.current.delete(match.id);
       }
       if (publish) await updateRoundPublished({ tourId: tour.id, roundId: selectedRound.id, published: true });
       await onRefresh();

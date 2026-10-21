@@ -35,7 +35,13 @@ export async function rehearseTourUi(db, snapshot) {
   const handlers = new Map();
   const requests = [];
   const pending = new Set();
+  let failMatchId;
   async function runEndpoint(name, payload, method = 'POST') {
+    if (name === 'admin-submit-result' && payload?.matchId === failMatchId) {
+      failMatchId = undefined;
+      requests.push({ name, status: 500 });
+      return { statusCode: 500, body: JSON.stringify({ message: 'Simulated mid-round failure' }), payload: { message: 'Simulated mid-round failure' } };
+    }
     if (!handlers.has(name)) handlers.set(name, loadTs(`netlify/functions/${name}.ts`, overrides).handler);
     const response = await handlers.get(name)({ httpMethod: method, body: payload ? JSON.stringify(payload) : null,
       headers: { authorization: `Bearer ${admin.token}`, cookie }, queryStringParameters: { tourId: tid } });
@@ -112,6 +118,22 @@ export async function rehearseTourUi(db, snapshot) {
         const sideIndex = expected.winning_side === 'A' ? 0 : expected.winning_side === 'halved' ? 1 : 2;
         await act(async () => rows[i].querySelectorAll('.winner-toggle button')[sideIndex].click());
         await change(rows[i].querySelector('.live-result-text select'), expected.result_text);
+      }
+      if (round.id === data.rounds[0].id) {
+        failMatchId = expectedMatches[1].id;
+        await act(async () => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Publish round').click());
+        await flush();
+        assert.match(document.querySelector('.live-desk-actions .form-error').textContent, /Simulated mid-round failure/);
+        const partial = await db.query('select id from matches where round_id=$1 and status=$2', [round.id, 'complete']);
+        assert.deepEqual(partial.rows.map((match) => match.id), [expectedMatches[0].id]);
+        // Refresh after the partial save, as another admin action or reload can do.
+        await act(async () => props().onRefresh());
+        await flush();
+        const remainingRows = [...document.querySelectorAll('.live-result-row')];
+        for (let i = 0; i < remainingRows.length; i++) {
+          assert.equal(remainingRows[i].querySelector('.live-result-text select').value, expectedMatches[i].result_text);
+          assert.ok(remainingRows[i].querySelector('.winner-toggle button.selected'));
+        }
       }
       await act(async () => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Publish round').click());
       await flush();
