@@ -1,4 +1,7 @@
 export type AdminTab =
+  | 'Competitions & scoring'
+  | 'Rooms'
+  | 'Pool compliance'
   | 'Overview'
   | 'Tour setup'
   | 'Player library'
@@ -33,7 +36,9 @@ export const adminWorkspaces: AdminWorkspace[] = [
       { id: 'Tour setup', label: 'Tour details' },
       { id: 'Courses', label: 'Courses' },
       { id: 'Rounds & tee times', label: 'Rounds' },
-      { id: 'Tour itinerary', label: 'Itinerary & shirts' },
+      { id: 'Competitions & scoring', label: 'Competitions & scoring' },
+      { id: 'Tour itinerary', label: 'Plan · Itinerary' },
+      { id: 'Rooms', label: 'Plan · Rooms' },
     ],
   },
   {
@@ -54,7 +59,7 @@ export const adminWorkspaces: AdminWorkspace[] = [
       { id: 'Result entry', label: 'Corrections' },
     ],
   },
-  { id: 'bet-punto', label: 'Bet Punto', description: 'Markets, tally and corrections', tabs: [{ id: 'Bet Punto', label: 'Markets & ledger' }] },
+  { id: 'bet-punto', label: 'Bet Punto', description: 'Markets, tally and corrections', tabs: [{ id: 'Bet Punto', label: 'Markets & ledger' }, { id: 'Pool compliance', label: 'Pool compliance' }] },
   {
     id: 'settings',
     label: 'Settings',

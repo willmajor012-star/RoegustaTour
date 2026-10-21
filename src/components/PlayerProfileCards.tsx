@@ -1,3 +1,4 @@
+import { PlayerCompetitionResults } from './TourOperations';
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { Player, TourTeam } from '../lib/types';
 import { getPlayerInitials } from '../lib/people';
@@ -37,6 +38,7 @@ function PlayerProfileModal({ entry, onClose }: { entry: TeamPlayer; onClose: ()
       <h3 id="player-profile-title">{entry.player.displayName}</h3>
       {entry.player.nickname ? <p className="profile-nickname">“{entry.player.nickname}”</p> : null}
       {entry.player.profileBio ? <p>{entry.player.profileBio}</p> : <p className="muted">Profile details TBC.</p>}
+      <PlayerCompetitionResults playerId={entry.player.id} />
     </section>
   </div>;
 }

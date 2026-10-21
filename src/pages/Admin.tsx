@@ -6,6 +6,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from 'react';
+import { AdminTourOperations } from '../components/TourOperations';
 import { AdminLiveDesk } from '../components/AdminLiveDesk';
 import { AdminCourseEditor } from '../components/AdminCourseEditor';
 import { AdminTourItinerary } from '../components/AdminTourItinerary';
@@ -462,33 +463,24 @@ const adminGuideSections: AdminGuideSection[] = [
   {
     id: 'guide-2026-format',
     title: '2026 format setup',
-    summary: 'Use the 2026 helper and verify the generated rounds/prizes.',
+    summary: 'The confirmed five-session programme is installed. Use Competitions & scoring for cards, pairs and tee sheets.',
     blocks: [
-      {
-        heading: 'Step-by-step',
-        items: [
-          'Open Rounds & tee times.',
-          'Use the 2026 setup helper for the selected tour.',
-          'It installs any missing Faldo, O’Connor and Old Course library templates as saved, published tour guides and makes them available for the Home course section.',
-          'It creates Sat AM Faldo Course, 4BBB, 18 holes and links the saved Faldo guide; Sat PM Amendoeira Par 3, scramble, 9 holes with no guide required; Sun Old Course, singles, 18 holes and links the saved Old Course guide; and Mon Course TBC, 4BBB, 9 holes.',
-        ],
-      },
-      {
-        heading: 'What it does not do',
-        items: [
-          'It does not create Friday golf. Do not assume Friday golf.',
-          'It does not delete completed data.',
-          'It publishes newly installed course guides because these replace the previous public built-in guides. It preserves the visibility and content of any guide already saved to that tour.',
-          'It does not publish rosters, rounds or matches unexpectedly; check those Published flags yourself.',
-        ],
-      },
-      {
-        heading: 'Afterwards',
-        items: [
-          'Review warnings about extra rounds. Extra protected rounds are not removed automatically.',
-          'Check the Home tour hub, each Golf round card and its Tee sheet, Results and Prizes tabs, then check the Tour information itinerary after saving.',
-        ],
-      },
+      { heading: 'Step-by-step', items: [
+        'Tour → Competitions & scoring holds the Friday–Monday combined pairs competition, independent Par 3 draw, Saturday pair Stableford and Sunday individual Stableford.',
+        'Friday Faldo starts 14:20. The separate scratch Par 3 booking is Friday 19:30–21:30 and awards zero tour points. Saturday Faldo 4BBB matchplay starts 10:00. Sunday Old Course singles starts 11:24. Monday O’Connor nine-hole scramble starts 10:00.',
+        'Assign main tour sides in People, then save and publish golf pairs. Room assignments never determine partners or sides. Confirm the actual tees, hole order and agreed playing handicaps before scoring.',
+        'Friday and Monday keep the same pairs. Monday’s fourballs start with the highest complete Friday scores. Preview, save and publish the order; changes to Friday scores flag the existing published order for explicit review.',
+      ] },
+      { heading: 'Scoring and points', items: [
+        'Record individual Friday, Saturday and Sunday gross hole scores. Record pair scramble gross scores on Monday and Par 3. A concession does not create a gross score; finish the Stableford card after an early matchplay result.',
+        'Combined Friday and Monday position points total 39 and are awarded once after both complete nines and all ties are resolved. Saturday has six match points and Sunday twelve. Total 57: 29 guarantees victory; 28.5 each is a tie.',
+        'Use Plan → Itinerary and Rooms for the editable programme and accommodation. Download itinerary generates the current PDF from saved data.',
+      ] },
+      { heading: 'Bet Punto', items: [
+        'Six separate pool minimums are Friday £5, Par 3 £10, Saturday pair £10, Sunday individual £10, Monday £5 and combined £5 additional: £45 per tourist. Stakes remain in £5 increments.',
+        'At each pool’s independent cutoff the server adds only the outstanding shortfall to the tourist’s own selection. Existing valid picks on other selections remain. Bet Punto → Pool compliance shows commitments, exceptions and scheduler evidence.',
+        'The superseded setup helper is retired. Historical records and other tour rules remain separate.',
+      ] },
     ],
   },
   {
@@ -730,7 +722,7 @@ const adminGuideSections: AdminGuideSection[] = [
           'Open Bet Punto, expand Prepare or edit betting markets, then build missing daily markets.',
           'Non-scramble rounds use Highest Stableford; scramble rounds use Lowest scramble gross.',
           'The backend fixes each market close to the selected tour timezone and earliest tee time for its round.',
-          'Users choose £5 increments and must reach £10 in total across the required markets for each playing day.',
+          'Users choose £5 increments. Confirmed 2026 uses six separate pool minimums totalling £45; other tours retain their saved betting rules.',
           'At each fixed close, the app automatically adds only the remaining daily shortfall onto the player themselves or their own scramble team.',
           'Enter and publish the playing winner in the Live results desk; the app settles the pool and updates the public leaderboard.',
           'Use manual admin bet entry only for a deliberate correction. Money movement remains outside the app.',
@@ -2407,7 +2399,7 @@ export function Admin() {
       }));
 
   const createDailyMarketForRound = async (round: Round) => {
-    if (!selectedTour || !adminData) return false;
+    if (!selectedTour || !adminData || selectedTour.rulesVersion === 'confirmed-2026') return false;
     const closesAt = roundCutoffDefault(round, adminData.matches);
     // Planning rounds comes before scheduling. Required markets cannot be saved
     // without their first-tee cutoff, so defer them until the round is scheduled.
@@ -3107,6 +3099,7 @@ export function Admin() {
             <>
               {activeWorkspace === 'live' && selectedTour ? (
                 <div aria-busy={dataLoading} inert={dataLoading || Boolean(dataError)}>
+                  <div className="card"><h3>Stableford scorecards & combined competition</h3><p>Friday, Par 3, Saturday and Sunday individual cards, and Monday scramble scores.</p><button type="button" onClick={() => { selectWorkspace('tour'); setActiveTab('Competitions & scoring'); }}>Open competitions & scoring</button></div>
                   <AdminLiveDesk
                     key={selectedTour.id}
                     data={adminData}
@@ -3119,6 +3112,9 @@ export function Admin() {
               ) : null}
               {activeWorkspace !== 'live' ? (
                 <>
+                  {activeTab === 'Competitions & scoring' && selectedTour ? <AdminTourOperations tourId={selectedTour.id} /> : null}
+                  {activeTab === 'Rooms' && selectedTour ? <AdminTourOperations tourId={selectedTour.id} mode="rooms" /> : null}
+                  {activeTab === 'Pool compliance' && selectedTour ? <AdminTourOperations tourId={selectedTour.id} mode="compliance" /> : null}
                   {activeTab === 'Overview' ? (
                     <section className="card admin-panel">
                       <p className="eyebrow">Overview</p>
@@ -4250,11 +4246,11 @@ export function Admin() {
                                 label="Save round setup"
                                 onClick={planRounds}
                               />
-                              <SaveButton
+                              {selectedTour?.rulesVersion !== 'confirmed-2026' ? <SaveButton
                                 state={states['apply-2026-template']}
                                 label="Apply 2026 setup"
                                 onClick={applyFormatTemplate2026}
-                              />
+                              /> : null}
                               <SaveButton
                                 state={states['publish-tour-content']}
                                 label="Publish all rosters, rounds and matches"
@@ -5914,7 +5910,7 @@ export function Admin() {
                                     <th>Calculated return</th>
                                     <th>Net</th>
                                     <th>W/L/P</th>
-                                    <th>Days below £10</th>
+                                    <th>{selectedTour?.rulesVersion ? 'Pools outstanding' : 'Days below £10'}</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -5963,7 +5959,7 @@ export function Admin() {
                                     <th>Status</th>
                                     <th>Picks</th>
                                     <th>Pot</th>
-                                    <th>Players below £10 that day</th>
+                                    <th>{selectedTour?.rulesVersion ? 'Players below pool minimum' : 'Players below £10 that day'}</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -6153,7 +6149,7 @@ export function Admin() {
                                   })
                                 }
                               />{' '}
-                              Required £10/day market
+                              {selectedTour?.rulesVersion ? 'Required pool' : 'Required £10/day market'}
                             </label>
                             <label>
                               Winning/result option

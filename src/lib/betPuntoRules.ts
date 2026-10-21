@@ -34,10 +34,10 @@ export function betMarketVisibilityWarning(
     teamIds: Set<string>;
   },
 ): MarketVisibilityWarning | null {
-  const marketOptions = options.filter((option) => option.marketId === market.id);
+  const marketOptions = options.filter((option) => option.marketId === market.id && option.active !== false);
   if (market.roundId && !context.roundIds.has(market.roundId)) return { marketId: market.id, reason: 'Linked round is not public/valid for Bet Punto.' };
   if (market.matchId && !context.matchIds.has(market.matchId)) return { marketId: market.id, reason: 'Linked match is not public/valid for Bet Punto.' };
-  if (marketOptions.length === 0) return { marketId: market.id, reason: 'Market has no options.' };
+  if (marketOptions.length === 0 && !market.poolKey) return { marketId: market.id, reason: 'Market has no options.' };
   const invalidOption = marketOptions.find((option) => (option.linkedPlayerId && !context.playerIds.has(option.linkedPlayerId)) || (option.linkedTeamId && !context.teamIds.has(option.linkedTeamId)));
   if (invalidOption?.linkedPlayerId) return { marketId: market.id, reason: `Option "${invalidOption.label}" links to a player outside the current public tour.` };
   if (invalidOption?.linkedTeamId) return { marketId: market.id, reason: `Option "${invalidOption.label}" links to a team outside the current public tour.` };

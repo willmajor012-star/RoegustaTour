@@ -33,9 +33,9 @@ test('fresh migration chain and launch security/result transactions execute in P
       insert into matches(id,tour_id,round_id,match_number,format,status,side_a_team_id,side_b_team_id,points_available) values ('${match}','${tour}','${round}',1,'singles','active','${teamA}','${teamB}',1);
       insert into match_participants(match_id,player_id,team_id,side) values ('${match}','${playerA}','${teamA}','A'), ('${match}','${playerB}','${teamB}','B');
     `);
-    await t.test('all 21 app tables enable RLS and browser roles lack direct privileges', async () => {
+    await t.test('all 25 app tables enable RLS and browser roles lack direct privileges', async () => {
       const { rows } = await db.query("select relname, relrowsecurity, has_table_privilege('anon', oid, 'SELECT') as anon_read, has_table_privilege('authenticated', oid, 'UPDATE') as user_write from pg_class where relnamespace='public'::regnamespace and relkind='r'");
-      assert.equal(rows.length, 21);
+      assert.equal(rows.length, 25);
       for (const row of rows) {
         assert.equal(row.relrowsecurity, true, row.relname);
         assert.equal(row.anon_read, false, row.relname);

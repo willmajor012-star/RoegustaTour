@@ -18,12 +18,14 @@ export type PublicScoreResponse = PublicResponse<{
   rounds: Round[];
   matches: Match[];
   scores: TeamScoreRow[];
+  competitionAwards?: Array<{ competitionId: string; teamId: string; points: number }>;
 }>;
 
 export type PublicMatchesResponse = PublicResponse<{
   tour?: Tour;
   attendingPlayerCount?: number;
   projectedTotalPoints?: number;
+  competitionAwards?: Array<{ competitionId: string; teamId: string; points: number }>;
   rounds: Round[];
   matches: Match[];
   matchParticipants: MatchParticipant[];
@@ -39,6 +41,7 @@ export type PublicDashboardResponse = PublicMatchesResponse & {
   recentResults: Match[];
   openMarkets: BetMarket[];
   scores: TeamScoreRow[];
+  competitionAwards?: Array<{ competitionId: string; teamId: string; points: number }>;
   attendingPlayerCount?: number;
   projectedTotalPoints?: number;
 };

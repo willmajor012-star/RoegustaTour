@@ -1,3 +1,4 @@
+import './styles/tour-operations.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AppShell } from './app/AppShell';

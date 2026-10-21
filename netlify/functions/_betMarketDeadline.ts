@@ -36,12 +36,13 @@ export async function requiredMarketDeadlineForRound(supabase: SupabaseClient, r
 
 export async function syncRequiredMarketDeadlinesForRound(supabase: SupabaseClient, roundId: string) {
   const deadline = await requiredMarketDeadlineForRound(supabase, roundId);
-  const markets = await runRows<{ id: string; status: string }>(
-    supabase.from('bet_markets').select('id, status').eq('round_id', roundId).eq('required', true),
+  const markets = await runRows<{ id: string; status: string; pool_key?: string }>(
+    supabase.from('bet_markets').select('id, status, pool_key').eq('round_id', roundId).eq('required', true),
     'find required round markets',
   );
 
   for (const market of markets) {
+    if (market.pool_key) continue;
     if (market.status === 'settled' || market.status === 'void') continue;
     const update = deadline.closesAt
       ? { closes_at: deadline.closesAt, defaults_applied_at: null }

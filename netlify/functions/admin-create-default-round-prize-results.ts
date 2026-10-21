@@ -15,6 +15,8 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const tourId = optionalString(body.tourId);
   const template2026 = body.template2026 === true;
   if (!tourId) return badRequest('Tour ID is required.');
+  const tours = await runRows(supabase.from('tours').select('rules_version').eq('id', tourId), 'prize tour rules');
+  if (tours[0]?.rules_version === 'confirmed-2026') return badRequest('Use the complete Stableford scorecards in Competitions & scoring for this tour.');
   const rounds = await runRows<RoundRow>(supabase.from('rounds').select('id, tour_id, format, format_label').eq('tour_id', tourId), 'default prize rounds');
   const existing = await runRows<{ round_id: string; prize_type: string; title: string }>(supabase.from('round_prize_results').select('round_id, prize_type, title').eq('tour_id', tourId), 'existing prize results');
   const rows = rounds.map((round, index) => ({ round, draft: template2026 ? ([

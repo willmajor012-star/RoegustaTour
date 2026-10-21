@@ -147,13 +147,13 @@ test('the 2026 helper no longer creates or deletes schedule placeholders', async
   const template = await readFile(new URL('../netlify/functions/admin-apply-2026-format-template.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(template, /const itinerary =/);
   assert.doesNotMatch(template, /tour_itinerary_items'\)\.(?:insert|delete)/);
-  assert.match(template, /tour_itinerary_items'\)\.select/);
+  assert.match(template, /old 2026 template has been replaced/);
 });
 
 test('public Tour information is a single schedule with daily shirts and no handbook cards', async () => {
   const info = await readFile(new URL('../src/pages/TourInfo.tsx', import.meta.url), 'utf8');
   const publicData = await readFile(new URL('../netlify/functions/_publicData.ts', import.meta.url), 'utf8');
-  assert.match(info, /title="Itinerary"/);
+  assert.match(info, /title="Plan"/);
   assert.match(info, /First tee/);
   assert.match(info, /Team shirt colours/);
   assert.match(info, /What to wear/);

@@ -111,8 +111,9 @@ export async function getPublicMatchBundle(supabase: SupabaseClient) {
   const allTourPlayers = tourPlayerRows.map(mapTourPlayer);
   const allTourTeams = teamRows.map(mapTourTeam);
   const allTourTeamMembers = memberRows.map(mapTourTeamMember);
+  const competitionAwards = tour.rulesVersion ? (await runQuery(table(supabase, 'tour_competition_awards').select('*').eq('tour_id', tour.id).eq('active', true), 'competition points')).map((a) => ({ competitionId: String(a.competition_id), teamId: String(a.team_id), points: Number(a.points) })) : [];
   const attendingPlayerCount = allTourPlayers.filter((tourPlayer) => tourPlayer.attending).length;
-  const projectedTotalPoints = projectedTourPoints(
+  const projectedTotalPoints = tour.rulesVersion === 'confirmed-2026' ? 57 : projectedTourPoints(
     allRounds,
     allMatches,
     allTourTeams,
@@ -146,6 +147,7 @@ export async function getPublicMatchBundle(supabase: SupabaseClient) {
     tourTeamMembers,
     attendingPlayerCount,
     projectedTotalPoints,
+    competitionAwards,
     roundPrizeResults,
     tourCourses: courseRows.map(mapCourseGuide),
   };
@@ -165,7 +167,7 @@ export async function getDashboardBundle(supabase: SupabaseClient) {
     ...bundle,
     recentResults: bundle.matches.filter((match) => match.status === 'complete'),
     openMarkets: marketRows.filter((market) => !market.round_id || publicRoundIds.has(String(market.round_id))).map(mapBetMarket),
-    scores: calculateTeamScoreByTour(bundle.tour.id, bundle.tourTeams, bundle.rounds, bundle.matches),
+    scores: calculateTeamScoreByTour(bundle.tour.id, bundle.tourTeams, bundle.rounds, bundle.matches, bundle.competitionAwards),
   };
 }
 
@@ -185,7 +187,7 @@ export async function getPublicCourseBundle(supabase: SupabaseClient) {
 
 export async function getScoreBundle(supabase: SupabaseClient) {
   const tour = await getCurrentTour(supabase);
-  if (!tour) return { tour: undefined, tourId: '', teams: [], rounds: [], matches: [] };
+  if (!tour) return { tour: undefined, tourId: '', teams: [], rounds: [], matches: [], competitionAwards: [] };
 
   const [teamRows, roundRows, matchRows] = await Promise.all([
     runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id).order('sort_order', { ascending: true }), 'tour teams'),
@@ -198,6 +200,7 @@ export async function getScoreBundle(supabase: SupabaseClient) {
   return {
     tour,
     tourId: tour.id,
+    competitionAwards: tour.rulesVersion ? (await runQuery(table(supabase, 'tour_competition_awards').select('*').eq('tour_id', tour.id).eq('active', true), 'competition points')).map((a) => ({ competitionId: String(a.competition_id), teamId: String(a.team_id), points: Number(a.points) })) : [],
     teams: publicTeamsOrLegacyCurrent(teamRows.map(mapTourTeam), tour),
     rounds,
     matches: publicMatchesOrLegacyCurrent(matchRows.map(mapMatch), roundById, tour),

@@ -1,3 +1,4 @@
+import { zonedLocalDateTimeToIso } from './tourTime';
 import type { Match, MatchFormat, Round, Tour } from './types';
 import { formatDate, formatMatchFormat, formatShortDate } from './formatting';
 
@@ -26,7 +27,7 @@ export function formatRoundDisplayName(round?: Round, fallbackIndex?: number) {
 }
 
 export function formatRoundContextLabel(round?: Round, fallbackIndex?: number) {
-  const parts = [formatRoundDisplayName(round, fallbackIndex), formatShortDate(round?.roundDate), roundSession(round), cleanText(round?.courseName), cleanText(round?.formatLabel), `${round?.holes ?? 18} holes`].filter(Boolean);
+  const parts = [formatRoundDisplayName(round, fallbackIndex), formatShortDate(round?.roundDate), roundSession(round), cleanText(round?.courseName), cleanText(round?.formatLabel), round?.holeCountConfirmed === false ? 'Hole count TBC' : `${round?.holes ?? 18} holes`].filter(Boolean);
   return parts.join(' · ');
 }
 
@@ -42,7 +43,7 @@ export function formatTourDates(tour?: Pick<Tour, 'startDate' | 'endDate'>) {
 }
 
 export function formatRoundMeta(round?: Round, format?: MatchFormat) {
-  const parts = [format ? formatMatchFormat(format) : cleanText(round?.formatLabel), cleanText(round?.courseName), formatShortDate(round?.roundDate), `${round?.holes ?? 18} holes`, normalizeTeeTime(round?.teeTime)].filter(Boolean);
+  const parts = [format ? formatMatchFormat(format) : cleanText(round?.formatLabel), cleanText(round?.courseName), formatShortDate(round?.roundDate), round?.holeCountConfirmed === false ? 'Hole count TBC' : `${round?.holes ?? 18} holes`, normalizeTeeTime(round?.teeTime)].filter(Boolean);
   return parts.join(' · ') || 'Details TBC';
 }
 
@@ -88,7 +89,7 @@ export function publicWorkflowStatusLabel(status?: string) {
 
 export function getDateOnlyScheduledDate(date?: string, time = '00:00') {
   if (!date) return undefined;
-  const value = new Date(`${date}T${time}`);
+  const value = new Date(zonedLocalDateTimeToIso(date, time.slice(0, 5), 'Europe/Lisbon') ?? '');
   return Number.isNaN(value.getTime()) ? undefined : value;
 }
 
@@ -96,7 +97,7 @@ export function getScheduledDate(date?: string, teeTime?: string | null) {
   if (!date) return undefined;
   const normalized = normalizeTeeTime(teeTime);
   if (!normalized) return undefined;
-  const value = new Date(`${date}T${normalized}`);
+  const value = new Date(zonedLocalDateTimeToIso(date, normalized, 'Europe/Lisbon') ?? '');
   return Number.isNaN(value.getTime()) ? undefined : value;
 }
 

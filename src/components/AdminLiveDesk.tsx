@@ -61,13 +61,14 @@ export function AdminLiveDesk({
   onHelp: (guideId: 'guide-results' | 'guide-secondary-prizes') => void;
   onOpenBetting?: () => void;
 }) {
-  const preferredRound = data.rounds.find((round) => round.status === 'active')
-    ?? data.rounds.find((round) => round.status === 'planned')
-    ?? data.rounds[0];
+  const liveRounds = data.rounds.filter((r) => !r.competitionRole || r.competitionRole === 'matchplay');
+  const preferredRound = liveRounds.find((round) => round.status === 'active')
+    ?? liveRounds.find((round) => round.status === 'planned')
+    ?? liveRounds[0];
   const [selectedRoundId, setSelectedRoundId] = useState(() => {
     try {
       const remembered = window.sessionStorage.getItem(`roegusta:admin:round:${tour.id}`);
-      if (data.rounds.some((round) => round.id === remembered)) return remembered!;
+      if (liveRounds.some((round) => round.id === remembered)) return remembered!;
     } catch { /* The desk also works when browser storage is unavailable. */ }
     return preferredRound?.id ?? '';
   });
@@ -79,7 +80,7 @@ export function AdminLiveDesk({
   const resultFields = useRef(new Map<string, HTMLSelectElement>());
   const actionsRef = useRef<HTMLDivElement>(null);
   const prizeRef = useRef<HTMLDivElement>(null);
-  const selectedRound = data.rounds.find((round) => round.id === selectedRoundId) ?? preferredRound;
+  const selectedRound = liveRounds.find((round) => round.id === selectedRoundId) ?? preferredRound;
   const roundMatches = useMemo(
     () => data.matches
       .filter((match) => match.roundId === selectedRound?.id && match.status !== 'void')
@@ -110,7 +111,7 @@ export function AdminLiveDesk({
   }, [selectedRound?.id, tour.id]);
 
   useEffect(() => {
-    if (preferredRound && !data.rounds.some((round) => round.id === selectedRoundId)) {
+    if (preferredRound && !liveRounds.some((round) => round.id === selectedRoundId)) {
       setSelectedRoundId(preferredRound.id);
     }
   }, [data.rounds, preferredRound, selectedRoundId]);
@@ -311,7 +312,7 @@ export function AdminLiveDesk({
       <AdminContextHelpButton label="Live match results" onClick={() => onHelp('guide-results')} />
       <label>Round
         <select value={selectedRound.id} disabled={resultState.saving || prizeState.saving} onChange={(event) => setSelectedRoundId(event.target.value)}>
-          {data.rounds.map((round) => <option key={round.id} value={round.id}>{roundLabel(round)}</option>)}
+          {liveRounds.map((round) => <option key={round.id} value={round.id}>{roundLabel(round)}</option>)}
         </select>
       </label>
       <div className="live-desk-status">
@@ -369,7 +370,7 @@ export function AdminLiveDesk({
       })}
     </div>
 
-    <div ref={prizeRef} tabIndex={-1} className="card live-prize-card">
+    {tour.rulesVersion === 'confirmed-2026' ? <div className="card"><h3>Stableford and betting results</h3><p>Enter complete hole scores in Tour → Competitions & scoring. The match result above remains separate and does not create scores for conceded holes.</p></div> : <div ref={prizeRef} tabIndex={-1} className="card live-prize-card">
       <div className="section-heading">
         <div><p className="eyebrow">Round winner</p><h3>{prizeType === 'team_gross' ? 'Lowest scramble score' : 'Highest Stableford score'}</h3></div>
         <div className="chip-list"><AdminContextHelpButton label="Secondary prize winner and Bet Punto settlement" onClick={() => onHelp('guide-secondary-prizes')} /><span className={linkedMarket ? 'market-linked' : 'market-missing'}>{linkedMarket ? 'Bet market linked' : 'No market linked'}</span></div>
@@ -389,6 +390,6 @@ export function AdminLiveDesk({
       </div>
       {prizeState.message ? <p role="status" className="form-success">{prizeState.message}</p> : null}
       {prizeState.error ? <p role="alert" className="form-error">{prizeState.error}</p> : null}
-    </div>
+    </div>}
   </section>;
 }
