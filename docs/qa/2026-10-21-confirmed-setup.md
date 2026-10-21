@@ -106,3 +106,27 @@ The repository is public. Automatic approval review rejected uploading real
 roster/room data to it. The application PR therefore contains anonymous test
 fixtures and generic code only. The supplied configuration and updated PDF are
 retained privately, with no room occupant list committed to the public branch.
+
+## Final verification checkpoint
+
+GitHub Actions `verify` passed for PR head
+`b131c1fafa2a50e18579352ddc3721120a738cb9`; Netlify's build, header and redirect
+checks passed. A final local run also passed all 141 tests. The initial public
+bundle is 376 kB before compression, with Admin loaded separately.
+
+The final production database read at approximately 21:19 UTC still showed no
+activated 2026 operations record or scoped pools. Every historical fingerprint
+above matched its baseline, including all 72 existing bets. Independent cron
+execution continued to succeed. A smaller equivalent configuration transaction
+passed isolated Postgres but its production write request also expired.
+
+The served Apple touch icon returns HTTP 200 with image/png and has the expected
+180x180 dimensions; the supplied standard and maskable icons have their declared
+192/512 sizes. The current manifest returned HTTP 200 with an octet-stream MIME
+type; this PR adds the proper manifest Content-Type header.
+
+Authenticated live UI checks remain outstanding. The browser session available
+for this task showed the live sign-in page. An attempted preview inspection was
+rejected by automatic review because the user explicitly required live-only
+verification; no preview UI check was completed or substituted for the live
+review. Activation and production verification must finish before merging.
