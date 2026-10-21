@@ -53,20 +53,32 @@ export function AdminLiveDesk({
   tour,
   onRefresh,
   onHelp,
+  onOpenBetting,
 }: {
   data: AdminDataResponse;
   tour: Tour;
   onRefresh: () => Promise<void> | void;
   onHelp: (guideId: 'guide-results' | 'guide-secondary-prizes') => void;
+  onOpenBetting?: () => void;
 }) {
   const preferredRound = data.rounds.find((round) => round.status === 'active')
     ?? data.rounds.find((round) => round.status === 'planned')
     ?? data.rounds[0];
-  const [selectedRoundId, setSelectedRoundId] = useState(preferredRound?.id ?? '');
+  const [selectedRoundId, setSelectedRoundId] = useState(() => {
+    try {
+      const remembered = window.sessionStorage.getItem(`roegusta:admin:round:${tour.id}`);
+      if (data.rounds.some((round) => round.id === remembered)) return remembered!;
+    } catch { /* The desk also works when browser storage is unavailable. */ }
+    return preferredRound?.id ?? '';
+  });
   const [drafts, setDrafts] = useState<Record<string, ResultDraft>>({});
   const dirtyMatchIds = useRef(new Set<string>());
   const [resultState, setResultState] = useState<SaveState>({ saving: false });
   const [prizeState, setPrizeState] = useState<SaveState>({ saving: false });
+  const busy = resultState.saving || prizeState.saving;
+  const resultFields = useRef(new Map<string, HTMLSelectElement>());
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const prizeRef = useRef<HTMLDivElement>(null);
   const selectedRound = data.rounds.find((round) => round.id === selectedRoundId) ?? preferredRound;
   const roundMatches = useMemo(
     () => data.matches
@@ -90,6 +102,12 @@ export function AdminLiveDesk({
   const [prizeScore, setPrizeScore] = useState('');
   const linkedMarket = data.betMarkets.find((market) => market.id === prizeResult?.linkedBetMarketId)
     ?? data.betMarkets.find((market) => market.roundId === selectedRound?.id && market.marketType === (prizeType === 'team_gross' ? 'team_result' : 'player_performance'));
+
+  useEffect(() => {
+    if (!selectedRound) return;
+    try { window.sessionStorage.setItem(`roegusta:admin:round:${tour.id}`, selectedRound.id); }
+    catch { /* Keep the in-memory selection if storage is unavailable. */ }
+  }, [selectedRound?.id, tour.id]);
 
   useEffect(() => {
     if (preferredRound && !data.rounds.some((round) => round.id === selectedRoundId)) {
@@ -253,12 +271,42 @@ export function AdminLiveDesk({
     ? data.tourTeams
     : data.players.filter((player) => data.tourPlayers.some((tourPlayer) => tourPlayer.playerId === player.id && tourPlayer.attending));
 
+  const incompleteMatches = roundMatches.filter((match) => {
+    const draft = drafts[match.id] ?? resultDraftFor(match);
+    return !draft.winningSide || !isValidMatchplayResultForHoles(draft.resultText, selectedRound.holes)
+      || (normalizeMatchplayResult(draft.resultText) === 'AS') !== (draft.winningSide === 'halved');
+  });
+  const enteredCount = roundMatches.length - incompleteMatches.length;
+  const liveCount = roundMatches.filter((match) => match.status === 'complete' && match.published).length;
+  const unsavedCount = roundMatches.filter((match) => dirtyMatchIds.current.has(match.id)).length;
+  const prizeChanged = prizeWinnerId !== (prizeResult?.winnerPlayerId ?? prizeResult?.winnerTeamId ?? '')
+    || prizeScore !== (prizeResult?.scoreValue === undefined ? '' : String(prizeResult.scoreValue));
+  const resultsNeedPublishing = roundMatches.length > 0 && (unsavedCount > 0 || liveCount < roundMatches.length || !selectedRound.published);
+  const winnerNeedsPublishing = !prizeResult?.published || prizeChanged;
+  const nextStep = incompleteMatches.length > 0 ? 'Enter next result'
+    : resultsNeedPublishing ? 'Review and publish results'
+    : winnerNeedsPublishing ? 'Review playing winner'
+    : onOpenBetting ? 'Open betting tally' : null;
+  const goToNextStep = () => {
+    if (incompleteMatches[0]) {
+      const field = resultFields.current.get(incompleteMatches[0].id);
+      field?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+      field?.focus();
+    } else if (resultsNeedPublishing) {
+      actionsRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+      actionsRef.current?.focus();
+    } else if (winnerNeedsPublishing) {
+      prizeRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+      prizeRef.current?.focus();
+    } else onOpenBetting?.();
+  };
+
   return <section className="admin-live-desk">
     <div className="card live-desk-header">
       <div>
         <p className="eyebrow">On-tour control room</p>
         <h3>Live results desk</h3>
-        <p>Choose the round once, enter every result, then publish one complete update.</p>
+        <p>Choose the round once, then a winner and margin for each match. A/S means the match was halved.</p>
       </div>
       <AdminContextHelpButton label="Live match results" onClick={() => onHelp('guide-results')} />
       <label>Round
@@ -273,6 +321,24 @@ export function AdminLiveDesk({
       </div>
     </div>
 
+    <div className="card live-round-progress" role="region" aria-label="Round progress">
+      <div><p className="eyebrow">{roundLabel(selectedRound)}</p><h4>What’s left to do</h4></div>
+      <ul>
+        <li><strong>{enteredCount} of {roundMatches.length} results entered</strong><span>{liveCount} published{unsavedCount > 0 ? ` · ${unsavedCount} with unsaved changes` : ''}</span></li>
+        <li><strong>Playing winner</strong><span>{prizeChanged ? 'Unsaved changes' : prizeResult?.published ? 'Published' : prizeResult ? 'Saved as draft' : 'Not entered'}</span></li>
+        <li><strong>Betting</strong><span>{!linkedMarket ? 'No market linked' : linkedMarket.status === 'settled' ? 'Settled' : linkedMarket.status === 'void' ? 'Cancelled' : linkedMarket.status === 'draft' ? 'Market needs preparing' : linkedMarket.status === 'open' ? 'Open for picks' : 'Awaiting playing winner'}</span></li>
+      </ul>
+      {roundMatches.length === 0 ? <p>Add matches in Pairings before entering results.</p> : nextStep ? <button type="button" disabled={busy} onClick={goToNextStep}>{nextStep}</button> : <p>Results and playing winner published.</p>}
+    </div>
+
+    <div ref={actionsRef} tabIndex={-1} className="card live-desk-actions" aria-label="Save round results" aria-busy={busy}>
+      <div><strong>Round {selectedRound.roundNumber} results</strong><small>Save draft keeps entries private. Publish updates everyone’s scores.</small></div>
+      <button type="button" disabled={busy || roundMatches.length === 0} onClick={() => void saveResults(false)}>Save draft</button>
+      <button type="button" disabled={busy || roundMatches.length === 0} onClick={() => void saveResults(true)}>Publish round</button>
+      {resultState.message ? <p role="status" className={resultState.message === 'Unsaved changes' ? 'form-notice' : 'form-success'}>{resultState.message}</p> : null}
+      {resultState.error ? <p role="alert" className="form-error">{resultState.error} Your remaining entries are kept. Retry when ready.</p> : null}
+    </div>
+
     <div className="live-result-list">
       {roundMatches.length === 0 ? <p className="card">No matches are set up for this round.</p> : roundMatches.map((match) => {
         const draft = drafts[match.id] ?? resultDraftFor(match);
@@ -282,16 +348,16 @@ export function AdminLiveDesk({
         const sideA = winnerLabel(match, teamsById, 'A');
         const sideB = winnerLabel(match, teamsById, 'B');
         return <article className="card live-result-row" key={match.id}>
-          <header><span>Match {match.matchNumber}{match.teeTime ? ` · ${match.teeTime}` : ''}</span><small>{match.status === 'complete' ? match.published ? 'Result live' : 'Saved privately' : 'Not saved'}</small></header>
+          <header><span>Match {match.matchNumber}{match.teeTime ? ` · ${match.teeTime}` : ''}</span><small>{dirtyMatchIds.current.has(match.id) ? 'Unsaved changes' : match.status === 'complete' ? match.published ? 'Result live' : 'Saved privately' : 'Not saved'}</small></header>
           <div className="live-match-sides"><div><strong>{sideA}</strong><small>{sideAPlayers || 'Players TBC'}</small></div><span>v</span><div><strong>{sideB}</strong><small>{sideBPlayers || 'Players TBC'}</small></div></div>
           <fieldset className="winner-toggle">
             <legend>Winner</legend>
-            <button type="button" disabled={resultState.saving} aria-pressed={draft.winningSide === 'A'} className={draft.winningSide === 'A' ? 'selected' : ''} onClick={() => setDraft(match.id, { winningSide: 'A', resultText: normalizeMatchplayResult(draft.resultText) === 'AS' ? '' : draft.resultText })}>{sideA}</button>
-            <button type="button" disabled={resultState.saving} aria-pressed={draft.winningSide === 'halved'} className={draft.winningSide === 'halved' ? 'selected' : ''} onClick={() => setDraft(match.id, { winningSide: 'halved', resultText: 'AS' })}>A/S</button>
-            <button type="button" disabled={resultState.saving} aria-pressed={draft.winningSide === 'B'} className={draft.winningSide === 'B' ? 'selected' : ''} onClick={() => setDraft(match.id, { winningSide: 'B', resultText: normalizeMatchplayResult(draft.resultText) === 'AS' ? '' : draft.resultText })}>{sideB}</button>
+            <button type="button" disabled={busy} aria-pressed={draft.winningSide === 'A'} className={draft.winningSide === 'A' ? 'selected' : ''} onClick={() => setDraft(match.id, { winningSide: 'A', resultText: normalizeMatchplayResult(draft.resultText) === 'AS' ? '' : draft.resultText })}>{sideA}</button>
+            <button type="button" disabled={busy} aria-pressed={draft.winningSide === 'halved'} className={draft.winningSide === 'halved' ? 'selected' : ''} onClick={() => setDraft(match.id, { winningSide: 'halved', resultText: 'AS' })}>A/S</button>
+            <button type="button" disabled={busy} aria-pressed={draft.winningSide === 'B'} className={draft.winningSide === 'B' ? 'selected' : ''} onClick={() => setDraft(match.id, { winningSide: 'B', resultText: normalizeMatchplayResult(draft.resultText) === 'AS' ? '' : draft.resultText })}>{sideB}</button>
           </fieldset>
           <label className="live-result-text">Result
-            <select value={normalizeMatchplayResult(draft.resultText) ?? ''} disabled={resultState.saving} onChange={(event) => setDraft(match.id, {
+            <select ref={(field) => { if (field) resultFields.current.set(match.id, field); else resultFields.current.delete(match.id); }} value={normalizeMatchplayResult(draft.resultText) ?? ''} disabled={busy} onChange={(event) => setDraft(match.id, {
               resultText: event.target.value,
               winningSide: event.target.value === 'AS' ? 'halved' : draft.winningSide === 'halved' ? '' : draft.winningSide,
             })}>
@@ -303,34 +369,26 @@ export function AdminLiveDesk({
       })}
     </div>
 
-    <div className="card live-desk-actions">
-      <div><strong>Round update</strong><small>Draft stays private. Publish makes the complete round visible.</small></div>
-      <button type="button" disabled={resultState.saving || roundMatches.length === 0} onClick={() => void saveResults(false)}>Save draft</button>
-      <button type="button" disabled={resultState.saving || roundMatches.length === 0} onClick={() => void saveResults(true)}>Publish round</button>
-      {resultState.message ? <p className="form-success">{resultState.message}</p> : null}
-      {resultState.error ? <p className="form-error">{resultState.error}</p> : null}
-    </div>
-
-    <div className="card live-prize-card">
+    <div ref={prizeRef} tabIndex={-1} className="card live-prize-card">
       <div className="section-heading">
         <div><p className="eyebrow">Round winner</p><h3>{prizeType === 'team_gross' ? 'Lowest scramble score' : 'Highest Stableford score'}</h3></div>
         <div className="chip-list"><AdminContextHelpButton label="Secondary prize winner and Bet Punto settlement" onClick={() => onHelp('guide-secondary-prizes')} /><span className={linkedMarket ? 'market-linked' : 'market-missing'}>{linkedMarket ? 'Bet market linked' : 'No market linked'}</span></div>
       </div>
       <div className="live-prize-form">
         <label>Winner
-          <select value={prizeWinnerId} onChange={(event) => { setPrizeWinnerId(event.target.value); setPrizeState({ saving: false, message: 'Unsaved changes' }); }}>
+          <select disabled={busy} value={prizeWinnerId} onChange={(event) => { setPrizeWinnerId(event.target.value); setPrizeState({ saving: false, message: 'Unsaved changes' }); }}>
             <option value="">Choose winner</option>
             {prizeOptions.map((option) => <option value={option.id} key={option.id}>{'displayName' in option ? option.displayName : option.name}</option>)}
           </select>
         </label>
         <label>Winning score
-          <input inputMode="numeric" value={prizeScore} onChange={(event) => { setPrizeScore(event.target.value); setPrizeState({ saving: false, message: 'Unsaved changes' }); }} placeholder={prizeType === 'team_gross' ? 'Gross strokes' : 'Stableford points'} />
+          <input disabled={busy} inputMode="numeric" value={prizeScore} onChange={(event) => { setPrizeScore(event.target.value); setPrizeState({ saving: false, message: 'Unsaved changes' }); }} placeholder={prizeType === 'team_gross' ? 'Gross strokes' : 'Stableford points'} />
         </label>
-        <button type="button" disabled={prizeState.saving} onClick={() => void savePrize(false)}>Save draft</button>
-        <button type="button" disabled={prizeState.saving} onClick={() => void savePrize(true)}>Publish & settle bets</button>
+        <button type="button" disabled={busy} onClick={() => void savePrize(false)}>Save draft</button>
+        <button type="button" disabled={busy} onClick={() => void savePrize(true)}>Publish & settle bets</button>
       </div>
-      {prizeState.message ? <p className="form-success">{prizeState.message}</p> : null}
-      {prizeState.error ? <p className="form-error">{prizeState.error}</p> : null}
+      {prizeState.message ? <p role="status" className="form-success">{prizeState.message}</p> : null}
+      {prizeState.error ? <p role="alert" className="form-error">{prizeState.error}</p> : null}
     </div>
   </section>;
 }

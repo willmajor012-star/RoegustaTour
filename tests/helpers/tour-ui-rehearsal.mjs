@@ -123,12 +123,20 @@ export async function rehearseTourUi(db, snapshot) {
       const expectedMatches = snapshot.matches.filter((match) => match.round_id === round.id).sort((a, b) => a.match_number - b.match_number);
       const rows = [...document.querySelectorAll('.live-result-row')];
       assert.equal(rows.length, expectedMatches.length);
+      const progress = () => document.querySelector('[aria-label="Round progress"]');
+      assert.match(progress().textContent, new RegExp(`0 of ${rows.length} results entered`));
+      await act(async () => [...progress().querySelectorAll('button')].find((button) => button.textContent === 'Enter next result').click());
+      assert.equal(document.activeElement, rows[0].querySelector('select'), 'next step focuses the first incomplete result');
       for (let i = 0; i < rows.length; i++) {
         const expected = expectedMatches[i];
         const sideIndex = expected.winning_side === 'A' ? 0 : expected.winning_side === 'halved' ? 1 : 2;
         await act(async () => rows[i].querySelectorAll('.winner-toggle button')[sideIndex].click());
         await change(rows[i].querySelector('.live-result-text select'), expected.result_text);
       }
+      assert.match(progress().textContent, new RegExp(`${rows.length} of ${rows.length} results entered`));
+      assert.match(progress().textContent, new RegExp(`${rows.length} with unsaved changes`));
+      await act(async () => [...progress().querySelectorAll('button')].find((button) => button.textContent === 'Review and publish results').click());
+      assert.equal(document.activeElement, document.querySelector('.live-desk-actions'));
       if (round.id === data.rounds[0].id) {
         failMatchId = expectedMatches[1].id;
         await act(async () => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Publish round').click());
@@ -149,6 +157,10 @@ export async function rehearseTourUi(db, snapshot) {
       await flush();
       assert.equal(document.querySelector('.live-desk-actions .form-error'), null);
       assert.ok(data.matches.filter((match) => match.roundId === round.id).every((match) => match.status === 'complete' && match.published));
+      assert.match(progress().textContent, new RegExp(`${rows.length} published`));
+      assert.doesNotMatch(progress().textContent, /with unsaved changes/);
+      await act(async () => [...progress().querySelectorAll('button')].find((button) => button.textContent === 'Review playing winner').click());
+      assert.equal(document.activeElement, document.querySelector('.live-prize-card'));
       const expectedPrize = snapshot.round_prize_results.find((prize) => prize.round_id === round.id);
       await change(document.querySelector('.live-prize-form select'), expectedPrize.winner_player_id ?? expectedPrize.winner_team_id);
       // React tracks text inputs through its native setter.
@@ -161,6 +173,7 @@ export async function rehearseTourUi(db, snapshot) {
       await flush();
       assert.equal(document.querySelector('.live-prize-card .form-error')?.textContent, undefined);
       assert.equal(data.betMarkets.find((market) => market.roundId === round.id).status, 'settled');
+      assert.match(progress().textContent, /Playing winnerPublishedBettingSettled/);
     }
     assert.deepEqual(data.tourTeamResults.map((result) => result.finalPoints).sort((a, b) => b - a), snapshot.tour_team_results.map((result) => Number(result.final_points)).sort((a, b) => b - a));
     assert.equal(Number((await db.query('select sum(payout_amount_pence) total from bets')).rows[0].total), snapshot.bets.filter((bet) => bet.status === 'active').reduce((sum, bet) => sum + Number(bet.payout_amount_pence), 0));
@@ -180,6 +193,7 @@ export async function rehearseTourUi(db, snapshot) {
     await act(async () => root.render(React.createElement(Admin)));
     await flush();
     assert.equal(document.querySelectorAll('.admin-workspace-nav button').length, 6);
+    assert.equal(document.querySelector('.live-desk-header select').value, data.rounds.at(-1).id, 'the tour round selection survives remounting the desk');
     // Use the production Admin loading boundary, not the simplified desk fixture.
     // Saving a prize refreshes Admin while an unrelated match still has edits.
     const liveDesk = document.querySelector('.admin-live-desk');
@@ -201,6 +215,7 @@ export async function rehearseTourUi(db, snapshot) {
     assert.equal(document.querySelector('.admin-live-desk'), liveDesk, 'desk stays mounted during refresh');
     assert.equal(liveDesk.parentElement.getAttribute('aria-busy'), 'true');
     assert.ok(liveDesk.parentElement.hasAttribute('inert'), 'writes are disabled while existing data refreshes');
+    assert.ok([...liveDesk.querySelectorAll('.winner-toggle button, .live-prize-form button, .live-prize-form select, .live-prize-form input')].every((control) => control.disabled), 'result and prize controls cannot start overlapping saves');
     assert.equal(document.querySelector('.live-result-text select').value, 'AS');
     await act(async () => { holdAdminData = undefined; releaseAdminData(); });
     await flush();
@@ -224,6 +239,21 @@ export async function rehearseTourUi(db, snapshot) {
         await act(async () => document.querySelectorAll('.admin-subsection-nav button')[section].click());
         await flush();
         assert.ok(document.body.textContent.trim().length > 100);
+        const marketEditor = [...document.querySelectorAll('details')].find((details) => details.querySelector(':scope > summary')?.textContent === 'Prepare or edit betting markets');
+        if (marketEditor) {
+          assert.equal(marketEditor.open, false, 'market setup starts collapsed');
+          assert.equal([...document.querySelectorAll('button')].some((button) => button.textContent === 'Reset Bet Punto for this tour'), false, 'destructive reset is absent from the betting workspace');
+          assert.ok(document.querySelector('.bet-admin-summary').compareDocumentPosition(marketEditor) & window.Node.DOCUMENT_POSITION_FOLLOWING, 'tally comes before setup');
+          await act(async () => [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Edit market').click());
+          assert.equal(marketEditor.open, true, 'editing a saved market opens the editor');
+          assert.equal(marketEditor.querySelector('input').value, data.betMarkets[0].title);
+        }
+        const reset = [...document.querySelectorAll('details')].find((details) => details.querySelector(':scope > summary')?.textContent.startsWith('Reset Bet Punto for '));
+        if (reset) {
+          assert.equal(reset.open, false, 'reset stays collapsed in Settings');
+          assert.match(reset.textContent, /Type RESET BET PUNTO/);
+          assert.ok(reset.querySelector('input[type="checkbox"]'), 'existing reset acknowledgement remains');
+        }
         const roundCount = [...document.querySelectorAll('label')].find((label) => label.textContent.trim().startsWith('Number of rounds'))?.querySelector('select');
         if (roundCount) {
           const marketCount = Number((await db.query('select count(*) from bet_markets')).rows[0].count);

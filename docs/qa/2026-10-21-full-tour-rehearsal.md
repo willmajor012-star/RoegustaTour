@@ -140,6 +140,29 @@ It failed before the fix (four rounds instead of five) in both the 16-player
 and 24-player rehearsals. The hosted walkthrough then continued using scheduled
 individual round creation and completed the operational checks recorded above.
 
+## On-tour admin usability
+
+The Live desk now shows entered and published result counts, unsaved changes,
+playing-winner progress and the linked market status for the selected round.
+Its next-step button focuses the next incomplete margin, the results save bar,
+or the playing-winner card. After publishing both, it can open the betting tally.
+Round selection is remembered per tour for the browser session, including when
+returning from another admin workspace. The save bar stays above the result list
+while scrolling, uses an opaque background and names the round being updated.
+Result and prize controls block overlapping saves, with live status and error
+announcements. Controls retain at least 44px touch targets.
+
+Bet Punto opens on the tally. Market setup and long option lists start collapsed;
+Edit market opens and scrolls to the editor. The existing reset confirmation and
+acknowledgement are retained under Settings → Access & resets, inside a closed
+disclosure naming the selected tour.
+
+Both complete UI rehearsals assert progress and next-step focus, remembered round
+selection, save blocking, tally-before-setup order, editor opening and reset
+placement. All 137 tests and the production build pass. A direct phone-width
+browser visual check remains outstanding: the browser policy rejected the local
+static fixture URL. These additions have not yet been verified on the live site.
+
 ## Reproduction commands
 
 Run `npm test` for the full regression suite, including the full-tour rehearsal,

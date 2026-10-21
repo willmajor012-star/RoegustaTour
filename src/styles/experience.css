@@ -1211,13 +1211,14 @@
 
 .live-desk-actions {
   position: sticky;
-  bottom: 78px;
+  top: 8px;
   z-index: 3;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 8px;
   border-color: var(--rt-gold);
+  background: var(--rt-cream);
   box-shadow: 0 18px 50px rgba(15, 47, 36, .2);
 }
 
@@ -1248,9 +1249,61 @@
 }
 
 .live-desk-actions .form-success,
+.live-desk-actions .form-notice,
 .live-desk-actions .form-error {
   grid-column: 1 / -1;
   margin: 2px 0 0;
+}
+
+.live-round-progress ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.live-round-progress li {
+  display: grid;
+  gap: 4px;
+}
+
+.live-round-progress li span,
+.live-desk-actions .form-notice {
+  color: var(--rt-ink-muted, #6f6a5d);
+}
+
+.live-round-progress button,
+.admin-setup-disclosure > summary,
+.admin-market-options > summary {
+  min-height: 44px;
+  padding: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-setup-disclosure,
+.admin-market-options {
+  min-width: 0;
+  border-top: 1px solid var(--rt-gold);
+  scroll-margin-top: 16px;
+}
+
+.admin-setup-disclosure[open] > summary,
+.admin-market-options[open] > summary {
+  margin-bottom: 12px;
+}
+
+.live-result-text select,
+.live-prize-form select,
+.live-prize-form input {
+  min-height: 44px;
+  font-size: 1rem;
+}
+
+.live-result-row,
+.live-prize-card {
+  scroll-margin-top: 180px;
 }
 
 .live-prize-form {
@@ -1543,6 +1596,12 @@
 
   .live-desk-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 12px;
+    top: 0;
+  }
+
+  .live-round-progress ul {
+    grid-template-columns: 1fr;
   }
 
   .live-desk-actions > div {
