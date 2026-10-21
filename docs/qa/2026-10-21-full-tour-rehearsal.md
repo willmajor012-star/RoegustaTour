@@ -55,6 +55,12 @@ fresh authenticated walkthrough of the hosted Admin screens remains outstanding.
    an incompatible AS margin. Selecting AS as a margin selects the halved outcome.
 3. Round selection is disabled during saves, and match controls are disabled while
    result requests run, to keep the save attached to the displayed round/entries.
+4. Admin now keeps the Live desk mounted while data refreshes and after a refresh
+   failure. Editing is disabled until the refresh succeeds, with an explicit retry
+   control after failure. Changing tours resets the desk to the new tour. The
+   production Admin shell test saves a prize while a match has unsaved edits,
+   holds its data request open, then tests both successful refresh and failed
+   refresh/retry. The same test fails against the previous loading behaviour.
 
 ## Usability assessment
 

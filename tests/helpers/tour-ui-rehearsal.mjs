@@ -36,7 +36,15 @@ export async function rehearseTourUi(db, snapshot) {
   const requests = [];
   const pending = new Set();
   let failMatchId;
+  let holdAdminData;
+  let failAdminData = false;
   async function runEndpoint(name, payload, method = 'POST') {
+    if (name === 'admin-data' && holdAdminData) await holdAdminData;
+    if (name === 'admin-data' && failAdminData) {
+      failAdminData = false;
+      const payload = { message: 'Simulated refresh failure' };
+      return { statusCode: 500, body: JSON.stringify(payload), payload };
+    }
     if (name === 'admin-submit-result' && payload?.matchId === failMatchId) {
       failMatchId = undefined;
       requests.push({ name, status: 500 });
@@ -54,14 +62,16 @@ export async function rehearseTourUi(db, snapshot) {
     task.finally(() => pending.delete(task)).catch(() => {});
     return task;
   }
-  const flush = () => act(async () => {
+  const flush = async () => {
     for (let i = 0; i < 30; i++) {
-      if (pending.size) await Promise.all([...pending]);
-      await new Promise(setImmediate);
+      await act(async () => {
+        if (pending.size) await Promise.all([...pending]);
+        await new Promise(setImmediate);
+      });
       if (!pending.size && i > 0) break;
     }
     assert.equal(pending.size, 0, 'all UI requests completed');
-  });
+  };
   globalThis.fetch = async (url, init = {}) => {
     const name = String(url).split('/').at(-1).split('?')[0];
     const response = await endpoint(name, init.body ? JSON.parse(init.body) : null, init.method ?? 'GET');
@@ -170,6 +180,42 @@ export async function rehearseTourUi(db, snapshot) {
     await act(async () => root.render(React.createElement(Admin)));
     await flush();
     assert.equal(document.querySelectorAll('.admin-workspace-nav button').length, 6);
+    // Use the production Admin loading boundary, not the simplified desk fixture.
+    // Saving a prize refreshes Admin while an unrelated match still has edits.
+    const liveDesk = document.querySelector('.admin-live-desk');
+    assert.ok(liveDesk, document.body.textContent);
+    await act(async () => liveDesk.querySelectorAll('.winner-toggle button')[1].click());
+    let releaseAdminData;
+    holdAdminData = new Promise((done) => { releaseAdminData = done; });
+    const refreshRequested = new Promise((done) => {
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = async (url, init) => {
+        if (String(url).includes('/admin-data')) done();
+        return originalFetch(url, init);
+      };
+    });
+    await act(async () => {
+      document.querySelector('.live-prize-form button').click();
+      await refreshRequested;
+    });
+    assert.equal(document.querySelector('.admin-live-desk'), liveDesk, 'desk stays mounted during refresh');
+    assert.equal(liveDesk.parentElement.getAttribute('aria-busy'), 'true');
+    assert.ok(liveDesk.parentElement.hasAttribute('inert'), 'writes are disabled while existing data refreshes');
+    assert.equal(document.querySelector('.live-result-text select').value, 'AS');
+    await act(async () => { holdAdminData = undefined; releaseAdminData(); });
+    await flush();
+    assert.equal(document.querySelector('.admin-live-desk'), liveDesk);
+    assert.equal(document.querySelector('.live-result-text select').value, 'AS', 'prize-triggered refresh keeps the unsaved result');
+    failAdminData = true;
+    await act(async () => document.querySelector('.live-prize-form button').click());
+    await flush();
+    assert.equal(document.querySelector('.admin-live-desk'), liveDesk, 'failed refresh also retains the desk');
+    assert.ok(liveDesk.parentElement.hasAttribute('inert'), 'stale data cannot be edited after a refresh error');
+    await act(async () => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Retry loading admin data').click());
+    await flush();
+    assert.equal(document.querySelector('.admin-live-desk'), liveDesk);
+    assert.equal(document.querySelector('.live-result-text select').value, 'AS', 'retry preserves the unsaved result');
+    assert.equal(liveDesk.parentElement.hasAttribute('inert'), false);
     for (let workspace = 0; workspace < 6; workspace++) {
       await act(async () => document.querySelectorAll('.admin-workspace-nav button')[workspace].click());
       await flush();

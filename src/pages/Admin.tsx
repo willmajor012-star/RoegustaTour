@@ -3058,6 +3058,7 @@ export function Admin() {
                 Change tour
                 <select
                   value={selectedTour?.id ?? ''}
+                  disabled={dataLoading}
                   onChange={(event) =>
                     void loadAdminData(event.target.value || undefined)
                   }
@@ -3093,16 +3094,24 @@ export function Admin() {
           {dataLoading ? (
             <p className="card">Loading live admin data…</p>
           ) : null}
-          {dataError ? <p className="card form-error">{dataError}</p> : null}
-          {!dataLoading && !dataError && adminData ? (
+          {dataError ? (
+            <div className="card form-error">
+              <p>{dataError}</p>
+              <button type="button" disabled={dataLoading} onClick={() => void loadAdminData()}>Retry loading admin data</button>
+            </div>
+          ) : null}
+          {adminData && (activeWorkspace === 'live' || (!dataLoading && !dataError)) ? (
             <>
               {activeWorkspace === 'live' && selectedTour ? (
-                <AdminLiveDesk
-                  data={adminData}
-                  tour={selectedTour}
-                  onRefresh={() => loadAdminData(selectedTour.id)}
-                  onHelp={setContextHelpId}
-                />
+                <div aria-busy={dataLoading} inert={dataLoading || Boolean(dataError)}>
+                  <AdminLiveDesk
+                    key={selectedTour.id}
+                    data={adminData}
+                    tour={selectedTour}
+                    onRefresh={() => loadAdminData(selectedTour.id)}
+                    onHelp={setContextHelpId}
+                  />
+                </div>
               ) : null}
               {activeWorkspace !== 'live' ? (
                 <>
