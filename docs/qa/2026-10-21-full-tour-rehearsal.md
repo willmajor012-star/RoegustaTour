@@ -5,7 +5,9 @@
 The three-round database rehearsal passed both in isolated Postgres and against
 the live database functions. The live rehearsal used exception rollback: no QA
 tour, player, match, bet, result or audit entry was committed. The 2026 public-tour
-selection and the pre-existing 2099 QA tour remain unchanged.
+selection and the pre-existing 2099 QA tour were unchanged by that rollback-only
+scenario. A subsequent hosted browser rehearsal populated the private 2099 QA
+tour as described below. The real 2026 tour remains the current public tour.
 
 | Scenario | Verified result |
 | --- | --- |
@@ -41,9 +43,48 @@ publishes the three playing winners through the Live desk, settles their linked
 markets, and completes the tour. It also opens the full Admin shell and its six
 workspaces and available subsections.
 
-The database-only live rehearsal calls the installed SQL functions directly. It
-does not verify Netlify's live request routing or a hosted browser session. A
-fresh authenticated walkthrough of the hosted Admin screens remains outstanding.
+The database-only live rehearsal calls the installed SQL functions directly.
+The subsequent authenticated hosted rehearsal below also exercises the live
+Netlify request routing through the production Admin screens.
+
+## Hosted 24-player rehearsal
+
+Completed on the live site in `QA TEST TOUR 2099`, with `is_test = true` and the
+tour kept planned and non-current so it stays outside public tour history.
+
+| Hosted action | Verified result |
+| --- | --- |
+| Attendance and assignments | 24 attending players, two QA teams of 12, nobody unassigned |
+| Round setup | Three saved rounds: scramble, better ball and singles |
+| Pairings | Six scramble, six better-ball and 12 singles matches, all saved through the UI |
+| Sequential tee times | Eight-minute intervals from 09:00, ending 09:40 for pairs and 10:28 for singles |
+| Results | All 24 matches complete and published within the private tour; 72 player result records |
+| Scoring | Round scores 4–2, 3–3 and 6–6, final total 13–11 |
+| Match correction | Changing the first winner produces 12–12; restoring it returns 13–11, still 72 player results |
+| Playing winners | QA Red with 70 gross, Adam Musikant with 40 points, Will Major with 41 points |
+| Market guard | Publishing a winner against a draft market is rejected |
+| Automatic defaults | Closing each required market produces exactly 24 default picks, 72 in total |
+| Settlement | All three pools settled through the Live desk; £240 per round, £720 simulated stake and £720 payouts |
+| Settlement correction | Changing the scramble winner to QA Blue retains 24 picks and £240 payouts; restoring QA Red retains the same totals |
+| Isolation | Roegusta Tour 2026 remains current public; QA tour remains planned and non-current |
+
+The rounds initially used dates in June 2099. For the cutoff and settlement
+phase, only those QA round dates were changed to 1–3 June 2020. Their fixed market
+deadlines synchronised automatically to 08:00 UTC, equivalent to 09:00 Lisbon.
+Existing market titles retain their original June 2099 date text. All ledger
+amounts are simulated test records, with no payment or collection.
+
+The hosted production desk returns to Round 1 after a save-triggered refresh.
+This independently confirms the loading-boundary behaviour addressed in this PR.
+The hosted walkthrough used the current live version; the new controlled margin
+inputs and refresh fix were verified locally and in the deployment build, and
+are not yet deployed to the main live site.
+
+Public bettor entry/token editing and marking a tour complete were exercised in
+the isolated rehearsals, not on the hosted QA tour. Public bettor entry requires
+the current public tour, and completing the QA tour would expose it in public
+history. Neither was needed to test the hosted defaults and settlement flow.
+The private QA records are retained for inspection.
 
 ## Result-entry fixes
 
@@ -96,8 +137,8 @@ first tee time. This also covers saving an individual unscheduled round. The
 full Admin regression creates two additional unscheduled rounds with eligible
 betting options already present and checks that both save without new markets.
 It failed before the fix (four rounds instead of five) in both the 16-player
-and 24-player rehearsals. The initial live QA setup is partial; a complete
-hosted browser walkthrough remains outstanding.
+and 24-player rehearsals. The hosted walkthrough then continued using scheduled
+individual round creation and completed the operational checks recorded above.
 
 ## Reproduction commands
 
