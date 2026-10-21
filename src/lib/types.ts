@@ -36,6 +36,7 @@ export type Tour = {
   prizeFund?: TourPrizeFund;
   isCurrentPublic?: boolean;
   isTest?: boolean;
+  rulesVersion?: string;
 };
 
 export type TourPlayer = {
@@ -129,10 +130,12 @@ export type Round = {
   teeTime?: string;
   format?: MatchFormat;
   formatLabel?: string;
-  holes: 9 | 18;
+  holes: number;
   notes?: string;
   status: 'draft' | 'planned' | 'active' | 'complete';
   published?: boolean;
+  competitionRole?: 'contributing' | 'matchplay' | 'fun';
+  holeCountConfirmed?: boolean;
 };
 
 
@@ -225,6 +228,10 @@ export type BetMarket = {
   resultOptionId?: string;
   resultText?: string;
   required?: boolean;
+  poolKey?: string;
+  minimumStakePence?: number;
+  competitionKey?: string;
+  sessionKey?: string;
 };
 
 export type BetOption = {
@@ -233,6 +240,8 @@ export type BetOption = {
   label: string;
   linkedPlayerId?: string;
   linkedTeamId?: string;
+  linkedEntryId?: string;
+  active?: boolean;
   linkedMatchSide?: 'A' | 'B' | 'halved';
   oddsDecimal?: number;
   sortOrder: number;

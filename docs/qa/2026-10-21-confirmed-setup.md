@@ -1,0 +1,108 @@
+# Confirmed 2026 implementation verification
+
+## Deployment state
+
+Application implementation is complete on `feat/confirmed-2026-tour`, based on
+main `f6e69ef` (merged PR 63). The PR 63 mobile workflow remains in place.
+
+The production Supabase schema migrations and the named `pg_cron` job are
+installed. The job is active on `* * * * *`; actual independent executions are
+recorded as succeeded in `bet_pool_scheduler_runs` (including 20:37 and 20:38 UTC
+on 21 October). It calls the SQL function directly; no browser, Netlify visit,
+HTTP secret or admin button is needed. Processing scans overdue configured
+pools, so a missed attempt catches up at the next successful run.
+
+**The actual 2026 data configuration has not been activated.** The Supabase
+connector returned `Invalid or expired requestState` for the atomic configuration
+write; another stalled request was cancelled. A read after the cancellation
+confirmed `rules_version = null`, zero operations rows and zero scoped pools.
+The versioned configuration attempt also returned the same transport error.
+Do not report the roster, rooms, six pools or new programme as live until the
+configuration succeeds and the verification query below confirms them. No
+application merge or production deployment has been performed in this state.
+
+The separately retained private configuration SQL is the complete one-time atomic data
+configuration. It refuses to overwrite an installed operations record, updates
+existing round and market IDs, preserves historical profiles and financial
+records, and stores a before snapshot in the audit log. Run it once through a
+working authorised database connection, then deploy the application PR.
+
+## Verified locally
+
+- Complete portable migration chain executes in isolated Postgres.
+- All 141 regression tests pass; TypeScript and the production build pass.
+- 24 attending golfers, six independent pool minima: £45 per tourist, £1,080
+  aggregate. Extra Friday stakes remain extra; they do not cover other pools.
+- Partial £5 commitments in a £10 pool receive £5 on the bettor's own selection.
+  Existing picks on other selections are retained. Fully funded pools add zero.
+- Missing own pairs produce explicit exceptions, not arbitrary selections.
+- Repeated and concurrent processing does not add commitments twice.
+- Closing Friday and combined pools does not close the evening Par 3.
+- Authoritative database clock rejects late discretionary bets.
+- Combined hole records persist by session and stable pair identity. Own-ball
+  better ball, zero-point completed holes, pickup, no score and unentered holes
+  remain distinct. Nine-hole handicap inputs cannot be treated as 18-hole inputs.
+- Combined countback uses Monday nine/last six/last three/final hole followed by
+  the corresponding Friday comparisons, in actual playing order. Exact ties
+  require a recorded decision. Betting decisions have their own scope.
+- Monday ordering requires complete Friday cards, preserves pairs, and uses the
+  highest Friday scores first. Friday corrections flag a published order without
+  moving it or changing betting selection IDs.
+- Finalisation awards exactly 39 points. Correction removes stale confirmed
+  contributions; re-finalisation replaces them with 39, never 78.
+- Six Saturday and twelve Sunday matches add exactly 18 points. A complete
+  28.5–28.5 result is a draw, with exactly 48 player match-result rows; Stableford
+  and Par 3 do not inflate matchplay statistics.
+- Incomplete Stableford cards cannot settle pools. Correcting a settled combined
+  winner replaces payouts while conserving the £120 pool.
+- Optimistic versions reject stale admin writes. Room moves are saved atomically;
+  duplicate occupants and capacity violations are rejected.
+- Existing 16- and 24-player tour rehearsals, public/admin authentication and
+  the previous mobile draft-preservation tests continue to pass.
+
+The private PDF reference is generated with the real exported starting records
+plus the confirmed configuration inside isolated Postgres. All four rendered
+pages were inspected. The app's download route regenerates from actual saved
+rounds, itinerary and rooms, behind the existing public access gate.
+
+## Preserved historical fingerprint before deployment
+
+| Records | Count | MD5 of ordered row snapshot |
+| --- | ---: | --- |
+| Historical/private QA matches outside 2026 | 108 | `4f4b2c3f4c11495eeba7f9af151fb067` |
+| Player match results outside 2026 | 328 | `445d84abbb9f68cb44f4d1e6749c0d0d` |
+| Tour-side results outside 2026 | 10 | `52075bb49982cdcafe4bfed00f5e87c4` |
+| Existing placed bets | 72 | `8221fff7a3d8c9081a487726f1efbaa5` |
+
+## Required confirmed inputs
+
+No valid saved 2026 pairs or side memberships existed; the implementation does
+not invent them. Individual handicaps, chosen tees, actual nine-hole playing
+orders, Monday scramble settings, and the Par 3 card/hole count remain explicit
+setup requirements. Saturday's later tee times remain unconfirmed. Monday keeps
+the saved O'Connor Jnr course.
+
+The prepared private configuration reconciles exact supplied names and keeps
+unresolved aliases as explicit checks without duplicate identities.
+Previously saved travel/meal rows are retained as retired data pending
+reconfirmation because the Friday arrival conflicted with confirmed 14:20 golf.
+Existing cash-prize allocations are preserved, pending reconfirmation against the
+new programme; they are not silently relabelled after round renumbering.
+
+The user brief ended at “For iPhone and iPad, explain:”. Standard Apple/Android
+installation guidance covers the supplied installation requirement; any omitted
+continuation still needs to be supplied.
+
+## Production completion checks
+
+After the configuration succeeds, confirm five rounds, four competition records,
+six scoped open pools, £45 total minima, 24 attendance records, six houses and 12
+rooms. Verify Sunday has 24 active individual selections; pair selections await
+published confirmed pairs. Recompare historical fingerprints, inspect actual cron
+run records and admin exceptions, then test the deployed live Plan, Rooms,
+scorecards, draw, Monday publication, installation entry point and PDF link.
+
+The repository is public. Automatic approval review rejected uploading real
+roster/room data to it. The application PR therefore contains anonymous test
+fixtures and generic code only. The supplied configuration and updated PDF are
+retained privately, with no room occupant list committed to the public branch.

@@ -18,6 +18,7 @@ type Props = {
 const stakeChoices = [500, 1000, 1500, 2000];
 
 function marketTypeLabel(market: BetMarket) {
+  if (market.poolKey) return market.poolKey === 'sunday' ? 'Individual Stableford' : market.poolKey === 'par3' ? 'Scratch scramble Stableford' : 'Pair Stableford';
   const kind = betPuntoMarketKind(market);
   if (kind === 'player_winner') return 'Highest Stableford';
   if (kind === 'team_winner') return 'Lowest scramble score';
@@ -37,6 +38,7 @@ function closeLabel(closesAt?: string | null, timeZone?: string) {
 }
 
 export function BetMarketCard({ market, round, timeZone, options, bets, bettorName, onSubmit, submitMessage }: Props) {
+  options = options.filter((o) => o.active !== false);
   const [selectedOptionId, setSelectedOptionId] = useState(options[0]?.id ?? '');
   const [selectedStakePence, setSelectedStakePence] = useState(1000);
   const [comment, setComment] = useState('');
@@ -81,6 +83,8 @@ export function BetMarketCard({ market, round, timeZone, options, bets, bettorNa
         </div>
         <span>{formatPenceCurrency(potPence)} pot</span>
       </div>
+      {market.poolKey ? <p>Minimum {formatPenceCurrency(market.minimumStakePence ?? 0)} in this pool · {closeLabel(market.closesAt, 'Europe/Lisbon')} Portugal local time.</p> : null}
+      {market.poolKey && options.length === 0 ? <p>Selections await the published competition pairs. This pool retains its own minimum and cutoff.</p> : null}
       {market.description && <p className="bet-market-description">{market.description}</p>}
 
       {market.status === 'settled' && winningOption ? <div className="settled-market-summary">

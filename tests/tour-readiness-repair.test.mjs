@@ -70,28 +70,8 @@ test('2026 setup installs all library guides and links only matching rounds by s
     'netlify/functions/admin-install-course-templates.ts',
   );
 
-  assert.match(
-    setup,
-    /\['faldo', 'oconnor', 'old-course'\][\s\S]*published: true, showOnHome: true/,
-  );
-  assert.match(setup, /course_slug: 'faldo'/);
-  assert.match(setup, /course_slug: 'old-course'/);
-  assert.match(
-    setup,
-    /courseRows\.find\(\(course\) => course\.slug === round\.course_slug\)/,
-  );
-  assert.match(
-    setup,
-    /Friday Par 3 Pairs Scramble[\s\S]*course_name: 'Amendoeira Par 3'/,
-  );
-  assert.doesNotMatch(
-    setup.match(
-      /\{ round_number: 1,[^\n]+Friday Par 3 Pairs Scramble[^\n]+\}/,
-    )?.[0] ?? '',
-    /course_slug/,
-  );
-  assert.match(setup, /round_number: 2,[^\n]+course_slug: 'faldo'/);
-  assert.match(setup, /round_number: 4,[^\n]+course_slug: 'oconnor'/);
+  assert.match(setup, /old 2026 template has been replaced/);
+  assert.doesNotMatch(setup, /\.update\(|\.insert\(/);
   assert.match(editor, /Install missing 2026 guide set/);
   assert.match(editor, /Existing saved guides were preserved/);
   assert.match(installer, /installCourseTemplatesForTour/);

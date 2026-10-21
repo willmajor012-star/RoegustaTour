@@ -85,7 +85,7 @@ describe('secondary prize result support', () => {
 
   it('Tour itinerary does not duplicate secondary prize information from Golf', () => {
     assert.doesNotMatch(tourInfoSource, /winnerPlayerId|winnerTeamId|scoreValue|Secondary prize/);
-    assert.match(tourInfoSource, /title="Itinerary"/);
+    assert.match(tourInfoSource, /title="Plan"/);
   });
 
   it('backend validates secondary prize linked IDs', () => {

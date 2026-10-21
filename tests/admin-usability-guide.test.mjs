@@ -37,7 +37,7 @@ test('Admin operating manual includes required workflow headings and separation 
 });
 
 test('Admin guide documents manual and unsupported boundaries accurately', () => {
-  for (const expected of ['manual admin bet', 'Secondary prize results', 'player-photos', 'Direct upload is not currently built', 'no wallet', 'no payment handling', 'no actual money transfer', 'does not create Friday golf', '10 & 8 is not a valid 9-hole result']) {
+  for (const expected of ['manual admin bet', 'Secondary prize results', 'player-photos', 'Direct upload is not currently built', 'no wallet', 'no payment handling', 'no actual money transfer', 'Friday Faldo starts 14:20', '10 & 8 is not a valid 9-hole result']) {
     assert.match(adminSource, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
   }
   assert.doesNotMatch(adminSource, /Team 1 \/ Team 2|Team 1|Team 2/);

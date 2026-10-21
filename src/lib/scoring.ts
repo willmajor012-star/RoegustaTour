@@ -47,7 +47,7 @@ export function derivePlayerMatchResultsFromMatch(match: Match, participants: Ma
   });
 }
 
-export function calculateTeamScoreByTour(tourId: string, teams: TourTeam[], rounds: Round[], matches: Match[]): TeamScoreRow[] {
+export function calculateTeamScoreByTour(tourId: string, teams: TourTeam[], rounds: Round[], matches: Match[], awards: Array<{ teamId: string; points: number; competitionId: string }> = []): TeamScoreRow[] {
   const tourRounds = rounds.filter((round) => round.tourId === tourId);
   const scores = teams
     .filter((team) => team.tourId === tourId)
@@ -62,7 +62,7 @@ export function calculateTeamScoreByTour(tourId: string, teams: TourTeam[], roun
   const scoreByTeam = new Map(scores.map((score) => [score.teamId, score]));
 
   matches
-    .filter((match) => match.tourId === tourId && match.status === 'complete')
+    .filter((match) => match.tourId === tourId && match.status === 'complete' && !['contributing', 'fun'].includes(tourRounds.find((r) => r.id === match.roundId)?.competitionRole ?? ''))
     .forEach((match) => {
       const derived = deriveMatchPoints(match.winningSide, match.pointsAvailable);
       const sideA = scoreByTeam.get(match.sideATeamId);
@@ -79,5 +79,6 @@ export function calculateTeamScoreByTour(tourId: string, teams: TourTeam[], roun
       }
     });
 
+  for (const award of awards) { const row = scoreByTeam.get(award.teamId); if (row) { row.points += award.points; row.pointsByRound[award.competitionId] = (row.pointsByRound[award.competitionId] ?? 0) + award.points; } }
   return scores.sort((a, b) => b.points - a.points || a.teamName.localeCompare(b.teamName));
 }

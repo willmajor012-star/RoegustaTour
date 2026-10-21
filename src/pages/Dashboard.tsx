@@ -89,7 +89,7 @@ export function Dashboard() {
       activeData.tourPlayers,
       activeData.attendingPlayerCount,
     );
-  const remainingPoints = totalPointsAvailable - awardedPoints(visibleMatches);
+  const remainingPoints = totalPointsAvailable - (tour?.rulesVersion ? activeData.scores.reduce((sum, row) => sum + row.points, 0) : awardedPoints(visibleMatches));
   const pointsToWinOutright = pointsRequiredToWinOutright(totalPointsAvailable);
   const scheduled = visibleMatches
     .filter((match) => match.status !== 'complete')
@@ -151,7 +151,7 @@ export function Dashboard() {
         <p className="eyebrow">{onCourse ? 'On course' : 'Up next'}</p>
         <h2>{nextRound ? formatRoundDisplayName(nextRound) : 'Next round TBC'}</h2>
         <p>{nextRound?.courseName ?? 'Course TBC'}{nextRound?.roundDate ? ` · ${formatShortDate(nextRound.roundDate)}` : ''}</p>
-        <div className="up-next-meta"><span>{upNextFormat}</span><span>{nextRound?.holes ?? 18} holes</span></div>
+        <div className="up-next-meta"><span>{upNextFormat}</span><span>{nextRound?.holeCountConfirmed === false ? 'Hole count TBC' : (nextRound?.holes ?? 18) + ' holes'}</span></div>
       </div>
       <div className="up-next-time"><small>First tee</small><strong>{upNextTime}</strong><span className="card-chevron" aria-hidden="true">›</span></div>
     </a>}

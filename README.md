@@ -54,7 +54,7 @@ Historic rows use `HistoricalPlayerStats` for previous years where only aggregat
 
 ## Bet Punto model
 
-Bet Punto is a social tour log, not a bookmaker. There are no accounts, wallets, transfers or in-app payment handling. Attending players place £5-increment stakes with a £10 minimum across the required markets for each playing day. Markets close at their round’s fixed first tee in the tour timezone; any daily shortfall defaults to the player or their own scramble team. Winner entry settles the linked pool and the tour ledger shows staked, payout and net position.
+Bet Punto is a social tour log, not a bookmaker. There are no accounts, wallets, transfers or in-app payment handling. Attending players place £5-increment stakes. Existing tours retain their saved daily rules. The confirmed 2026 edition has six independent minimum commitments totalling £45 per tourist, with server-side shortfall defaults at each pool’s cutoff. Markets close at their round’s fixed first tee in the tour timezone; any daily shortfall defaults to the player or their own scramble team. Winner entry settles the linked pool and the tour ledger shows staked, payout and net position.
 
 ## Netlify deployment
 
@@ -81,3 +81,13 @@ Apply Supabase migrations in filename order before deploying code that depends o
 Use Node 22 (`.nvmrc` and Netlify build configuration). Run `npm ci`, `npm test` and `npm run build` before deployment. Tests include an isolated embedded Postgres migration and transaction rehearsal.
 
 Apply `202610200001_friday_launch_hardening.sql` **before** deploying the new function code. It enables table RLS, restricts browser-role RPC access, and adds atomic roster, result, cutoff and public-bet operations. Netlify must use the server-side Supabase secret with service-role access. See [the launch review](docs/qa/2026-10-20-launch-review.md) for findings, verification limits and the production rollout sequence.
+
+## Confirmed 2026 configuration
+
+Apply the two `20261021` competition migrations before deploying this version. The production project also needs `supabase/configuration/schedule-pool-defaults.sql`: this installs a named `pg_cron` job every minute. A callable function or a website visit is not the scheduler. Check `cron.job_run_details` and `bet_pool_scheduler_runs` for actual successful executions.
+
+The separately retained private configuration SQL is the one-time, tour-ID-scoped configuration. Real attendance and room occupants are deliberately excluded from this public repository. It updates existing round and market identities, preserves permanent profiles/history, and refuses to overwrite an installed operations record. Do not reapply it over organiser changes. The four existing markets are updated in place; two pools are added. No 2026 rules are applied to other tours.
+
+Tour → Competitions & scoring holds persistent Stableford cards, paired session identities, agreed handicaps, countback, draw previews, tee-sheet publication and finalisation. Live retains Saturday/Sunday matchplay. Tour → Plan provides Itinerary and Rooms; Bet Punto → Pool compliance shows all six commitments and cutoff exceptions. Missing settings are explicit and prevent finalisation.
+
+The Plan download calls `public-itinerary-pdf` to generate the current PDF from saved rounds, itinerary and rooms. The private PDF is a dated reference snapshot; later edits need no manual upload for the app download. `Install Roegusta` explains Apple and Android installation. Live writes require a connection; no offline-save claim is made.

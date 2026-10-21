@@ -1,3 +1,4 @@
+import { poolCommitment } from '../lib/tourOperations';
 import { useEffect, useMemo, useState } from 'react';
 import { BetMarketCard } from '../components/BetMarketCard';
 import { PageHeader } from '../components/PageHeader';
@@ -59,6 +60,7 @@ export function Betting() {
   const [changingBet, setChangingBet] = useState(false);
   const [editDraft, setEditDraft] = useState({ optionId: '', stake: '', comment: '' });
   const bets = [...savedBets, ...activeData.bets.filter((bet) => !savedBets.some((savedBet) => savedBet.id === bet.id))];
+  const scopedPools = activeData.betMarkets.filter((m) => m.poolKey);
   const activeBets = bets.filter((bet) => bet.status === 'active');
   const attendingPlayerIds = new Set(activeData.tourPlayers.filter((tourPlayer) => tourPlayer.attending).map((tourPlayer) => tourPlayer.playerId));
   const bettorOptions = activeData.players.filter((player) => player.active && attendingPlayerIds.has(player.id));
@@ -179,9 +181,10 @@ export function Betting() {
             {bettorOptions.map((player) => <option key={player.id} value={player.displayName}>{player.displayName}{player.nickname ? ` · ${player.nickname}` : ''}</option>)}
           </select>
         </label>
-        <small>£10 minimum across all required markets on each playing day. Stakes are in £5 increments and additional bets are allowed before each market closes.</small>
+        <small>{scopedPools.length ? 'Six separate pool commitments: £45 minimum over the tour. Friday requires £20 across Faldo, combined and Par 3. £5 stake increments; extra stakes are welcome before each pool’s own cutoff.' : '£10 minimum across all required markets on each playing day. Stakes are in £5 increments and additional bets are allowed before each market closes.'}</small>
       </section>
 
+      {scopedPools.length && selectedBettorPlayer ? <section className="card ops"><h2>Your pool commitments</h2><p>Tour total staked: {formatPenceCurrency(scopedPools.reduce((sum, m) => sum + poolCommitment(m, selectedBettorPlayer.id, bets).staked, 0))}. Minimum £45, with each pool met separately.</p>{scopedPools.map((m) => { const v = poolCommitment(m, selectedBettorPlayer.id, bets); return <article className="ops-room" key={m.id}><strong>{m.title} · minimum {formatPenceCurrency(v.minimum)}</strong><p>{formatPenceCurrency(v.staked)} staked · {v.complete ? 'Complete' : formatPenceCurrency(v.shortfall) + ' outstanding'}</p><small>Cutoff {new Date(m.closesAt!).toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', dateStyle: 'short', timeStyle: 'short' })} Portugal local time</small></article>; })}<p>At cutoff only your outstanding shortfall is automatically placed on you or your own competition pair. Existing valid bets on others remain unchanged.</p></section> : null}
       {!loading && !error && <>
         <section className="card bet-tour-ledger">
           <div className="section-heading">
@@ -255,9 +258,9 @@ export function Betting() {
         </details>}
 
         <details className="card betting-admin-details">
-          <summary><span><small>Market detail</small><strong>Daily coverage</strong></span><b>{requiredMarketSummaries.length}</b></summary>
-          <div className="table-wrap"><table className="bet-summary-table"><thead><tr><th>Required market</th><th>Status</th><th>Bets</th><th>Pot</th><th>Players below £10 that day</th></tr></thead><tbody>{requiredMarketSummaries.length === 0 ? <tr><td colSpan={5}>No required markets yet.</td></tr> : requiredMarketSummaries.map((summary) => <tr key={summary.market.id}><td>{summary.market.title}</td><td>{betMarketUiStatusLabel(summary.market)}</td><td>{summary.totalBets}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{summary.missingBettorNames.length === 0 ? 'Complete' : summary.missingBettorNames.join(', ')}</td></tr>)}</tbody></table></div>
-          <small>Each market closes at its round’s fixed first tee time. At that point, only the remaining shortfall to the £10 daily total is added automatically on the player themselves or their own scramble team.</small>
+          <summary><span><small>Market detail</small><strong>{scopedPools.length ? 'Pool coverage' : 'Daily coverage'}</strong></span><b>{requiredMarketSummaries.length}</b></summary>
+          <div className="table-wrap"><table className="bet-summary-table"><thead><tr><th>Required market</th><th>Status</th><th>Bets</th><th>Pot</th><th>{scopedPools.length ? 'Players below this pool minimum' : 'Players below £10 that day'}</th></tr></thead><tbody>{requiredMarketSummaries.length === 0 ? <tr><td colSpan={5}>No required markets yet.</td></tr> : requiredMarketSummaries.map((summary) => <tr key={summary.market.id}><td>{summary.market.title}</td><td>{betMarketUiStatusLabel(summary.market)}</td><td>{summary.totalBets}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{summary.missingBettorNames.length === 0 ? 'Complete' : summary.missingBettorNames.join(', ')}</td></tr>)}</tbody></table></div>
+          <small>{scopedPools.length ? 'Each pool has an independent Portugal local cutoff. The combined pool closes before Friday golf; the Par 3 remains open until 19:30. The server automatically places only each pool’s outstanding shortfall on the tourist’s own selection.' : 'Each market closes at its round’s fixed first tee time. At that point, only the remaining shortfall to the £10 daily total is added automatically on the player themselves or their own scramble team.'}</small>
         </details>
       </>}
     </div>

@@ -1,3 +1,4 @@
+import { InstallRoegusta } from '../components/InstallRoegusta';
 import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { isRoutePath, routeForPath } from './routes';
 import { AdminBrandHeader } from '../components/AdminBrandHeader';
@@ -71,7 +72,7 @@ export function AppShell() {
   };
 
   if (path === '/admin') {
-    return <div className="app-shell" onClick={handleInternalLink}><RefreshButton /><AdminBrandHeader /><main>{route.element}</main><BottomNav currentPath={path} onNavigate={navigate} /></div>;
+    return <div className="app-shell" onClick={handleInternalLink}><RefreshButton /><AdminBrandHeader /><main>{route.element}<InstallRoegusta /></main><BottomNav currentPath={path} onNavigate={navigate} /></div>;
   }
 
   return (
@@ -82,6 +83,7 @@ export function AppShell() {
         <main>
           {path !== '/' && <button className="app-back-button" type="button" onClick={goBack}><span aria-hidden="true">‹</span> Back</button>}
           {route.element}
+          <InstallRoegusta />
         </main>
         <BottomNav currentPath={path} onNavigate={navigate} />
       </div>

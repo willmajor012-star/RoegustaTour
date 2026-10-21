@@ -1,0 +1,1034 @@
+{
+  "tourId": "00000000-0000-0000-0000-0000000003e8",
+  "state": {
+    "schemaVersion": 1,
+    "competitions": [
+      {
+        "id": "00000000-0000-0000-0000-0000000003e9",
+        "key": "combined",
+        "title": "Friday and Monday combined",
+        "entryKind": "pair",
+        "pointAwards": [
+          6,
+          5.5,
+          5,
+          4.5,
+          4,
+          3.5,
+          3,
+          2.5,
+          2,
+          1.5,
+          1,
+          0.5
+        ],
+        "entriesPublished": false,
+        "published": true,
+        "finalised": false,
+        "entries": [
+          {
+            "id": "00000000-0000-0000-0000-0000000003ea",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-0000000003eb",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-0000000003ec",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-0000000003ed",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-0000000003ee",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-0000000003ef",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-0000000003f0",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-0000000003f1",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-0000000003f2",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-0000000003f3",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-0000000003f4",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-0000000003f5",
+            "playerIds": []
+          }
+        ],
+        "sessions": [
+          {
+            "id": "00000000-0000-0000-0000-0000000003f6",
+            "key": "friday",
+            "title": "Friday Faldo nine",
+            "roundId": "00000000-0000-0000-0000-0000000003f7",
+            "date": "2026-11-06",
+            "firstStart": "14:20",
+            "timezone": "Europe/Lisbon",
+            "format": "better_ball",
+            "holes": 9,
+            "courseId": "00000000-0000-0000-0000-0000000003f8",
+            "courseName": "Faldo Course",
+            "holeOrder": [],
+            "handicapSettings": {
+              "method": "",
+              "confirmed": false
+            },
+            "handicaps": [],
+            "scores": [],
+            "groups": [
+              {
+                "id": "00000000-0000-0000-0000-0000000003f9",
+                "number": 1,
+                "entryIds": [],
+                "time": "14:20"
+              },
+              {
+                "id": "00000000-0000-0000-0000-0000000003fa",
+                "number": 2,
+                "entryIds": [],
+                "time": "14:30"
+              },
+              {
+                "id": "00000000-0000-0000-0000-0000000003fb",
+                "number": 3,
+                "entryIds": [],
+                "time": "14:40"
+              },
+              {
+                "id": "00000000-0000-0000-0000-0000000003fc",
+                "number": 4,
+                "entryIds": [],
+                "time": "14:50"
+              },
+              {
+                "id": "00000000-0000-0000-0000-0000000003fd",
+                "number": 5,
+                "entryIds": [],
+                "time": "15:00"
+              },
+              {
+                "id": "00000000-0000-0000-0000-0000000003fe",
+                "number": 6,
+                "entryIds": [],
+                "time": "15:10"
+              }
+            ],
+            "groupsPublished": false,
+            "teeInterval": 10
+          },
+          {
+            "id": "00000000-0000-0000-0000-0000000003ff",
+            "key": "monday",
+            "title": "Monday final nine",
+            "roundId": "00000000-0000-0000-0000-000000000400",
+            "date": "2026-11-09",
+            "firstStart": "10:00",
+            "timezone": "Europe/Lisbon",
+            "format": "scramble",
+            "holes": 9,
+            "courseId": "00000000-0000-0000-0000-000000000401",
+            "courseName": "O'Connor Jnr. Course",
+            "holeOrder": [],
+            "handicapSettings": {
+              "method": "",
+              "confirmed": false
+            },
+            "handicaps": [],
+            "scores": [],
+            "groups": [
+              {
+                "id": "00000000-0000-0000-0000-000000000402",
+                "number": 1,
+                "entryIds": [],
+                "time": "10:00"
+              },
+              {
+                "id": "00000000-0000-0000-0000-000000000403",
+                "number": 2,
+                "entryIds": [],
+                "time": "10:10"
+              },
+              {
+                "id": "00000000-0000-0000-0000-000000000404",
+                "number": 3,
+                "entryIds": [],
+                "time": "10:20"
+              },
+              {
+                "id": "00000000-0000-0000-0000-000000000405",
+                "number": 4,
+                "entryIds": [],
+                "time": "10:30"
+              },
+              {
+                "id": "00000000-0000-0000-0000-000000000406",
+                "number": 5,
+                "entryIds": [],
+                "time": "10:40"
+              },
+              {
+                "id": "00000000-0000-0000-0000-000000000407",
+                "number": 6,
+                "entryIds": [],
+                "time": "10:50"
+              }
+            ],
+            "groupsPublished": false,
+            "teeInterval": 10
+          }
+        ],
+        "decisions": []
+      },
+      {
+        "id": "00000000-0000-0000-0000-000000000408",
+        "key": "par3",
+        "title": "Friday Par 3 \u00b7 separate fun competition",
+        "entryKind": "pair",
+        "pointAwards": [],
+        "entriesPublished": false,
+        "published": true,
+        "finalised": false,
+        "entries": [
+          {
+            "id": "00000000-0000-0000-0000-000000000409",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000040a",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000040b",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000040c",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000040d",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000040e",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000040f",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000410",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000411",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000412",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000413",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000414",
+            "playerIds": []
+          }
+        ],
+        "sessions": [
+          {
+            "id": "00000000-0000-0000-0000-000000000415",
+            "key": "par3",
+            "title": "Evening Par 3",
+            "roundId": "00000000-0000-0000-0000-000000000416",
+            "date": "2026-11-06",
+            "firstStart": "19:30",
+            "timezone": "Europe/Lisbon",
+            "format": "scramble",
+            "holes": null,
+            "courseId": null,
+            "courseName": "Amendoeira Par 3",
+            "holeOrder": [],
+            "handicapSettings": {
+              "method": "scratch",
+              "confirmed": true
+            },
+            "handicaps": [],
+            "scores": [],
+            "groups": [
+              {
+                "id": "00000000-0000-0000-0000-000000000417",
+                "number": 1,
+                "entryIds": [],
+                "time": "19:30"
+              },
+              {
+                "id": "00000000-0000-0000-0000-000000000418",
+                "number": 2,
+                "entryIds": []
+              },
+              {
+                "id": "00000000-0000-0000-0000-000000000419",
+                "number": 3,
+                "entryIds": []
+              },
+              {
+                "id": "00000000-0000-0000-0000-00000000041a",
+                "number": 4,
+                "entryIds": []
+              },
+              {
+                "id": "00000000-0000-0000-0000-00000000041b",
+                "number": 5,
+                "entryIds": []
+              },
+              {
+                "id": "00000000-0000-0000-0000-00000000041c",
+                "number": 6,
+                "entryIds": []
+              }
+            ],
+            "groupsPublished": false,
+            "endTime": "21:30"
+          }
+        ],
+        "decisions": []
+      },
+      {
+        "id": "00000000-0000-0000-0000-00000000041d",
+        "key": "saturday",
+        "title": "Saturday pair Stableford",
+        "entryKind": "pair",
+        "pointAwards": [],
+        "entriesPublished": false,
+        "published": true,
+        "finalised": false,
+        "entries": [
+          {
+            "id": "00000000-0000-0000-0000-00000000041e",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000041f",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000420",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000421",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000422",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000423",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000424",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000425",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000426",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000427",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000428",
+            "playerIds": []
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000429",
+            "playerIds": []
+          }
+        ],
+        "sessions": [
+          {
+            "id": "00000000-0000-0000-0000-00000000042a",
+            "key": "saturday",
+            "title": "Saturday Faldo",
+            "roundId": "00000000-0000-0000-0000-00000000042b",
+            "date": "2026-11-07",
+            "firstStart": "10:00",
+            "timezone": "Europe/Lisbon",
+            "format": "better_ball",
+            "holes": 18,
+            "courseId": "00000000-0000-0000-0000-0000000003f8",
+            "courseName": "Faldo Course",
+            "holeOrder": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ],
+            "handicapSettings": {
+              "method": "",
+              "confirmed": false
+            },
+            "handicaps": [],
+            "scores": [],
+            "groups": [
+              {
+                "id": "00000000-0000-0000-0000-00000000042c",
+                "number": 1,
+                "entryIds": [],
+                "time": "10:00"
+              },
+              {
+                "id": "00000000-0000-0000-0000-00000000042d",
+                "number": 2,
+                "entryIds": []
+              },
+              {
+                "id": "00000000-0000-0000-0000-00000000042e",
+                "number": 3,
+                "entryIds": []
+              },
+              {
+                "id": "00000000-0000-0000-0000-00000000042f",
+                "number": 4,
+                "entryIds": []
+              },
+              {
+                "id": "00000000-0000-0000-0000-000000000430",
+                "number": 5,
+                "entryIds": []
+              },
+              {
+                "id": "00000000-0000-0000-0000-000000000431",
+                "number": 6,
+                "entryIds": []
+              }
+            ],
+            "groupsPublished": false
+          }
+        ],
+        "decisions": []
+      },
+      {
+        "id": "00000000-0000-0000-0000-000000000432",
+        "key": "sunday",
+        "title": "Sunday individual Stableford",
+        "entryKind": "individual",
+        "pointAwards": [],
+        "entriesPublished": true,
+        "published": true,
+        "finalised": false,
+        "entries": [
+          {
+            "id": "00000000-0000-0000-0000-000000000433",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000434"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000435",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000436"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000437",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000438"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000439",
+            "playerIds": [
+              "00000000-0000-0000-0000-00000000043a"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000043b",
+            "playerIds": [
+              "00000000-0000-0000-0000-00000000043c"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000043d",
+            "playerIds": [
+              "00000000-0000-0000-0000-00000000043e"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000043f",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000440"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000441",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000442"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000443",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000444"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000445",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000446"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000447",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000448"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000449",
+            "playerIds": [
+              "00000000-0000-0000-0000-00000000044a"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000044b",
+            "playerIds": [
+              "00000000-0000-0000-0000-00000000044c"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000044d",
+            "playerIds": [
+              "00000000-0000-0000-0000-00000000044e"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000044f",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000450"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000451",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000452"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000453",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000454"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000455",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000456"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000457",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000458"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000459",
+            "playerIds": [
+              "00000000-0000-0000-0000-00000000045a"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000045b",
+            "playerIds": [
+              "00000000-0000-0000-0000-00000000045c"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000045d",
+            "playerIds": [
+              "00000000-0000-0000-0000-00000000045e"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000045f",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000460"
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000461",
+            "playerIds": [
+              "00000000-0000-0000-0000-000000000462"
+            ]
+          }
+        ],
+        "sessions": [
+          {
+            "id": "00000000-0000-0000-0000-000000000463",
+            "key": "sunday",
+            "title": "Sunday Old Course",
+            "roundId": "00000000-0000-0000-0000-000000000464",
+            "date": "2026-11-08",
+            "firstStart": "11:24",
+            "timezone": "Europe/Lisbon",
+            "format": "individual",
+            "holes": 18,
+            "courseId": "00000000-0000-0000-0000-000000000465",
+            "courseName": "Old Course",
+            "holeOrder": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ],
+            "handicapSettings": {
+              "method": "",
+              "confirmed": false
+            },
+            "handicaps": [],
+            "scores": [],
+            "groups": [
+              {
+                "id": "00000000-0000-0000-0000-000000000466",
+                "number": 1,
+                "entryIds": [],
+                "time": "11:24"
+              },
+              {
+                "id": "00000000-0000-0000-0000-000000000467",
+                "number": 2,
+                "entryIds": [],
+                "time": "11:32"
+              },
+              {
+                "id": "00000000-0000-0000-0000-000000000468",
+                "number": 3,
+                "entryIds": [],
+                "time": "11:40"
+              },
+              {
+                "id": "00000000-0000-0000-0000-000000000469",
+                "number": 4,
+                "entryIds": [],
+                "time": "11:48"
+              },
+              {
+                "id": "00000000-0000-0000-0000-00000000046a",
+                "number": 5,
+                "entryIds": [],
+                "time": "11:56"
+              },
+              {
+                "id": "00000000-0000-0000-0000-00000000046b",
+                "number": 6,
+                "entryIds": [],
+                "time": "12:04"
+              }
+            ],
+            "groupsPublished": false,
+            "teeInterval": 8
+          }
+        ],
+        "decisions": []
+      }
+    ],
+    "accommodation": [
+      {
+        "id": "00000000-0000-0000-0000-00000000046c",
+        "name": "House 1",
+        "kind": "house",
+        "rooms": [
+          {
+            "id": "00000000-0000-0000-0000-00000000046d",
+            "name": "Room 1",
+            "capacity": 2,
+            "occupants": [
+              {
+                "playerId": "00000000-0000-0000-0000-000000000434"
+              },
+              {
+                "playerId": "00000000-0000-0000-0000-000000000436"
+              }
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000046e",
+            "name": "Room 2",
+            "capacity": 2,
+            "occupants": [
+              {
+                "playerId": "00000000-0000-0000-0000-000000000438"
+              },
+              {
+                "playerId": "00000000-0000-0000-0000-00000000043a"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "00000000-0000-0000-0000-00000000046f",
+        "name": "House 2",
+        "kind": "house",
+        "rooms": [
+          {
+            "id": "00000000-0000-0000-0000-000000000470",
+            "name": "Room 1",
+            "capacity": 2,
+            "occupants": [
+              {
+                "playerId": "00000000-0000-0000-0000-00000000043c"
+              },
+              {
+                "playerId": "00000000-0000-0000-0000-00000000043e"
+              }
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000471",
+            "name": "Room 2",
+            "capacity": 2,
+            "occupants": [
+              {
+                "playerId": "00000000-0000-0000-0000-000000000440"
+              },
+              {
+                "playerId": "00000000-0000-0000-0000-000000000442"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "00000000-0000-0000-0000-000000000472",
+        "name": "House 3",
+        "kind": "house",
+        "rooms": [
+          {
+            "id": "00000000-0000-0000-0000-000000000473",
+            "name": "Room 1",
+            "capacity": 2,
+            "occupants": [
+              {
+                "playerId": "00000000-0000-0000-0000-000000000444"
+              },
+              {
+                "playerId": "00000000-0000-0000-0000-000000000446"
+              }
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000474",
+            "name": "Room 2",
+            "capacity": 2,
+            "occupants": [
+              {
+                "playerId": "00000000-0000-0000-0000-000000000448"
+              },
+              {
+                "playerId": "00000000-0000-0000-0000-00000000044a"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "00000000-0000-0000-0000-000000000475",
+        "name": "House 4",
+        "kind": "house",
+        "rooms": [
+          {
+            "id": "00000000-0000-0000-0000-000000000476",
+            "name": "Room 1",
+            "capacity": 2,
+            "occupants": [
+              {
+                "playerId": "00000000-0000-0000-0000-00000000044c"
+              },
+              {
+                "playerId": "00000000-0000-0000-0000-00000000044e"
+              }
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-000000000477",
+            "name": "Room 2",
+            "capacity": 2,
+            "occupants": [
+              {
+                "playerId": "00000000-0000-0000-0000-000000000450"
+              },
+              {
+                "playerId": "00000000-0000-0000-0000-000000000452"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "00000000-0000-0000-0000-000000000478",
+        "name": "House 5",
+        "kind": "house",
+        "rooms": [
+          {
+            "id": "00000000-0000-0000-0000-000000000479",
+            "name": "Room 1",
+            "capacity": 2,
+            "occupants": [
+              {
+                "playerId": "00000000-0000-0000-0000-000000000454"
+              },
+              {
+                "playerId": "00000000-0000-0000-0000-000000000456"
+              }
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000047a",
+            "name": "Room 2",
+            "capacity": 2,
+            "occupants": [
+              {
+                "playerId": "00000000-0000-0000-0000-000000000458"
+              },
+              {
+                "playerId": "00000000-0000-0000-0000-00000000045a"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "00000000-0000-0000-0000-00000000047b",
+        "name": "House 6",
+        "kind": "house",
+        "rooms": [
+          {
+            "id": "00000000-0000-0000-0000-00000000047c",
+            "name": "Room 1",
+            "capacity": 2,
+            "occupants": [
+              {
+                "playerId": "00000000-0000-0000-0000-00000000045c"
+              },
+              {
+                "playerId": "00000000-0000-0000-0000-00000000045e"
+              }
+            ]
+          },
+          {
+            "id": "00000000-0000-0000-0000-00000000047d",
+            "name": "Room 2",
+            "capacity": 2,
+            "occupants": [
+              {
+                "playerId": "00000000-0000-0000-0000-000000000460"
+              },
+              {
+                "playerId": "00000000-0000-0000-0000-000000000462"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "issues": [
+      "Anonymous QA fixture: confirm golf assignments and scorecard settings."
+    ]
+  },
+  "rosterIds": [
+    "00000000-0000-0000-0000-000000000434",
+    "00000000-0000-0000-0000-000000000436",
+    "00000000-0000-0000-0000-000000000438",
+    "00000000-0000-0000-0000-00000000043a",
+    "00000000-0000-0000-0000-00000000043c",
+    "00000000-0000-0000-0000-00000000043e",
+    "00000000-0000-0000-0000-000000000440",
+    "00000000-0000-0000-0000-000000000442",
+    "00000000-0000-0000-0000-000000000444",
+    "00000000-0000-0000-0000-000000000446",
+    "00000000-0000-0000-0000-000000000448",
+    "00000000-0000-0000-0000-00000000044a",
+    "00000000-0000-0000-0000-00000000044c",
+    "00000000-0000-0000-0000-00000000044e",
+    "00000000-0000-0000-0000-000000000450",
+    "00000000-0000-0000-0000-000000000452",
+    "00000000-0000-0000-0000-000000000454",
+    "00000000-0000-0000-0000-000000000456",
+    "00000000-0000-0000-0000-000000000458",
+    "00000000-0000-0000-0000-00000000045a",
+    "00000000-0000-0000-0000-00000000045c",
+    "00000000-0000-0000-0000-00000000045e",
+    "00000000-0000-0000-0000-000000000460",
+    "00000000-0000-0000-0000-000000000462"
+  ],
+  "markets": [
+    {
+      "id": "00000000-0000-0000-0000-00000000047e",
+      "tour_id": "00000000-0000-0000-0000-0000000003e8",
+      "round_id": "00000000-0000-0000-0000-0000000003f7",
+      "title": "Friday Faldo nine",
+      "description": "Highest pair better ball Stableford total for Friday alone. Minimum \u00a35 per tourist in this pool, in \u00a35 increments. At cutoff, only any outstanding shortfall is automatically entered on your own golfer or competition pair. Existing valid bets on other selections count and are retained.",
+      "market_type": "team_result",
+      "market_scope": "general_pot",
+      "required": true,
+      "status": "open",
+      "closes_at": "2026-11-06T14:20:00Z",
+      "pool_key": "friday",
+      "minimum_stake_pence": 500,
+      "competition_key": "combined",
+      "session_key": "friday"
+    },
+    {
+      "id": "00000000-0000-0000-0000-00000000047f",
+      "tour_id": "00000000-0000-0000-0000-0000000003e8",
+      "round_id": "00000000-0000-0000-0000-000000000416",
+      "title": "Evening Par 3",
+      "description": "Highest scratch scramble pair Stableford total. Separate fun competition; no tour points. Minimum \u00a310 per tourist in this pool, in \u00a35 increments. At cutoff, only any outstanding shortfall is automatically entered on your own golfer or competition pair. Existing valid bets on other selections count and are retained.",
+      "market_type": "team_result",
+      "market_scope": "general_pot",
+      "required": true,
+      "status": "open",
+      "closes_at": "2026-11-06T19:30:00Z",
+      "pool_key": "par3",
+      "minimum_stake_pence": 1000,
+      "competition_key": "par3",
+      "session_key": "par3"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000480",
+      "tour_id": "00000000-0000-0000-0000-0000000003e8",
+      "round_id": "00000000-0000-0000-0000-00000000042b",
+      "title": "Saturday Faldo",
+      "description": "Highest PAIR better ball Stableford total across all 18 holes, separate from matchplay. Minimum \u00a310 per tourist in this pool, in \u00a35 increments. At cutoff, only any outstanding shortfall is automatically entered on your own golfer or competition pair. Existing valid bets on other selections count and are retained.",
+      "market_type": "team_result",
+      "market_scope": "general_pot",
+      "required": true,
+      "status": "open",
+      "closes_at": "2026-11-07T10:00:00Z",
+      "pool_key": "saturday",
+      "minimum_stake_pence": 1000,
+      "competition_key": "saturday",
+      "session_key": "saturday"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000481",
+      "tour_id": "00000000-0000-0000-0000-0000000003e8",
+      "round_id": "00000000-0000-0000-0000-000000000464",
+      "title": "Sunday Old Course",
+      "description": "Highest INDIVIDUAL Stableford total across all 18 holes, separate from matchplay. Minimum \u00a310 per tourist in this pool, in \u00a35 increments. At cutoff, only any outstanding shortfall is automatically entered on your own golfer or competition pair. Existing valid bets on other selections count and are retained.",
+      "market_type": "player_performance",
+      "market_scope": "general_pot",
+      "required": true,
+      "status": "open",
+      "closes_at": "2026-11-08T11:24:00Z",
+      "pool_key": "sunday",
+      "minimum_stake_pence": 1000,
+      "competition_key": "sunday",
+      "session_key": "sunday"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000482",
+      "tour_id": "00000000-0000-0000-0000-0000000003e8",
+      "round_id": "00000000-0000-0000-0000-000000000400",
+      "title": "Monday final nine",
+      "description": "Highest pair scramble Stableford total for Monday alone. Minimum \u00a35 per tourist in this pool, in \u00a35 increments. At cutoff, only any outstanding shortfall is automatically entered on your own golfer or competition pair. Existing valid bets on other selections count and are retained.",
+      "market_type": "team_result",
+      "market_scope": "general_pot",
+      "required": true,
+      "status": "open",
+      "closes_at": "2026-11-09T10:00:00Z",
+      "pool_key": "monday",
+      "minimum_stake_pence": 500,
+      "competition_key": "combined",
+      "session_key": "monday"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000483",
+      "tour_id": "00000000-0000-0000-0000-0000000003e8",
+      "round_id": "00000000-0000-0000-0000-0000000003f7",
+      "title": "Friday and Monday combined",
+      "description": "Highest combined Friday and Monday pair Stableford total. Additional to both standalone pools; closes BEFORE Friday play. Minimum \u00a35 per tourist in this pool, in \u00a35 increments. At cutoff, only any outstanding shortfall is automatically entered on your own golfer or competition pair. Existing valid bets on other selections count and are retained.",
+      "market_type": "team_result",
+      "market_scope": "general_pot",
+      "required": true,
+      "status": "open",
+      "closes_at": "2026-11-06T14:20:00Z",
+      "pool_key": "combined",
+      "minimum_stake_pence": 500,
+      "competition_key": "combined",
+      "session_key": null
+    }
+  ],
+  "roundIds": {
+    "friday": "00000000-0000-0000-0000-0000000003f7",
+    "par3": "00000000-0000-0000-0000-000000000416",
+    "saturday": "00000000-0000-0000-0000-00000000042b",
+    "sunday": "00000000-0000-0000-0000-000000000464",
+    "monday": "00000000-0000-0000-0000-000000000400"
+  },
+  "teams": [
+    "00000000-0000-0000-0000-000000000320",
+    "00000000-0000-0000-0000-000000000321"
+  ]
+}

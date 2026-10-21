@@ -41,7 +41,7 @@ const activityPatterns: Array<[ManualItineraryKind, RegExp]> = [
 
 export function manualItineraryKind(item: Pick<TourItineraryItem, 'activity' | 'sourceType'>): ManualItineraryKind | undefined {
   const sourceType = item.sourceType?.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_') ?? '';
-  if (sourceType === 'round') return undefined;
+  if (sourceType === 'round' || sourceType === 'retired') return undefined;
   if (sourceType === 'travel' && /\bflight\b/i.test(item.activity)) return 'flight';
   const direct = sourceAliases[sourceType];
   if (direct) return direct;

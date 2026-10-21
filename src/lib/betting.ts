@@ -245,7 +245,7 @@ export function buildBetPuntoMarketSummaries(
     const backedKeys = new Set(activeMarketBets.map((bet) => normalizedName(bet.bettorName)));
     const payoutSummary = calculateIndicativePayouts(market, options.filter((option) => option.marketId === market.id), bets);
     const playingDate = market.roundId ? roundDateById.get(market.roundId) : undefined;
-    const requiredMarketIdsForDate = playingDate
+    const requiredMarketIdsForDate = market.poolKey ? new Set([market.id]) : playingDate
       ? new Set(requiredMarkets.filter((candidate) => candidate.roundId && roundDateById.get(candidate.roundId) === playingDate).map((candidate) => candidate.id))
       : undefined;
     const missingBettorNames = !isMandatoryMarket(market)
@@ -258,7 +258,7 @@ export function buildBetPuntoMarketSummaries(
             && normalizedName(bet.bettorName) === key
             && requiredMarketIdsForDate.has(bet.marketId))
           .reduce((total, bet) => total + getBetStakePence(bet), 0);
-        return dailyStake < BET_PUNTO_MINIMUM_STAKE_PENCE;
+        return dailyStake < (market.minimumStakePence ?? BET_PUNTO_MINIMUM_STAKE_PENCE);
       }).map(([, name]) => name);
     return {
       market,
@@ -328,7 +328,7 @@ export function buildBetPuntoBettorSummaries(
   for (const [key, summary] of summaryByKey) {
     const backedMandatoryMarketIds = new Set(bets.filter((bet) => normalizedName(bet.bettorName) === key && bet.status === 'active').map((bet) => bet.marketId));
     summary.missingMandatoryPicks = mandatoryMarkets.filter((market) => !backedMandatoryMarketIds.has(market.id)).length;
-    summary.missingMandatoryDays = requiredMarketIdsByDate.size > 0
+    summary.missingMandatoryDays = mandatoryMarkets.some((m) => m.poolKey) ? mandatoryMarkets.filter((m) => bets.filter((bet) => bet.marketId === m.id && bet.status === 'active' && bet.outcomeStatus !== 'void' && normalizedName(bet.bettorName) === key).reduce((sum, bet) => sum + getBetStakePence(bet), 0) < (m.minimumStakePence ?? BET_PUNTO_MINIMUM_STAKE_PENCE)).length : requiredMarketIdsByDate.size > 0
       ? [...requiredMarketIdsByDate.values()].filter((marketIds) => bets
         .filter((bet) => bet.status === 'active'
           && bet.outcomeStatus !== 'void'

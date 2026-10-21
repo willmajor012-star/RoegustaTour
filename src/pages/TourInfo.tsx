@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from 'react';
+import { Rooms, useTourOperations } from '../components/TourOperations';
 import { PageHeader } from '../components/PageHeader';
 import { courseGuidePath } from '../data/courseGuides';
 import { formatTeeTimeDisplay } from '../lib/display';
@@ -23,6 +24,8 @@ const emptyTourInfo: Omit<PublicTourInfoResponse, 'source'> = {
 
 export function TourInfo() {
   const { data, loading, error } = usePublicData(fetchPublicTourInfo);
+  const { bundle: operations } = useTourOperations();
+  const [planTab, setPlanTab] = useState('itinerary');
   const [selectedDate, setSelectedDate] = useState('');
   const activeData = data ?? emptyTourInfo;
   const tour = activeData.tour;
@@ -31,10 +34,12 @@ export function TourInfo() {
   const selectedGroup = datedGroups.find((group) => group.date === selectedDate) ?? datedGroups[0];
 
   return <div className="page-stack handbook-page">
-    <PageHeader title="Itinerary" eyebrow={tour ? `${tour.year} · ${tour.location}` : 'Tour schedule'} className="itinerary-page-header" />
+    <PageHeader title="Plan" eyebrow={tour ? `${tour.year} · ${tour.location}` : 'Tour schedule'} className="itinerary-page-header" />
     {loading ? <p className="card">Loading tour itinerary…</p> : null}
     {error ? <p className="card form-error">{error}</p> : null}
-    <section className="card tour-itinerary-card">
+    <nav className="ops-tabs" aria-label="Tour plan"><button type="button" aria-pressed={planTab === 'itinerary'} onClick={() => setPlanTab('itinerary')}>Itinerary</button><button type="button" aria-pressed={planTab === 'rooms'} onClick={() => setPlanTab('rooms')}>Rooms</button></nav>
+    <p><a className="button" href="/.netlify/functions/public-itinerary-pdf" target="_blank" rel="noreferrer">Download itinerary</a> · <a href="/competitions">Competitions & tee sheets</a></p>
+    {planTab === 'rooms' ? operations ? <Rooms bundle={operations} /> : <p className="card">Loading rooms…</p> : <section className="card tour-itinerary-card">
       {datedGroups.length === 0 ? <p>Itinerary TBC.</p> : <>
         <nav className="itinerary-day-tabs" aria-label="Itinerary days" role="tablist">
           {datedGroups.map((group) => <button
@@ -60,7 +65,7 @@ export function TourInfo() {
             : <p className="itinerary-empty-day">No activities have been added for this day yet.</p>}
         </section> : null}
       </>}
-    </section>
+    </section>}
     <footer className="subtle-admin-link"><button type="button" onClick={() => { void logoutPublicAccess().finally(() => window.location.assign('/')); }}>Reset tour access</button><a href="/admin">Admin</a></footer>
   </div>;
 }

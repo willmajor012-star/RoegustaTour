@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
-import { Admin } from '../pages/Admin';
+import { PublicCompetitions } from '../components/TourOperations';
+import { lazy, Suspense, type ReactNode } from 'react';
+const Admin = lazy(() => import('../pages/Admin').then((module) => ({ default: module.Admin })));
 import { Betting } from '../pages/Betting';
 import { CourseGuidePage } from '../pages/CourseGuidePage';
 import { Courses } from '../pages/Courses';
@@ -19,6 +20,7 @@ export type AppRoute = {
 
 export const routes: AppRoute[] = [
   { path: '/', element: <Dashboard /> },
+  { path: '/competitions', element: <PublicCompetitions /> },
   { path: '/matches', element: <Matches /> },
   { path: '/teams', element: <Teams /> },
   { path: '/tours', element: <Tours /> },
@@ -28,7 +30,7 @@ export const routes: AppRoute[] = [
   { path: '/betting', element: <Betting /> },
   { path: '/score', element: <TourScore /> },
   { path: '/stats', element: <Stats /> },
-  { path: '/admin', element: <Admin /> },
+  { path: '/admin', element: <Suspense fallback={<p className="card">Loading admin…</p>}><Admin /></Suspense> },
 ];
 
 export function routeForPath(pathname: string) {

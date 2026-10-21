@@ -1,3 +1,4 @@
+import { PublicRoundCompetition } from '../components/TourOperations';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { MatchCard } from '../components/MatchCard';
 import { PageHeader } from '../components/PageHeader';
@@ -72,7 +73,7 @@ export function Matches() {
   const selectedCourseGuide = courseGuideForRound(selectedRound, tourCourses);
   const teeSheetMatches = [...selectedRoundMatches].sort((a, b) => compareTeeTimeValues(a.teeTime, b.teeTime) || a.matchNumber - b.matchNumber);
   const selectedPrizes = selectedRound ? activeData.roundPrizeResults.filter((prize) => prize.roundId === selectedRound.id) : [];
-  const scoreRows = activeData.tour ? calculateTeamScoreByTour(activeData.tour.id, activeData.tourTeams, activeData.rounds, publicMatches) : [];
+  const scoreRows = activeData.tour ? calculateTeamScoreByTour(activeData.tour.id, activeData.tourTeams, activeData.rounds, publicMatches, activeData.competitionAwards) : [];
   const { totalAvailablePoints, pointsToWin } = tourPointsTarget(publicMatches, activeData.projectedTotalPoints);
 
   useEffect(() => {
@@ -82,6 +83,7 @@ export function Matches() {
 
   return <div className="page-stack results-page golf-page">
     <PageHeader title="Golf" eyebrow={activeData.tour?.name ?? 'Current tour'} />
+    {activeData.tour?.rulesVersion ? <p className="card"><a href="/competitions">Stableford leaderboards & all tee sheets</a> · Combined Friday–Monday: 39 points once. Par 3: zero points.</p> : null}
     {loading && <p className="card">Loading golf schedule...</p>}
     {error && <p className="card form-error">{error}</p>}
     {!loading && !error && <>
@@ -115,9 +117,10 @@ export function Matches() {
           {golfSections.map((item) => <button type="button" role="tab" aria-selected={section === item.value} key={item.value} className={section === item.value ? 'active' : ''} onClick={() => setSection(item.value)}>{item.label}{item.value === 'prizes' && selectedPrizes.length > 0 ? ` (${selectedPrizes.length})` : ''}</button>)}
         </div>
 
-        {section === 'tee-sheet' && selectedRound && <GolfTeeTimes selectedRound={selectedRound} matches={teeSheetMatches} players={activeData.players} teams={activeData.tourTeams} participants={activeData.matchParticipants} />}
-        {section === 'results' && selectedRound && <GolfResults selectedRound={selectedRound} matches={selectedRoundMatches} data={activeData} teams={activeData.tourTeams} />}
-        {section === 'prizes' && selectedRound && <GolfPrizes selectedRound={selectedRound} prizeFund={activeData.tour?.prizeFund} prizes={selectedPrizes} players={activeData.players} teams={activeData.tourTeams} />}
+        {section === 'tee-sheet' && selectedRound && (['contributing', 'fun'].includes(selectedRound.competitionRole ?? '') ? <PublicRoundCompetition roundId={selectedRound.id} mode="groups" /> : <GolfTeeTimes selectedRound={selectedRound} matches={teeSheetMatches} players={activeData.players} teams={activeData.tourTeams} participants={activeData.matchParticipants} />)}
+        {section === 'results' && selectedRound && activeData.tour?.rulesVersion ? <PublicRoundCompetition roundId={selectedRound.id} mode="scores" /> : null}
+        {section === 'results' && selectedRound && !['contributing', 'fun'].includes(selectedRound.competitionRole ?? '') && <GolfResults selectedRound={selectedRound} matches={selectedRoundMatches} data={activeData} teams={activeData.tourTeams} />}
+        {section === 'prizes' && selectedRound && <GolfPrizes selectedRound={selectedRound} prizeFund={activeData.tour?.rulesVersion ? undefined : activeData.tour?.prizeFund} prizes={selectedPrizes} players={activeData.players} teams={activeData.tourTeams} />}
         {section === 'teams' && <GolfTeams teams={activeData.tourTeams} members={activeData.tourTeamMembers} players={activeData.players} tourPlayers={activeData.tourPlayers} />}
       </>}
     </>}
@@ -194,7 +197,7 @@ function GolfTeams({ teams, members, players, tourPlayers }: { teams: TourTeam[]
 function RoundMeta({ selectedRound, firstMatchTime }: { selectedRound: Round; firstMatchTime?: string }) {
   return <div className="selected-round-facts">
     <span><small>Date</small><strong>{formatShortDate(selectedRound.roundDate)}</strong></span>
-    <span><small>Holes</small><strong>{selectedRound.holes ?? 18}</strong></span>
+    <span><small>Holes</small><strong>{selectedRound.holeCountConfirmed === false ? 'TBC' : selectedRound.holes ?? 18}</strong></span>
     <span><small>Session</small><strong>{roundSession(selectedRound) ?? 'TBC'}</strong></span>
     <span><small>First tee</small><strong>{formatTeeTimeDisplay(firstMatchTime ?? selectedRound.teeTime)}</strong></span>
   </div>;
