@@ -83,7 +83,23 @@ Tomorrow's actual venues, dates, formats, team assignments and tee times still
 need entering and checking. This rehearsal verifies the supported workflow; it
 does not validate details that have not yet been supplied.
 
-## Reproduction
+## Hosted setup check: unscheduled rounds
+
+On the live admin site, the private `QA TEST TOUR 2099` was given 24 attending
+players and two QA teams. Creating three planned rounds then reported
+“Set the round date before opening its Bet Punto market.” The first round had
+already been saved: automatic market creation interrupted the remaining setup.
+The real 2026 tour was not edited.
+
+Automatic daily-market creation now waits until the round has a date and valid
+first tee time. This also covers saving an individual unscheduled round. The
+full Admin regression creates two additional unscheduled rounds with eligible
+betting options already present and checks that both save without new markets.
+It failed before the fix (four rounds instead of five) in both the 16-player
+and 24-player rehearsals. The initial live QA setup is partial; a complete
+hosted browser walkthrough remains outstanding.
+
+## Reproduction commands
 
 Run `npm test` for the full regression suite, including the full-tour rehearsal,
 or `node --test tests/full-tour-rehearsal.test.mjs` for this workflow alone.

@@ -19,6 +19,7 @@ export function pgliteSupabase(db) {
       const query = {
         select: (selection = '*') => { columns = selection; return query; },
         eq: (key, value) => { filters.push([key, '=', value]); return query; },
+        neq: (key, value) => { filters.push([key, '<>', value]); return query; },
         in: (key, value) => { filters.push([key, 'in', value]); return query; },
         order: (key, { ascending = true } = {}) => { order.push(`${identifier(key)} ${ascending ? 'asc' : 'desc'}`); return query; },
         limit: (n) => { limit = n; return query; },
@@ -40,7 +41,7 @@ export function pgliteSupabase(db) {
               else sql = `select * from ${identifier(table)}`;
               if (filters.length) sql += ' where ' + filters.map(([key, op, value]) => op === 'in'
                 ? value.length ? `${identifier(key)} in (${value.map(param).join(',')})` : 'false'
-                : `${identifier(key)}=${param(value)}`).join(' and ');
+                : `${identifier(key)}${op}${param(value)}`).join(' and ');
               if (operation === 'select') {
                 if (order.length) sql += ` order by ${order.join(',')}`;
                 if (limit !== undefined) sql += ` limit ${Number(limit)}`;

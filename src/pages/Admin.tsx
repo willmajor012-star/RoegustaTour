@@ -2047,7 +2047,7 @@ export function Admin() {
     }
     void runSave(
       'plan-rounds',
-      'Round setup saved. The correct daily markets were prepared when eligible options were available.',
+      'Round setup saved. Daily markets are prepared when eligible options, a round date and a tee time are available.',
       async () => {
         for (let index = 0; index < count; index += 1) {
           const roundNumber = index + 1;
@@ -2407,6 +2407,10 @@ export function Admin() {
 
   const createDailyMarketForRound = async (round: Round) => {
     if (!selectedTour || !adminData) return false;
+    const closesAt = roundCutoffDefault(round, adminData.matches);
+    // Planning rounds comes before scheduling. Required markets cannot be saved
+    // without their first-tee cutoff, so defer them until the round is scheduled.
+    if (!closesAt) return false;
     const isScramble = round.format === 'scramble';
     const expectedType: BetMarket['marketType'] = isScramble
       ? 'team_result'
@@ -2454,9 +2458,7 @@ export function Admin() {
       marketScope: 'general_pot',
       status: 'draft',
       required: true,
-      closesAt: datetimeLocalToIso(
-        roundCutoffDefault(round, adminData.matches),
-      ),
+      closesAt: datetimeLocalToIso(closesAt),
       resultOptionId: null,
       resultText: null,
       options: options.map((option, index) => ({

@@ -224,6 +224,16 @@ export async function rehearseTourUi(db, snapshot) {
         await act(async () => document.querySelectorAll('.admin-subsection-nav button')[section].click());
         await flush();
         assert.ok(document.body.textContent.trim().length > 100);
+        const roundCount = [...document.querySelectorAll('label')].find((label) => label.textContent.trim().startsWith('Number of rounds'))?.querySelector('select');
+        if (roundCount) {
+          const marketCount = Number((await db.query('select count(*) from bet_markets')).rows[0].count);
+          await change(roundCount, '5');
+          await act(async () => [...document.querySelectorAll('button')].find((button) => button.textContent === 'Save round setup').click());
+          await flush();
+          assert.equal(Number((await db.query('select count(*) from rounds')).rows[0].count), 5, 'all unscheduled rounds are saved even with eligible betting options');
+          assert.equal(Number((await db.query('select count(*) from bet_markets')).rows[0].count), marketCount, 'automatic markets wait for a valid tee-time cutoff');
+          assert.match(document.body.textContent, /Round setup saved/);
+        }
       }
     }
   } finally {
