@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   saveRoundPrizeResult,
   submitResult,
@@ -8,7 +8,7 @@ import {
 } from '../lib/adminApi';
 import type { Match, RoundPrizeResult, Tour } from '../lib/types';
 import { AdminContextHelpButton } from './AdminContextHelpButton';
-import { isValidMatchplayResultForHoles, normalizeMatchplayResult } from '../lib/matchplay';
+import { isValidMatchplayResultForHoles, matchplayResultOptionsForHoles, normalizeMatchplayResult } from '../lib/matchplay';
 
 type ResultDraft = {
   winningSide: Exclude<Match['winningSide'], 'void'> | '';
@@ -64,6 +64,7 @@ export function AdminLiveDesk({
     ?? data.rounds[0];
   const [selectedRoundId, setSelectedRoundId] = useState(preferredRound?.id ?? '');
   const [drafts, setDrafts] = useState<Record<string, ResultDraft>>({});
+  const dirtyMatchIds = useRef(new Set<string>());
   const [resultState, setResultState] = useState<SaveState>({ saving: false });
   const [prizeState, setPrizeState] = useState<SaveState>({ saving: false });
   const selectedRound = data.rounds.find((round) => round.id === selectedRoundId) ?? preferredRound;
@@ -97,9 +98,24 @@ export function AdminLiveDesk({
   }, [data.rounds, preferredRound, selectedRoundId]);
 
   useEffect(() => {
-    setDrafts(Object.fromEntries(roundMatches.map((match) => [match.id, resultDraftFor(match)])));
-    setResultState({ saving: false });
-  }, [selectedRound?.id, data.matches, roundMatches]);
+    const currentIds = new Set(data.matches.map((match) => match.id));
+    for (const id of dirtyMatchIds.current) {
+      if (!currentIds.has(id)) dirtyMatchIds.current.delete(id);
+    }
+    setDrafts((current) => Object.fromEntries(data.matches.map((match) => [
+      match.id,
+      dirtyMatchIds.current.has(match.id) && current[match.id]
+        ? current[match.id]
+        : resultDraftFor(match),
+    ])));
+  }, [data.matches]);
+
+  useEffect(() => {
+    setResultState({
+      saving: false,
+      message: roundMatches.some((match) => dirtyMatchIds.current.has(match.id)) ? 'Unsaved changes' : undefined,
+    });
+  }, [selectedRound?.id]);
 
   useEffect(() => {
     setPrizeWinnerId(prizeResult?.winnerPlayerId ?? prizeResult?.winnerTeamId ?? '');
@@ -108,6 +124,7 @@ export function AdminLiveDesk({
   }, [prizeResult?.id, prizeResult?.winnerPlayerId, prizeResult?.winnerTeamId, prizeResult?.scoreValue, selectedRound?.id]);
 
   const setDraft = (matchId: string, patch: Partial<ResultDraft>) => {
+    dirtyMatchIds.current.add(matchId);
     setDrafts((current) => ({
       ...current,
       [matchId]: { ...(current[matchId] ?? { winningSide: '', resultText: '' }), ...patch },
@@ -163,6 +180,7 @@ export function AdminLiveDesk({
             published: publish,
             correctionReason: match.status === 'complete' ? 'Updated from the live results desk.' : null,
           });
+          dirtyMatchIds.current.delete(match.id);
         } else if (publish && !match.published) {
           await updateMatchPublished({ tourId: tour.id, matchId: match.id, published: true });
         }
@@ -244,7 +262,7 @@ export function AdminLiveDesk({
       </div>
       <AdminContextHelpButton label="Live match results" onClick={() => onHelp('guide-results')} />
       <label>Round
-        <select value={selectedRound.id} onChange={(event) => setSelectedRoundId(event.target.value)}>
+        <select value={selectedRound.id} disabled={resultState.saving || prizeState.saving} onChange={(event) => setSelectedRoundId(event.target.value)}>
           {data.rounds.map((round) => <option key={round.id} value={round.id}>{roundLabel(round)}</option>)}
         </select>
       </label>
@@ -268,12 +286,18 @@ export function AdminLiveDesk({
           <div className="live-match-sides"><div><strong>{sideA}</strong><small>{sideAPlayers || 'Players TBC'}</small></div><span>v</span><div><strong>{sideB}</strong><small>{sideBPlayers || 'Players TBC'}</small></div></div>
           <fieldset className="winner-toggle">
             <legend>Winner</legend>
-            <button type="button" className={draft.winningSide === 'A' ? 'selected' : ''} onClick={() => setDraft(match.id, { winningSide: 'A' })}>{sideA}</button>
-            <button type="button" className={draft.winningSide === 'halved' ? 'selected' : ''} onClick={() => setDraft(match.id, { winningSide: 'halved' })}>A/S</button>
-            <button type="button" className={draft.winningSide === 'B' ? 'selected' : ''} onClick={() => setDraft(match.id, { winningSide: 'B' })}>{sideB}</button>
+            <button type="button" disabled={resultState.saving} aria-pressed={draft.winningSide === 'A'} className={draft.winningSide === 'A' ? 'selected' : ''} onClick={() => setDraft(match.id, { winningSide: 'A', resultText: normalizeMatchplayResult(draft.resultText) === 'AS' ? '' : draft.resultText })}>{sideA}</button>
+            <button type="button" disabled={resultState.saving} aria-pressed={draft.winningSide === 'halved'} className={draft.winningSide === 'halved' ? 'selected' : ''} onClick={() => setDraft(match.id, { winningSide: 'halved', resultText: 'AS' })}>A/S</button>
+            <button type="button" disabled={resultState.saving} aria-pressed={draft.winningSide === 'B'} className={draft.winningSide === 'B' ? 'selected' : ''} onClick={() => setDraft(match.id, { winningSide: 'B', resultText: normalizeMatchplayResult(draft.resultText) === 'AS' ? '' : draft.resultText })}>{sideB}</button>
           </fieldset>
           <label className="live-result-text">Result
-            <input value={draft.resultText} onChange={(event) => setDraft(match.id, { resultText: event.target.value })} placeholder="e.g. 3&2, 1 up or halved" />
+            <select value={normalizeMatchplayResult(draft.resultText) ?? ''} disabled={resultState.saving} onChange={(event) => setDraft(match.id, {
+              resultText: event.target.value,
+              winningSide: event.target.value === 'AS' ? 'halved' : draft.winningSide === 'halved' ? '' : draft.winningSide,
+            })}>
+              <option value="">Choose result</option>
+              {matchplayResultOptionsForHoles(selectedRound.holes).map((result) => <option key={result} value={result}>{result}</option>)}
+            </select>
           </label>
         </article>;
       })}
