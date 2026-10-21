@@ -152,3 +152,52 @@ test('successful no-op and publication-only saves release local drafts for serve
     }
   } finally { dom.window.close(); }
 });
+
+
+test('full-size 24-player tour reconciles results, statistics, all player picks and payouts', async () => {
+  const db = new PGlite();
+  try {
+    await db.exec('create role anon; create role authenticated; create role service_role bypassrls; create schema storage; create table storage.buckets(id text primary key,name text,public boolean);');
+    for (const file of (await readdir('supabase/migrations')).filter((file) => file.endsWith('.sql')).sort()) {
+      await db.exec((await readFile(`supabase/migrations/${file}`, 'utf8')).replace(/create extension if not exists pgcrypto;/gi, ''));
+    }
+    const results = await db.exec(await readFile('scripts/qa/full-tour-rehearsal-24.sql', 'utf8'));
+    const evidence = results.at(-1).rows[0].rehearsal;
+    assert.equal(evidence.players, 24);
+    assert.equal(evidence.matches, 24);
+    assert.equal(evidence.playerResultRows, 72);
+    assert.deepEqual(evidence.teamScore, [13, 11]);
+    assert.equal(evidence.totalStakePence, 72000);
+    assert.equal(evidence.totalPayoutPence, 72000);
+    assert.equal(evidence.leaderboard.length, 24);
+    assert.equal(evidence.leaderboard.reduce((sum, row) => sum + row.net_pence, 0), 0);
+    assert.equal(Number((await db.query('select count(*) from tours')).rows[0].count), 0);
+    assert.equal(Number((await db.query('select count(*) from bets')).rows[0].count), 0);
+    const { getAdvancedStatsBundle, getBettingBundle } = loadTs('netlify/functions/_publicData.ts');
+    const client = snapshotClient(evidence.snapshot);
+    const stats = await getAdvancedStatsBundle(client);
+    const { calculateTourSummary, calculatePlayerAdvancedSummaries } = loadTs('src/lib/advancedStats.ts');
+    const tid = evidence.snapshot.tours[0].id;
+    assert.deepEqual(calculateTourSummary(tid, stats).teamScore.map((row) => row.points), [13, 11]);
+    const players = calculatePlayerAdvancedSummaries(stats, tid);
+    assert.equal(players.length, 24);
+    assert.equal(players.filter((player) => player.tourWins === 1).length, 12);
+    for (const player of players) {
+      assert.equal(player.currentTourRecord.matches, 3);
+      assert.equal(player.allTimeRecord.matches, 3);
+      assert.equal(player.toursAttended, 1);
+    }
+    const betting = await getBettingBundle(client);
+    const { buildBetPuntoBettorSummaries } = loadTs('src/lib/betting.ts');
+    const ledger = buildBetPuntoBettorSummaries(betting.betMarkets, betting.betOptions, betting.bets, [], betting.rounds);
+    assert.equal(ledger.length, 24);
+    for (const player of ledger) {
+      const expected = evidence.leaderboard.find((row) => row.bettor_name === player.bettorName);
+      assert.equal(player.totalStakePence, 3000);
+      assert.equal(player.settledPayoutPence, expected.payout_pence);
+      assert.equal(player.netPence, expected.net_pence);
+      assert.equal(player.pendingStakePence, 0);
+    }
+    await rehearseTourUi(db, evidence.snapshot);
+  } finally { await db.close(); }
+});

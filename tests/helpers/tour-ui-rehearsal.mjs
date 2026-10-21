@@ -152,10 +152,10 @@ export async function rehearseTourUi(db, snapshot) {
       assert.equal(document.querySelector('.live-prize-card .form-error')?.textContent, undefined);
       assert.equal(data.betMarkets.find((market) => market.roundId === round.id).status, 'settled');
     }
-    assert.deepEqual(data.tourTeamResults.map((result) => result.finalPoints).sort((a, b) => b - a), [9, 7]);
-    assert.equal(Number((await db.query('select sum(payout_amount_pence) total from bets')).rows[0].total), 48000);
-    assert.equal(requests.filter((request) => request.name === 'public-save-bet' && request.status === 200).length, 48);
-    assert.equal(requests.filter((request) => request.name === 'admin-submit-result' && request.status === 200).length, 16);
+    assert.deepEqual(data.tourTeamResults.map((result) => result.finalPoints).sort((a, b) => b - a), snapshot.tour_team_results.map((result) => Number(result.final_points)).sort((a, b) => b - a));
+    assert.equal(Number((await db.query('select sum(payout_amount_pence) total from bets')).rows[0].total), snapshot.bets.filter((bet) => bet.status === 'active').reduce((sum, bet) => sum + Number(bet.payout_amount_pence), 0));
+    assert.equal(requests.filter((request) => request.name === 'public-save-bet' && request.status === 200).length, snapshot.players.length * snapshot.bet_markets.length);
+    assert.equal(requests.filter((request) => request.name === 'admin-submit-result' && request.status === 200).length, snapshot.matches.length);
     assert.equal(requests.filter((request) => request.name === 'admin-save-round-prize-result' && request.status === 200).length, 3);
     const completed = await endpoint('admin-save-tour', {
       id: tid, name: data.selectedTour.name, year: data.selectedTour.year,
