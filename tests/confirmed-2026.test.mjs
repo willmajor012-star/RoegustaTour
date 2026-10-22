@@ -107,6 +107,9 @@ test('2026 configuration, atomic persistence, six independent defaults, retries,
  const matches=(await db.query('select * from matches where tour_id=$1 order by round_id,match_number',[tid])).rows;assert.equal(matches.length,18);
  for(const m of matches)await db.query('select admin_submit_match_result_atomic($1,$2,1,0,$3,true,false,$4,$5)',[tid,m.id,'1 Up','QA','Full rehearsal']);
  assert.deepEqual((await db.query('select final_points,result_status from tour_team_results where tour_id=$1 order by team_id',[tid])).rows.map((r)=>[Number(r.final_points),r.result_status]),[[28.5,'draw'],[28.5,'draw']]);
+ const overview=await loadTs('netlify/functions/_publicData.ts').getAdvancedStatsBundle(client);
+ assert.equal(overview.currentTourScores.reduce((n,r)=>n+r.points,0),57,'the overview counts each completed match only once alongside the 39 combined points');
+ assert.deepEqual(overview.currentTourScores.map((r)=>r.points),[28.5,28.5]);
  assert.equal(Number((await db.query('select count(*) n from player_match_results where tour_id=$1',[tid])).rows[0].n),48,'match statistics contain only Saturday and Sunday');
  const oldOptions=b.options.filter((o)=>o.active&&[fri.id,b.markets.find((m)=>m.poolKey==='combined').id].includes(o.marketId)).map((o)=>o.id).sort();
  const combinedMarket=b.markets.find((m)=>m.poolKey==='combined');

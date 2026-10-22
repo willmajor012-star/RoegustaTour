@@ -271,7 +271,9 @@ export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
   const currentTourRoundIds = new Set(currentTourRounds.map((round) => round.id));
   const rounds = allRounds.filter((round) => currentTourRoundIds.has(round.id) || isPublicRound(round, tourById.get(round.tourId)));
   const roundById = rowsById(rounds);
-  const matchRowsForStats = [...completedMatchRows.map(mapMatch), ...currentPublicMatchRows.map(mapMatch)];
+  // Completed current-tour matches appear in both queries. Keep one identity
+  // before calculating the live overview score, as well as historical stats.
+  const matchRowsForStats = [...new Map([...completedMatchRows.map(mapMatch), ...currentPublicMatchRows.map(mapMatch)].map((match) => [match.id, match])).values()];
   const currentTourMatches = currentTour ? publicMatchesOrLegacyCurrent(matchRowsForStats.filter((match) => match.tourId === currentTour.id), roundById, currentTour) : [];
   const currentTourMatchIds = new Set(currentTourMatches.map((match) => match.id));
   const matchById = new Map(matchRowsForStats
