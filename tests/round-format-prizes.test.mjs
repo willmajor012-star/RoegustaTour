@@ -74,7 +74,7 @@ describe('secondary prize result support', () => {
 
   it('publishes the fixed tour payout reference separately from prize winners', () => {
     assert.match(publicSource, /Prize fund & payouts/);
-    assert.match(publicSource, /prizeFund\?\.rounds\.find/);
+    assert.match(publicSource, /<PrizePayouts/);
     assert.match(prizeFundMigration, /add column if not exists prize_fund jsonb/);
     assert.match(prizeFundMigration, /'contributionPence', 3750/);
     assert.match(prizeFundMigration, /'totalPence', 90000/);

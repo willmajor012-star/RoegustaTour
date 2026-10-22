@@ -8,7 +8,7 @@ export async function createItineraryPdf(b: OpsBundle, rounds: Round[], itinerar
   const doc = await PDFDocument.create(); const font = await doc.embedFont(StandardFonts.Helvetica); const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const green = rgb(.06, .19, .14), muted = rgb(.28, .35, .3); let page = doc.addPage([595, 842]); let y = 784;
   const clean = (s: string) => s.replace(/[\u2010-\u2015]/g, '-').replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"').replace(/→/g, 'to').replace(/[^\x20-\x7e\xa0-\xff]/g, ' ');
-  const line = (text: string, size = 10.5, strong = false) => { const f = strong ? bold : font; const words = clean(text).split(/\s+/); let current = ''; const lines: string[] = []; for (const word of words) { const trial = current ? current + ' ' + word : word; if (f.widthOfTextAtSize(trial, size) > 490 && current) { lines.push(current); current = word; } else current = trial; } if (current) lines.push(current); for (const l of lines) { if (y < 65) { page = doc.addPage([595, 842]); y = 784; } page.drawText(l, { x: 52, y, size, font: f, color: strong ? green : muted }); y -= size * 1.35; } y -= 3; };
+  const line = (text: string, size = 10.5, strong = false) => { const f = strong ? bold : font; const words = clean(text).split(/\s+/); let current = ''; const lines: string[] = []; for (const word of words) { const trial = current ? current + ' ' + word : word; if (f.widthOfTextAtSize(trial, size) > 490 && current) { lines.push(current); current = word; } else current = trial; } if (current) lines.push(current); for (const l of lines) { if (y < 65) { page = doc.addPage([595, 842]); y = 784; } page.drawText(l, { x: 52, y, size, font: f, color: strong ? green : muted }); y -= size * 1.35; } y -= 1.5; };
   const heading = (text: string) => { if (y < 150) { page = doc.addPage([595, 842]); y = 784; } y -= 9; line(text, 15, true); };
   line(b.tour.name, 25, true);
   line(`${b.tour.startDate ?? ''} to ${b.tour.endDate ?? ''} | ${b.tour.location ?? ''}`);
@@ -48,6 +48,13 @@ export async function createItineraryPdf(b: OpsBundle, rounds: Round[], itinerar
       line(`${pool.title} | £${(pool.minimumStakePence ?? 0) / 100} minimum | ${cutoff}`, 9.5);
     }
     line('At cutoff, any shortfall is automatically staked on you or your own pair.', 9.5);
+  }
+  if (b.tour.prizeFund?.rounds.length) {
+    heading('Cash prizes');
+    for (const prize of b.tour.prizeFund.rounds) {
+      const title = prize.title ?? rounds.find((r) => r.roundNumber === prize.roundNumber)?.name ?? 'Competition';
+      line(`${title} | ${prize.payoutsPence.map((v, i) => `${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : i === 2 ? 'rd' : 'th'} £${v / 100}`).join(' · ')} | per ${prize.paidPer}`, 9.5);
+    }
   }
   doc.getPages().forEach((p, i) => { p.drawLine({ start: { x: 52, y: 44 }, end: { x: 543, y: 44 }, thickness: .5, color: muted }); p.drawText(`Roegusta ${b.tour.year} | Portugal local time | ${i + 1} / ${doc.getPageCount()}`, { x: 52, y: 28, size: 8, font, color: muted }); });
   doc.setTitle(b.tour.name + ' - itinerary'); doc.setAuthor('Roegusta Tour'); return doc.save();

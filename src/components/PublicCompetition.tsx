@@ -1,3 +1,4 @@
+import { PrizePayouts } from './PrizePayouts';
 import { useState } from 'react';
 import { competitionStandings, entryLabel, type GolfCompetition, type GolfSession, type OpsBundle } from '../lib/tourOperations';
 import { formatShortDate } from '../lib/formatting';
@@ -27,7 +28,7 @@ export function PublicCompetitionPanel({ teeSheets = false }: { teeSheets?: bool
   if (!b) return <p className="card">Loading results…</p>;
   const c = b.state.competitions.find((c) => c.key === key) ?? b.state.competitions[0];
   if (!c) return <p className="card">Results to follow.</p>;
-  return <div className="public-competition"><nav className="public-tabs competition-tabs" aria-label="Competition">{b.state.competitions.map((c) => <button type="button" key={c.id} aria-pressed={c.key === key} onClick={() => setKey(c.key)}>{labels[c.key] ?? c.title}</button>)}</nav>{teeSheets ? c.sessions.map((s) => <PublicTeeSheet key={s.id} competition={c} session={s} bundle={b} />) : <><h3>{labels[c.key] ?? c.title}</h3><CompetitionStandings competition={c} bundle={b} /></>}</div>;
+  return <div className="public-competition"><nav className="public-tabs competition-tabs" aria-label="Competition">{b.state.competitions.map((c) => <button type="button" key={c.id} aria-pressed={c.key === key} onClick={() => setKey(c.key)}>{labels[c.key] ?? c.title}</button>)}</nav>{teeSheets ? c.sessions.map((s) => <PublicTeeSheet key={s.id} competition={c} session={s} bundle={b} />) : <><h3>{labels[c.key] ?? c.title}</h3><CompetitionStandings competition={c} bundle={b} /><PrizePayouts fund={b.tour.prizeFund} poolKey={c.key} /></>}</div>;
 }
 export function PublicRoundResults({ roundId, groups = false }: { roundId: string; groups?: boolean }) {
   const { bundle: b, error } = useTourOperations();

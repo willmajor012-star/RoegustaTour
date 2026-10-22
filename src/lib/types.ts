@@ -12,13 +12,15 @@ export type Player = {
 
 export type TourPrizeFundRound = {
   roundNumber: number;
+  poolKey?: string;
+  title?: string;
   paidPer: 'pair' | 'player';
   payoutsPence: number[];
 };
 
 export type TourPrizeFund = {
   programmeVersion?: string;
-  contributionPence: number;
+  contributionPence?: number;
   totalPence?: number;
   rules: string[];
   rounds: TourPrizeFundRound[];

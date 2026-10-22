@@ -1,3 +1,4 @@
+import { PrizePayouts } from '../components/PrizePayouts';
 import { TourLink } from '../components/TourLink';
 import { PublicRoundCompetition } from '../components/TourOperations';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
@@ -52,14 +53,7 @@ function roundTabTitle(round: Round) {
   return [day !== 'TBC' ? day : `Round ${round.roundNumber}`, session].filter(Boolean).join(' ') || `Round ${round.roundNumber}`;
 }
 
-function formatPrizeMoney(pence: number) {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: pence % 100 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
-  }).format(pence / 100);
-}
+
 
 export function Matches() {
   const [roundId, setRoundId] = useState('');
@@ -144,20 +138,9 @@ function GolfResults({ selectedRound, matches, data, teams }: { selectedRound: R
 }
 
 function GolfPrizes({ selectedRound, prizeFund, prizes, players, teams }: { selectedRound: Round; prizeFund?: TourPrizeFund; prizes: RoundPrizeResult[]; players: Player[]; teams: TourTeam[] }) {
-  const payout = prizeFund?.rounds.find((round) => round.roundNumber === selectedRound.roundNumber);
   return <section className="tour-detail-section card round-prizes-panel">
     <div className="section-heading"><div><p className="eyebrow">Prize fund & payouts</p><h3>{formatRoundDisplayName(selectedRound)}</h3></div></div>
-    {payout && prizeFund ? <div className="prize-fund-card">
-      <div className="prize-fund-summary">
-        <span><small>Contribution</small><strong>{formatPrizeMoney(prizeFund.contributionPence)} each</strong></span>
-        {prizeFund.totalPence !== undefined ? <span><small>Total fund</small><strong>{formatPrizeMoney(prizeFund.totalPence)}</strong></span> : null}
-        <span><small>Paid per</small><strong>{payout.paidPer}</strong></span>
-      </div>
-      <div className="prize-payout-grid" aria-label={`${formatRoundDisplayName(selectedRound)} prize payouts`}>
-        {payout.payoutsPence.map((amount, index) => <span key={`${selectedRound.id}-${index}`}><small>{index + 1}{index === 0 ? 'st' : index === 1 ? 'nd' : index === 2 ? 'rd' : 'th'}</small><strong>{formatPrizeMoney(amount)}</strong></span>)}
-      </div>
-      {prizeFund.rules.length > 0 ? <ul className="prize-fund-rules">{prizeFund.rules.map((rule) => <li key={rule}>{rule}</li>)}</ul> : null}
-    </div> : <p>Prizes to follow.</p>}
+    {prizeFund?.rounds.some((p) => p.roundNumber === selectedRound.roundNumber) ? <PrizePayouts fund={prizeFund} roundNumber={selectedRound.roundNumber} /> : <p>Prizes to follow.</p>}
     <div className="section-heading prize-winners-heading"><div><p className="eyebrow">Winner</p><h4>Prize winners</h4></div></div>
     {prizes.length === 0 ? <p>Results to follow.</p> : <div className="round-prize-list">{prizes.map((prize) => {
       const winner = players.find((player) => player.id === prize.winnerPlayerId)?.displayName ?? teams.find((team) => team.id === prize.winnerTeamId)?.name ?? 'Winner TBC';
@@ -199,7 +182,6 @@ function RoundMeta({ selectedRound, firstMatchTime }: { selectedRound: Round; fi
   return <div className="selected-round-facts">
     <span><small>Date</small><strong>{formatShortDate(selectedRound.roundDate)}</strong></span>
     <span><small>Holes</small><strong>{selectedRound.holeCountConfirmed === false ? 'TBC' : selectedRound.holes ?? 18}</strong></span>
-    <span><small>Session</small><strong>{roundSession(selectedRound) ?? 'TBC'}</strong></span>
     <span><small>First tee</small><strong>{formatTeeTimeDisplay(firstMatchTime ?? selectedRound.teeTime)}</strong></span>
   </div>;
 }
