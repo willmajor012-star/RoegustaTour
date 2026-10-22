@@ -15,7 +15,8 @@ function NavIcon({ name }: { name: IconName }) {
 
 function itemIsActive(path: string, currentPath: string) {
   if (path === '/') return currentPath === '/' || currentPath === '/score';
-  if (path === '/tours') return currentPath === '/tours' || currentPath === '/teams' || currentPath === '/info' || currentPath === '/courses' || currentPath.startsWith('/courses/');
+  if (path === '/matches' && currentPath === '/competitions') return true;
+  if (path === '/tours') return currentPath.startsWith('/tours') || currentPath === '/teams' || currentPath === '/info' || currentPath === '/courses' || currentPath.startsWith('/courses/');
   return currentPath === path;
 }
 

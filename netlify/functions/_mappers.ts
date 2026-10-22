@@ -80,6 +80,7 @@ function mapTourPrizeFund(value: unknown): TourPrizeFund | undefined {
   if (rounds.length === 0) return undefined;
   return {
     contributionPence,
+    programmeVersion: asString(row.programmeVersion),
     totalPence: asNumber(row.totalPence),
     rules: asArray(row.rules).map(asString).filter((rule): rule is string => Boolean(rule)),
     rounds,

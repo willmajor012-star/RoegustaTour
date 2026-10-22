@@ -30,6 +30,7 @@ import {
   publishAdminContent,
   saveBet,
   saveBetMarket,
+  setPoolStatus,
   settleBetMarket,
   setCurrentPublicTour,
   submitResult,
@@ -2488,6 +2489,7 @@ export function Admin() {
       `bet-market-status-${market.id}`,
       `Bet Punto market ${status}.`,
       async () => {
+        if (market.poolKey) { await setPoolStatus({ marketId: market.id, tourId: selectedTour.id, status }); return; }
         await saveBetMarket({
           id: market.id,
           tourId: selectedTour.id,
@@ -6395,6 +6397,7 @@ export function Admin() {
                                       >
                                         Run cutoff/default check
                                       </button>
+                                      {market.poolKey ? <button type="button" disabled={marketBets.some((b) => b.status === 'active')} onClick={() => saveMarketStatus(market, 'draft')}>Hide pool</button> : null}
                                       <button
                                         type="button"
                                         onClick={() =>
@@ -6430,6 +6433,7 @@ export function Admin() {
                                       >
                                         Delete market
                                       </button>
+                                      {states[`bet-market-status-${market.id}`]?.error ? <p className="form-error">{states[`bet-market-status-${market.id}`]?.error}</p> : null}
                                       {states[`delete-bet-market-${market.id}`]
                                         ?.error ? (
                                         <span className="form-error">

@@ -10,7 +10,6 @@ import { Stats } from '../pages/Stats';
 import { Teams } from '../pages/Teams';
 import { TourInfo } from '../pages/TourInfo';
 import { Tours } from '../pages/Tours';
-import { TourScore } from '../pages/TourScore';
 
 export type AppRoute = {
   path: string;
@@ -24,11 +23,13 @@ export const routes: AppRoute[] = [
   { path: '/matches', element: <Matches /> },
   { path: '/teams', element: <Teams /> },
   { path: '/tours', element: <Tours /> },
+  { path: '/tours/current', element: <Tours openCurrent /> },
+  { path: '/tours/current/leaderboard', element: <Tours openCurrent initialSection="leaderboard" /> },
   { path: '/info', element: <TourInfo /> },
   { path: '/courses', element: <Courses /> },
   { path: '/courses/:slug', matches: (pathname) => /^\/courses\/[^/]+$/.test(pathname), element: <CourseGuidePage /> },
   { path: '/betting', element: <Betting /> },
-  { path: '/score', element: <TourScore /> },
+  { path: '/score', element: <Tours openCurrent /> },
   { path: '/stats', element: <Stats /> },
   { path: '/admin', element: <Suspense fallback={<p className="card">Loading admin…</p>}><Admin /></Suspense> },
 ];

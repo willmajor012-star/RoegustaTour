@@ -230,3 +230,32 @@ test('GameBook totals, explicit pool winners and visible provisional side points
   const par=b.state.competitions.find((v)=>v.key==='par3');assert(par.sessions[0].groups.every((g)=>g.time===par.sessions[0].firstStart),'all shotgun groups have the same start');
  }finally{await db.close();}
 });
+
+test('pool publication hides selections until explicitly opened and preserves their identities', async () => {
+ const db=await database();
+ try {
+  await db.query("update bet_markets set status='draft' where tour_id=$1",[tid]);
+  const client=pgliteSupabase(db);const publicData=loadTs('netlify/functions/_publicData.ts');
+  const hidden=await publicData.getBettingBundle(client);
+  assert.equal(hidden.betMarkets.length,0);assert.equal(hidden.betOptions.length,0);assert.equal(hidden.bets.length,0);
+  assert.equal(hidden.poolSchedule.length,6);assert.equal(hidden.poolSchedule.reduce((n,p)=>n+p.minimumStakePence,0),4500);
+  const prizeFund={contributionPence:1000,rules:[],rounds:[{roundNumber:1,paidPer:'pair',payoutsPence:[1000]}]};
+  await db.query('update tours set prize_fund=$1 where id=$2',[JSON.stringify(prizeFund),tid]);
+  assert.equal((await publicData.getCurrentTour(client)).prizeFund,undefined,'the superseded cash schedule is not published against the new programme');
+  await db.query('update tours set prize_fund=$1 where id=$2',[JSON.stringify({...prizeFund,programmeVersion:'confirmed-2026'}),tid]);
+  assert.equal((await publicData.getCurrentTour(client)).prizeFund.programmeVersion,'confirmed-2026');
+  const market=config.markets.find((m)=>m.pool_key==='friday');
+  await assert.rejects(db.query("select admin_set_tour_pool_status($1,$2,'open','QA')",[market.id,tid]),/Publish the competition draw/);
+  let b=await service.readOperations(client,tid,true);const c=b.state.competitions.find((c)=>c.key==='combined');
+  b=await service.applyOperationsAction(client,b,'save_entries',{competitionId:c.id,entries:c.entries.map((e,i)=>({...e,playerIds:config.rosterIds.slice(i*2,i*2+2),teamId:side(config.rosterIds[i*2])}))},b.version,'QA');
+  b=await service.applyOperationsAction(client,b,'publish_entries',{competitionId:c.id},b.version,'QA');
+  assert.equal((await publicData.getBettingBundle(client)).betMarkets.length,0,'publishing a draw does not open betting automatically');
+  const ids=b.options.filter((o)=>o.marketId===market.id).map((o)=>o.id).sort();
+  await db.query("select admin_set_tour_pool_status($1,$2,'open','QA')",[market.id,tid]);
+  const live=await publicData.getBettingBundle(client);assert(live.betMarkets.some((m)=>m.id===market.id));
+  assert.deepEqual(live.betOptions.filter((o)=>o.marketId===market.id).map((o)=>o.id).sort(),ids);
+  await db.query("select admin_set_tour_pool_status($1,$2,'closed','QA')",[market.id,tid]);
+  await db.query("select admin_set_tour_pool_status($1,$2,'draft','QA')",[market.id,tid]);
+  assert.equal((await publicData.getBettingBundle(client)).betMarkets.length,0);
+ }finally{await db.close();}
+});

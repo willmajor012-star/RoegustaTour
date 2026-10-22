@@ -12,6 +12,35 @@ for (const name of ['window', 'document', 'navigator', 'CustomEvent', 'HTMLEleme
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
 
+test('the entire home team score card opens the current tour overview', async () => {
+  const fixture=loadTs('src/data/mockData.ts');
+  const tour={...fixture.tours[0],isCurrentPublic:true,timezone:'Europe/Lisbon'};
+  const payload={...fixture,tour,currentTour:tour,teams:fixture.tourTeams,scores:[],recentResults:[],openMarkets:[],roundPrizeResults:[],itineraryItems:[],handbookSections:[],teamDayKit:[],tourCourses:[],source:'supabase'};
+  const originalFetch=globalThis.fetch;globalThis.fetch=async()=>({ok:true,status:200,json:async()=>payload});
+  window.history.replaceState(null,'','/');window.scrollTo=()=>{};
+  const {AppShell}=loadTs('src/app/AppShell.tsx');const root=createRoot(document.getElementById('root'));
+  try {
+    await act(async()=>root.render(React.createElement(AppShell)));
+    const card=document.querySelector('a.score-feature');assert(card);assert.equal(card.getAttribute('href'),'/tours/current');
+    assert.equal(card.querySelectorAll('a').length,0,'the score card has no nested links');
+    await act(async()=>card.querySelector('h2').click());
+    assert.equal(window.location.pathname,'/tours/current');
+    assert(document.querySelector('.selected-tour-hero'));
+    assert.deepEqual([...document.querySelectorAll('.tour-detail-switch button')].map((b)=>b.textContent),['Overview','Results','Teams','Leaderboard']);
+  } finally {await act(async()=>root.unmount());globalThis.fetch=originalFetch;window.history.replaceState(null,'','/');}
+});
+
+test('public pairs standings use compact cards and show Friday projections without organiser instructions', async () => {
+ const {CompetitionStandings}=loadTs('src/components/PublicCompetition.tsx');
+ const entries=Array.from({length:12},(_,i)=>({id:'pair'+i,playerIds:['a'+i,'b'+i],teamId:i<6?'sideA':'sideB'}));
+ const session=(key)=>({id:key,key,title:key,date:'2026-11-06',holes:9,holeOrder:[1,2,3,4,5,6,7,8,9],format:'scramble',scores:[],handicaps:[],handicapSettings:{method:''},resultMode:'totals',totals:key==='friday'?entries.map((e,i)=>({entryId:e.id,stableford:20+i,completedHoles:9})):[]});
+ const c={id:'combined',key:'combined',entries,entriesPublished:true,published:true,sessions:[session('friday'),session('monday')],decisions:[],pointAwards:[6,5.5,5,4.5,4,3.5,3,2.5,2,1.5,1,.5]};
+ const b={courses:[],players:entries.flatMap((e,i)=>e.playerIds.map((id)=>({id,displayName:'Golfer '+id}))),teams:[{id:'sideA',name:'Side A'},{id:'sideB',name:'Side B'}]};
+ const root=createRoot(document.getElementById('root'));
+ try {await act(async()=>root.render(React.createElement(CompetitionStandings,{competition:c,bundle:b})));assert.equal(document.querySelectorAll('.competition-standing').length,12);assert.equal(document.querySelectorAll('table').length,0);assert.match(document.body.textContent,/Not started/);assert.match(document.body.textContent,/Provisional/);assert.doesNotMatch(document.body.textContent,/GameBook|handicap|Save|admin ranking/);}
+ finally{await act(async()=>root.unmount());}
+});
+
 test('initial public load completes under StrictMode, which replays effects', async () => {
   const { usePublicData } = loadTs('src/lib/usePublicData.ts');
   let finish;
@@ -191,7 +220,7 @@ test('tour cards and overview agree on date-aware final winners', async () => {
         await act(async () => card.click());
         const winnerStat = [...document.querySelectorAll('.tour-overview-grid article')].find((entry) => entry.querySelector('span').textContent === 'Winner');
         assert.equal(winnerStat.querySelector('strong').textContent, scenario.ended ? scenario.outcome : 'TBC');
-        assert.equal(document.querySelector('.selected-tour-hero strong')?.textContent, scenario.ended && scenario.points[0] > scenario.points[1] ? 'Alpha won' : undefined);
+        assert.equal(document.querySelector('.selected-tour-hero > div > strong')?.textContent, scenario.ended && scenario.points[0] > scenario.points[1] ? 'Alpha won' : undefined);
       } finally { await act(async () => root.unmount()); }
     }
   } finally { Date.now = originalNow; }
