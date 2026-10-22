@@ -73,7 +73,7 @@ export function Matches() {
   const selectedCourseGuide = courseGuideForRound(selectedRound, tourCourses);
   const teeSheetMatches = [...selectedRoundMatches].sort((a, b) => compareTeeTimeValues(a.teeTime, b.teeTime) || a.matchNumber - b.matchNumber);
   const selectedPrizes = selectedRound ? activeData.roundPrizeResults.filter((prize) => prize.roundId === selectedRound.id) : [];
-  const scoreRows = activeData.tour ? calculateTeamScoreByTour(activeData.tour.id, activeData.tourTeams, activeData.rounds, publicMatches, activeData.competitionAwards) : [];
+  const scoreRows = activeData.tour ? calculateTeamScoreByTour(activeData.tour.id, activeData.tourTeams, activeData.rounds, publicMatches, activeData.competitionAwards, activeData.competitionProjections) : [];
   const { totalAvailablePoints, pointsToWin } = tourPointsTarget(publicMatches, activeData.projectedTotalPoints);
 
   useEffect(() => {

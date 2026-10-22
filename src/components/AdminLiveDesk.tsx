@@ -370,7 +370,7 @@ export function AdminLiveDesk({
       })}
     </div>
 
-    {tour.rulesVersion === 'confirmed-2026' ? <div className="card"><h3>Stableford and betting results</h3><p>Enter complete hole scores in Tour → Competitions & scoring. The match result above remains separate and does not create scores for conceded holes.</p></div> : <div ref={prizeRef} tabIndex={-1} className="card live-prize-card">
+    {tour.rulesVersion === 'confirmed-2026' ? <div className="card"><h3>Stableford and betting results</h3><p>Enter GameBook Stableford totals in Tour → Competitions & scoring. The match result above remains separate and does not create scores for conceded holes.</p></div> : <div ref={prizeRef} tabIndex={-1} className="card live-prize-card">
       <div className="section-heading">
         <div><p className="eyebrow">Round winner</p><h3>{prizeType === 'team_gross' ? 'Lowest scramble score' : 'Highest Stableford score'}</h3></div>
         <div className="chip-list"><AdminContextHelpButton label="Secondary prize winner and Bet Punto settlement" onClick={() => onHelp('guide-secondary-prizes')} /><span className={linkedMarket ? 'market-linked' : 'market-missing'}>{linkedMarket ? 'Bet market linked' : 'No market linked'}</span></div>

@@ -3099,7 +3099,7 @@ export function Admin() {
             <>
               {activeWorkspace === 'live' && selectedTour ? (
                 <div aria-busy={dataLoading} inert={dataLoading || Boolean(dataError)}>
-                  <div className="card"><h3>Stableford scorecards & combined competition</h3><p>Friday, Par 3, Saturday and Sunday individual cards, and Monday scramble scores.</p><button type="button" onClick={() => { selectWorkspace('tour'); setActiveTab('Competitions & scoring'); }}>Open competitions & scoring</button></div>
+                  <div className="card"><h3>Stableford scorecards & combined competition</h3><p>Enter GameBook Stableford totals and confirm the actual betting winners.</p><button type="button" onClick={() => { selectWorkspace('tour'); setActiveTab('Competitions & scoring'); }}>Open competitions & scoring</button></div>
                   <AdminLiveDesk
                     key={selectedTour.id}
                     data={adminData}

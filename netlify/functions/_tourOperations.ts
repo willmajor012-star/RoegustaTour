@@ -55,6 +55,12 @@ export function validateState(state: TourOperations, b: OpsBundle) {
       assert(s.timezone === b.tour.timezone, 'Session timezone must match the tour timezone.');
       const subjects = s.format === 'scramble' ? c.entries.map((e) => e.id) : people;
       const keys = new Set<string>();
+      const totalIds = new Set<string>();
+      for (const total of s.totals ?? []) {
+        assert(c.entries.some((e) => e.id === total.entryId) && !totalIds.has(total.entryId), 'Invalid or duplicated entry total.'); totalIds.add(total.entryId);
+        assert(Number.isInteger(total.stableford) && total.stableford >= 0 && total.stableford <= 300, 'Stableford totals must be whole numbers from 0 to 300.');
+        assert(s.holes && Number.isInteger(total.completedHoles) && total.completedHoles >= 1 && total.completedHoles <= s.holes, 'Enter a valid number of completed holes.');
+      }
       for (const score of s.scores) {
         const key = score.subjectId + ':' + score.hole;
         assert(subjects.includes(score.subjectId) && s.holeOrder.includes(score.hole) && !keys.has(key), 'Invalid or duplicated scorecard hole.'); keys.add(key);
@@ -102,10 +108,10 @@ export async function applyOperationsAction(db: SupabaseClient, b: OpsBundle, ac
       const oldPlayers = JSON.stringify(c.entries.map((e) => [e.id, e.playerIds]));
       const changed = oldPlayers !== JSON.stringify(entries.map((e) => [e.id, e.playerIds]));
       const compMarkets = b.markets.filter((m) => m.competitionKey === c.key).map((m) => m.id);
-      if (changed) assert(!c.sessions.some((x) => x.scores.some((v) => v.status !== 'unentered')) && !b.bets.some((v) => compMarkets.includes(v.marketId)), 'Pairs with saved scores or placed bets cannot be redrawn. Preserve their identities and correct individual records explicitly.');
+      if (changed) assert(!c.sessions.some((x) => x.scores.some((v) => v.status !== 'unentered') || (x.totals?.length ?? 0) > 0) && !b.bets.some((v) => compMarkets.includes(v.marketId)), 'Pairs with saved scores or placed bets cannot be redrawn. Preserve their identities and correct individual records explicitly.');
       assert(!changed || !c.entriesPublished || payload.confirmRedraw === true, 'This draw is already published. Confirm a replacement draw explicitly.');
       c.entries = entries;
-      if (c.key === 'par3') for (const session of c.sessions) session.draftGroups = Array.from({ length: 6 }, (_, i) => ({ id: session.groups[i]?.id ?? randomUUID(), number: i + 1, entryIds: entries.slice(i * 2, i * 2 + 2).map((e) => e.id) }));
+      if (c.key === 'par3') for (const session of c.sessions) session.draftGroups = Array.from({ length: 6 }, (_, i) => ({ id: session.groups[i]?.id ?? randomUUID(), number: i + 1, entryIds: entries.slice(i * 2, i * 2 + 2).map((e) => e.id), time: session.startType === 'shotgun' ? session.firstStart : undefined }));
       if (changed) c.entriesPublished = false;
     } else if (action === 'publish_entries') { completeEntries(c, b); c.entriesPublished = true;
       if (c.key === 'par3') for (const session of c.sessions) { assert(session.draftGroups, 'Save the draw preview first.'); validateGroups(c, session.draftGroups, b); session.groups = session.draftGroups; session.groupsPublished = true; }
@@ -122,6 +128,21 @@ export async function applyOperationsAction(db: SupabaseClient, b: OpsBundle, ac
         assert(!issues.length, issues.join(' '));
         // Snapshot the actual scorecard so a later course-guide edit cannot alter saved results.
         if (!s.customHoles) s.customHoles = b.courses.find((course) => course.id === s.courseId)?.holes.map((h) => ({ number: h.number, par: h.par, strokeIndex: h.strokeIndex }));
+      }
+    } else if (action === 'save_totals') {
+      assert(s?.resultMode === 'totals', 'This session does not use imported totals.');
+      s.totals = payload.totals as GolfSession['totals'];
+      assert(Array.isArray(s.totals), 'Enter the GameBook Stableford totals.'); c.finalised = false;
+    } else if (action === 'set_pool_winner') {
+      const market = b.markets.find((m) => m.id === payload.marketId && m.competitionKey === c.key);
+      assert(market, 'Choose a pool for this competition.');
+      state.manualPoolWinners ??= {};
+      if (!payload.entryId) delete state.manualPoolWinners[market.id];
+      else {
+        const scope = market.sessionKey ?? 'combined'; const rows = competitionStandings(c, b.courses, scope, 'decision');
+        assert(c.entriesPublished && rows.length && rows.every((r) => r.complete), 'Enter all relevant completed totals before confirming the betting winner.');
+        assert(rows.some((r) => r.entry.id === payload.entryId && r.total === Math.max(...rows.map((v) => v.total))), 'The confirmed winner must have a highest Stableford total. Correct the totals if necessary.');
+        state.manualPoolWinners[market.id] = { entryId: String(payload.entryId), reason: String(payload.reason ?? 'Winner confirmed from GameBook'), confirmedAt: new Date().toISOString(), basis: rankingBasis(c, scope) };
       }
     } else if (action === 'save_scores') {
       assert(s, 'Session not found.');
@@ -149,7 +170,8 @@ export async function applyOperationsAction(db: SupabaseClient, b: OpsBundle, ac
       if (s.key === 'monday') assert(s.savedOrderBasis === rankingBasis(c, 'friday'), 'Friday scores changed. Preview and save the revised Monday order first.');
       s.groups = s.draftGroups; s.groupsPublished = true; s.orderBasis = s.savedOrderBasis;
       for (const g of s.groups) {
-        if (s.teeInterval !== undefined) { const [h, m] = s.firstStart.split(':').map(Number); const minutes = h * 60 + m + (g.number - 1) * s.teeInterval; g.time = String(Math.floor(minutes / 60)).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0'); }
+        if (s.startType === 'shotgun') g.time = s.firstStart;
+        else if (s.teeInterval !== undefined) { const [h, m] = s.firstStart.split(':').map(Number); const minutes = h * 60 + m + (g.number - 1) * s.teeInterval; g.time = String(Math.floor(minutes / 60)).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0'); }
         else g.time = g.number === 1 ? s.firstStart : undefined;
         if (['saturday', 'sunday'].includes(c.key)) {
           g.matchIds ??= Array.from({ length: c.entryKind === 'pair' ? 1 : 2 }, randomUUID);
@@ -190,8 +212,12 @@ export async function applyOperationsAction(db: SupabaseClient, b: OpsBundle, ac
     const rows = competitionStandings(independent, b.courses, scope, 'decision');
     const complete = comp.entriesPublished && rows.length > 0 && rows.every((v) => v.complete);
     const top = rows[0];
-    const winner = top?.rank === 1 ? options.find((o) => o.marketId === m.id && o.entryId === top.entry.id) : undefined;
-    poolResults[m.id] = { ready: complete && !!winner, optionId: winner?.id, basis: rankingBasis(comp, scope), explanation: top?.explanation ?? 'No complete scorecards' };
+    const manual = state.manualPoolWinners?.[m.id];
+    const totalsMode = comp.sessions.some((s) => s.resultMode === 'totals');
+    const validManual = manual?.basis === rankingBasis(comp, scope) && rows.some((r) => r.entry.id === manual.entryId && r.total === top?.total);
+    const winnerEntry = totalsMode ? validManual ? manual!.entryId : undefined : top?.rank === 1 ? top.entry.id : undefined;
+    const winner = options.find((o) => o.marketId === m.id && o.entryId === winnerEntry);
+    poolResults[m.id] = { ready: complete && !!winner, optionId: winner?.id, basis: rankingBasis(comp, scope), explanation: totalsMode ? validManual ? manual!.reason : 'Confirm the GameBook betting winner.' : top?.explanation ?? 'No complete scorecards' };
   }
   const persist = { ...state, poolResults };
   const { error } = await db.rpc('commit_tour_operations', { p_tour_id: b.tour.id, p_version: version, p_state: persist, p_awards: awards, p_options: options, p_matches: matches, p_actor: actor, p_action: 'tour.' + action });

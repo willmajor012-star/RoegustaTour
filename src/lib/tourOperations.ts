@@ -13,9 +13,11 @@ export type HandicapSettings = {
   higherWeight?: number;
 };
 export type HandicapInput = { subjectId: string; playingHandicap?: number; handicapIndex?: number; basisHoles?: number };
+export type SessionTotal = { entryId: string; stableford: number; completedHoles: number };
 export type GolfSession = {
   id: string; key: string; title: string; roundId: string; date: string;
-  firstStart: string; endTime?: string; timezone: string; teeInterval?: number;
+  firstStart: string; endTime?: string; timezone: string; teeInterval?: number; startType?: 'tee_times' | 'shotgun';
+  resultMode?: 'holes' | 'totals'; totals?: SessionTotal[];
   format: 'better_ball' | 'scramble' | 'individual'; holes: number | null;
   courseId?: string; courseName?: string; teeKey?: string; teeRequired?: boolean; holeOrder: number[];
   customHoles?: Array<{ number: number; par: number; strokeIndex?: number }>;
@@ -30,7 +32,7 @@ export type GolfCompetition = {
 };
 export type Room = { id: string; name: string; capacity: number; occupants: Array<{ playerId?: string; label?: string }> };
 export type Accommodation = { id: string; name: string; kind: 'house' | 'apartment' | 'hotel'; rooms: Room[] };
-export type TourOperations = { schemaVersion: 1; competitions: GolfCompetition[]; accommodation: Accommodation[]; issues: string[]; poolResults?: Record<string, { ready: boolean; optionId?: string; explanation: string; basis: string }> };
+export type TourOperations = { schemaVersion: 1; competitions: GolfCompetition[]; accommodation: Accommodation[]; issues: string[]; manualPoolWinners?: Record<string, { entryId: string; reason: string; basis: string; confirmedAt?: string }>; poolResults?: Record<string, { ready: boolean; optionId?: string; explanation: string; basis: string }> };
 export type OpsBundle = {
   tour: Tour; state: TourOperations; version: number; players: Player[]; tourPlayers: TourPlayer[];
   teams: TourTeam[]; members: TourTeamMember[]; courses: CourseGuide[];
@@ -45,7 +47,7 @@ export const poolRules2026 = [
   { key: 'saturday', title: 'Saturday Faldo', competition: 'saturday', session: 'saturday', minimum: 1000, cutoff: '2026-11-07T10:00:00Z' },
   { key: 'sunday', title: 'Sunday Old Course', competition: 'sunday', session: 'sunday', minimum: 1000, cutoff: '2026-11-08T11:24:00Z' },
   { key: 'monday', title: 'Monday nine', competition: 'combined', session: 'monday', minimum: 500, cutoff: '2026-11-09T10:00:00Z' },
-  { key: 'combined', title: 'Friday and Monday combined', competition: 'combined', session: null, minimum: 500, cutoff: '2026-11-06T14:20:00Z' },
+  { key: 'combined', title: 'Friday and Monday combined', competition: 'combined', session: null, minimum: 500, cutoff: '2026-11-09T10:00:00Z' },
 ];
 
 export function entryLabel(entry: CompetitionEntry, players: Player[]) {
@@ -84,6 +86,7 @@ export function playingHandicap(session: GolfSession, entry: CompetitionEntry, s
   return rounded((weightedCourseHandicap ?? (index * session.holes / 18 * settings.slope / 113 + settings.courseRating - par)) * settings.allowancePercent / 100);
 }
 export function sessionConfigurationIssues(session: GolfSession, courses: CourseGuide[]) {
+  if (session.resultMode === 'totals') return session.holes ? [] : ['Confirm the number of played holes.'];
   const issues: string[] = [];
   if (!session.holes) issues.push('Confirm the number of holes.');
   if (session.teeRequired !== false && !session.teeKey) issues.push('Confirm the tees.');
@@ -97,6 +100,10 @@ export function sessionConfigurationIssues(session: GolfSession, courses: Course
 }
 export type SessionStanding = { total: number; complete: number; started: boolean; points: Array<number | null>; missingHandicaps: string[] };
 export function sessionStanding(session: GolfSession, entry: CompetitionEntry, courses: CourseGuide[]): SessionStanding {
+  if (session.resultMode === 'totals') {
+    const result = session.totals?.find((r) => r.entryId === entry.id);
+    return { total: result?.stableford ?? 0, complete: result?.completedHoles ?? 0, started: !!result, points: [], missingHandicaps: [] };
+  }
   const holes = sessionHoles(session, courses);
   const subjects = session.format === 'scramble' ? [entry.id] : entry.playerIds;
   const handicaps = subjects.map((id) => playingHandicap(session, entry, id, courses));
@@ -139,7 +146,7 @@ export function competitionStandings(competition: GolfCompetition, courses: Cour
   const keyFor = (row: CompetitionStanding): number[] => {
     if (tieBreak === 'decision') return [row.total];
     const cb = (key: string) => { const s = row.sessions[key]; const points = s?.points ?? []; return [s?.total ?? 0, ...[6, 3, 1].map((n) => points.slice(-n).reduce<number>((sum, p) => sum + (p ?? 0), 0))]; };
-    if (effectiveScope === 'combined' && sessions.length === 2) return [row.total, ...cb('monday'), ...cb('friday')];
+    if (effectiveScope === 'combined' && sessions.length === 2) return sessions.some((s) => s.resultMode === 'totals') ? [row.total, row.sessions.monday?.total ?? 0] : [row.total, ...cb('monday'), ...cb('friday')];
     return [row.total, ...cb(sessions[0]?.key ?? '').slice(1)];
   };
   const labels = effectiveScope === 'combined' && sessions.length === 2
@@ -198,4 +205,18 @@ export function accommodationIssues(state: TourOperations, rosterIds: string[]) 
     ...rosterIds.filter((id) => !ids.includes(id)).map((id) => 'Unassigned tourist: ' + id),
     ...state.accommodation.flatMap((a) => a.rooms.flatMap((r) => r.occupants.filter((o) => !o.playerId).map((o) => 'Resolve room identity: ' + o.label))),
   ];
+}
+
+
+export function projectedCompetitionAwards(state: TourOperations, courses: CourseGuide[] = []) {
+  return state.competitions.flatMap((c) => {
+    if (!c.published || !c.entriesPublished || !c.pointAwards.length) return [];
+    let rows = competitionStandings(c, courses);
+    // Keep the clearly labelled Friday projection while Monday totals arrive.
+    if (!rows.every((r) => r.complete) && !rows.some((r) => r.points !== undefined)) {
+      const friday = competitionStandings(c, courses, 'friday');
+      if (friday.length && friday.every((r) => r.complete)) rows = friday;
+    }
+    return rows.filter((r) => !r.confirmed && r.entry.teamId && r.points !== undefined).map((r) => ({ competitionId: c.id, teamId: r.entry.teamId!, points: r.points! }));
+  });
 }

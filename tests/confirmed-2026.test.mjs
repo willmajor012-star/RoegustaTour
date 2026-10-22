@@ -58,7 +58,7 @@ test('2026 configuration, atomic persistence, six independent defaults, retries,
  assert.equal(b.tourPlayers.filter((p)=>p.attending).length,24);assert.equal(b.state.accommodation.length,6);assert.equal(b.markets.length,6);assert.equal(b.markets.reduce((sum,m)=>sum+m.minimumStakePence,0),4500);
  const op=async(action,payload)=>{b=await service.applyOperationsAction(client,b,action,payload,b.version,'QA organiser');};
  // A missing own pair is an exception, never an arbitrary side selection.
- await db.query('select process_tour_pool_defaults($1,$2)',[tid,'2026-11-06T14:20:00Z']);assert.equal(Number((await db.query("select count(*) from bet_pool_default_checks where status='exception'")).rows[0].count),48);
+ await db.query('select process_tour_pool_defaults($1,$2)',[tid,'2026-11-06T14:20:00Z']);assert.equal(Number((await db.query("select count(*) from bet_pool_default_checks where status='exception'")).rows[0].count),24);
  assert.equal(Number((await db.query('select count(*) from bets')).rows[0].count),0);
  // Re-open only for this synthetic pre-cutoff rehearsal, then publish valid entries.
  await db.query("update bet_markets set status='open' where tour_id=$1",[tid]);
@@ -72,6 +72,7 @@ test('2026 configuration, atomic persistence, six independent defaults, retries,
  await insert(sat,other,500);await insert(sun,b.options.find((o)=>o.marketId===sun.id&&o.linkedPlayerId!==person),1000);await insert(fri,b.options.find((o)=>o.marketId===fri.id),1000);
  await db.query('select process_tour_pool_defaults($1,$2)',[tid,'2026-11-06T14:20:00Z']);
  assert.equal((await db.query('select status from bet_markets where pool_key=\'par3\'')).rows[0].status,'open','early Friday pools do not close Par 3');
+ assert.equal((await db.query("select status from bet_markets where pool_key='combined'")).rows[0].status,'open','combined stays open through the weekend');
  await db.query('select process_tour_pool_defaults($1,$2)',[tid,'2026-11-09T10:00:00Z']);
  const amount=Number((await db.query("select sum(stake_amount_pence) amount from bets where status='active'")).rows[0].amount);assert.equal(amount,108500,'£1,080 minimum plus £5 extra in Friday pool');
  const auto=(await db.query("select * from bets where market_id=$1 and bettor_player_id=$2 and entry_source='automatic_default'",[sat.id,person])).rows;assert.equal(auto.length,1);assert.equal(auto[0].stake_amount_pence,500);assert.equal(auto[0].option_id,own.id);
@@ -179,4 +180,46 @@ test('every scoped pool rejects late discretionary bets even before a delayed sc
    assert.equal((await db.query('select status from bet_markets where id=$1',[pool.id])).rows[0].status,'open','deadline enforcement does not rely on cron changing the status');
   }
  } finally { await db.close(); }
+});
+
+
+test('GameBook totals, explicit pool winners and visible provisional side points persist without hole cards', async () => {
+ const db=await database();
+ try {
+  const state=structuredClone(config.state);
+  for(const c of state.competitions) for(const s of c.sessions){s.resultMode='totals';s.totals=[];if(c.key==='par3'){s.holes=18;s.startType='shotgun';s.teeRequired=false;}}
+  await db.query('update tour_operations set state=$1 where tour_id=$2',[JSON.stringify(state),tid]);
+  const client=pgliteSupabase(db);let b=await service.readOperations(client,tid,true);
+  const op=async(action,payload)=>{b=await service.applyOperationsAction(client,b,action,payload,b.version,'GameBook results');};
+  for(const c of [...b.state.competitions]){
+   const entries=c.entries.map((e,i)=>{const ids=c.entryKind==='individual'?[config.rosterIds[i]]:c.key==='par3'?[config.rosterIds[i],config.rosterIds[i+12]]:config.rosterIds.slice(i*2,i*2+2);return {...e,playerIds:ids,teamId:c.key==='par3'?undefined:side(ids[0])};});
+   await op('save_entries',{competitionId:c.id,entries});await op('publish_entries',{competitionId:c.id});
+  }
+  let c=b.state.competitions.find((c)=>c.key==='combined'),fri=c.sessions.find((s)=>s.key==='friday'),mon=c.sessions.find((s)=>s.key==='monday');
+  const totals=c.entries.map((e,i)=>({entryId:e.id,stableford:20+i,completedHoles:9}));
+  await op('save_totals',{competitionId:c.id,sessionId:fri.id,totals});
+  let projection=rules.projectedCompetitionAwards(b.state,[]);assert.equal(projection.reduce((n,r)=>n+r.points,0),39);
+  const scoring=loadTs('src/lib/scoring.ts');const rows=scoring.calculateTeamScoreByTour(tid,b.teams,[],[],[],projection);
+  assert.equal(rows.reduce((n,r)=>n+r.points,0),0);assert.equal(rows.reduce((n,r)=>n+(r.provisionalPoints??0),0),39);
+  assert.equal(scoring.calculateTeamScoreByTour(tid,b.teams,[],[],projection,projection).reduce((n,r)=>n+r.points+(r.provisionalPoints??0),0),39,'confirmed and provisional contributions never double count');
+  assert.equal(Number((await db.query('select count(*) n from tour_competition_awards where active')).rows[0].n),0);
+  const fridayMarket=b.markets.find((m)=>m.poolKey==='friday');
+  assert.equal(b.state.poolResults[fridayMarket.id].ready,false,'an imported high score does not silently declare the betting winner');
+  await assert.rejects(op('set_pool_winner',{competitionId:c.id,marketId:fridayMarket.id,entryId:c.entries[0].id}),/highest Stableford/);
+  await db.query("select set_config('roegusta.configure_pool','on',false)");
+  await db.query("update bet_markets set closes_at=clock_timestamp()-interval '1 minute' where id=$1",[fridayMarket.id]);
+  await op('set_pool_winner',{competitionId:c.id,marketId:fridayMarket.id,entryId:c.entries[11].id});
+  assert.equal((await db.query('select status from bet_markets where id=$1',[fridayMarket.id])).rows[0].status,'settled');
+  assert.equal(Number((await db.query('select sum(payout_amount_pence) n from bets where market_id=$1',[fridayMarket.id])).rows[0].n),12000,'confirming the actual winner calculates the existing social-ledger payouts');
+  assert.equal(b.state.poolResults[fridayMarket.id].ready,true);
+  await op('save_monday_order',{competitionId:c.id});assert.equal(b.state.competitions.find((x)=>x.id===c.id).sessions[1].draftGroups[0].entryIds[0],c.entries[11].id);
+  await op('save_totals',{competitionId:c.id,sessionId:mon.id,totals:c.entries.map((e)=>({entryId:e.id,stableford:18,completedHoles:9}))});
+  await op('finalise',{competitionId:c.id});assert.equal(rules.projectedCompetitionAwards(b.state,[]).length,0);
+  assert.equal(Number((await db.query('select sum(points) n from tour_competition_awards where active')).rows[0].n),39);
+  await op('save_totals',{competitionId:c.id,sessionId:fri.id,totals:totals.map((t,i)=>i===11?{...t,stableford:0}:t)});
+  assert.equal(b.state.poolResults[fridayMarket.id].ready,false,'a correction requires the GameBook winner to be confirmed again');
+  assert.equal(Number((await db.query('select count(*) n from tour_competition_awards where active')).rows[0].n),0);
+  const reopened=await service.readOperations(client,tid,true);assert.equal(reopened.state.competitions.find((v)=>v.id===c.id).sessions[0].totals[11].stableford,0,'zero remains a saved completed result');
+  const par=b.state.competitions.find((v)=>v.key==='par3');assert(par.sessions[0].groups.every((g)=>g.time===par.sessions[0].firstStart),'all shotgun groups have the same start');
+ }finally{await db.close();}
 });
