@@ -65,7 +65,7 @@ function mapCourseHole(value: unknown): CourseHole | undefined {
 function mapTourPrizeFund(value: unknown): TourPrizeFund | undefined {
   const row = value && typeof value === 'object' ? value as Row : {};
   const contributionPence = asNumber(row.contributionPence);
-  if (contributionPence === undefined || contributionPence < 0) return undefined;
+  if (contributionPence !== undefined && contributionPence < 0) return undefined;
   const rounds = asArray(row.rounds).map((candidate) => {
     const round = candidate && typeof candidate === 'object' ? candidate as Row : {};
     const roundNumber = asNumber(round.roundNumber);
@@ -74,7 +74,7 @@ function mapTourPrizeFund(value: unknown): TourPrizeFund | undefined {
       .map(asNumber)
       .filter((amount): amount is number => amount !== undefined && amount >= 0);
     return roundNumber !== undefined && paidPer && payoutsPence.length > 0
-      ? { roundNumber, paidPer, payoutsPence }
+      ? { roundNumber, paidPer, payoutsPence, ...(asString(round.poolKey) ? { poolKey: asString(round.poolKey) } : {}), ...(asString(round.title) ? { title: asString(round.title) } : {}) }
       : undefined;
   }).filter((round): round is TourPrizeFund['rounds'][number] => Boolean(round));
   if (rounds.length === 0) return undefined;

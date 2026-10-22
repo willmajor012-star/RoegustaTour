@@ -16,7 +16,7 @@ export function isPublicVisibleMatch(match: Match) {
 
 export function roundSession(round?: Round) {
   const match = round?.notes?.match(/^\[Session: (AM|PM|TBC)\]/);
-  return match?.[1];
+  return match?.[1] === 'TBC' ? undefined : match?.[1];
 }
 
 export function formatRoundDisplayName(round?: Round, fallbackIndex?: number) {

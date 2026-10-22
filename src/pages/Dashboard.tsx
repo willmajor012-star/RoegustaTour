@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { MatchCard } from '../components/MatchCard';
 import { CourseRail } from '../components/CourseRail';
 import { Scoreboard } from '../components/Scoreboard';
+import { WinPredictor } from '../components/WinPredictor';
 import { formatMatchFormat, formatPoints, formatShortDate } from '../lib/formatting';
 import { fetchPublicDashboard, type PublicDashboardResponse } from '../lib/publicApi';
 import type { Match, Round, TeamScoreRow, TourTeam } from '../lib/types';
@@ -144,6 +145,7 @@ export function Dashboard() {
         {pointsToWinOutright !== undefined && <small>{formatPoints(totalPointsAvailable)} available · {formatPoints(remainingPoints)} remaining</small>}
       </div>}
       <Scoreboard scores={teamRows} />
+      {tour?.rulesVersion === 'confirmed-2026' && <WinPredictor teams={teamRows} />}
     </a>
 
     {!tourComplete && <a className="card tappable-card home-up-next" href="/matches">

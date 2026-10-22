@@ -1,0 +1,75 @@
+{
+  "programmeVersion": "confirmed-2026",
+  "totalPence": 96000,
+  "rules": [],
+  "rounds": [
+    {
+      "roundNumber": 1,
+      "poolKey": "friday",
+      "title": "Friday Faldo nine",
+      "paidPer": "pair",
+      "payoutsPence": [
+        5000,
+        4000,
+        3000
+      ]
+    },
+    {
+      "roundNumber": 2,
+      "poolKey": "par3",
+      "title": "Friday Par 3",
+      "paidPer": "pair",
+      "payoutsPence": [
+        5000,
+        4000,
+        3000
+      ]
+    },
+    {
+      "roundNumber": 3,
+      "poolKey": "saturday",
+      "title": "Saturday Faldo",
+      "paidPer": "pair",
+      "payoutsPence": [
+        10000,
+        8000,
+        6000
+      ]
+    },
+    {
+      "roundNumber": 4,
+      "poolKey": "sunday",
+      "title": "Sunday Old Course",
+      "paidPer": "player",
+      "payoutsPence": [
+        10000,
+        6000,
+        4000,
+        2500,
+        1500
+      ]
+    },
+    {
+      "roundNumber": 5,
+      "poolKey": "monday",
+      "title": "Monday final nine",
+      "paidPer": "pair",
+      "payoutsPence": [
+        5000,
+        4000,
+        3000
+      ]
+    },
+    {
+      "roundNumber": 0,
+      "poolKey": "combined",
+      "title": "Friday and Monday combined",
+      "paidPer": "pair",
+      "payoutsPence": [
+        5000,
+        4000,
+        3000
+      ]
+    }
+  ]
+}

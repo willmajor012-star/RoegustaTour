@@ -1,4 +1,5 @@
 import type { AdvancedStatsData, MvpLeaderboardRow, PlayerAdvancedSummary, TourSummary } from './advancedStats';
+import type { WinPrediction } from './winPrediction';
 import type { Bet, BetMarket, BetOption, CourseGuide, Match, MatchParticipant, Player, Round, RoundPrizeResult, TeamScoreRow, Tour, TourPlayer, TourTeam, TourTeamMember } from './types';
 
 export type PublicDataSource = 'supabase';
@@ -201,6 +202,7 @@ export const fetchPublicPlayers = () => fetchPublicJson<PublicPlayersResponse>('
 export const fetchPublicCourses = () => fetchPublicJson<PublicCoursesResponse>('/.netlify/functions/public-courses');
 export const fetchPublicBetMarkets = () => fetchPublicJson<PublicBetMarketsResponse>('/.netlify/functions/public-bet-markets');
 export const fetchPublicAdvancedStats = () => fetchPublicJson<PublicAdvancedStatsResponse>('/.netlify/functions/public-advanced-stats');
+export const fetchPublicWinPrediction = () => fetchPublicJson<PublicResponse<{ prediction?: WinPrediction }>>('/.netlify/functions/public-win-prediction');
 export const fetchPublicTourInfo = () => fetchPublicJson<PublicTourInfoResponse>('/.netlify/functions/public-tour-info');
 
 export type SavePublicBetResponse = { ok: true; bet: Bet; editToken?: string };
