@@ -41,6 +41,20 @@ test('public pairs standings use compact cards and show Friday projections witho
  finally{await act(async()=>root.unmount());}
 });
 
+test('editing a saved bet offers current selections while retaining retired labels for history', async () => {
+ const originalFetch=globalThis.fetch;
+ const payload={source:'supabase',tour:{id:'tour',name:'Tour',year:2026,timezone:'Europe/Lisbon'},rounds:[],players:[{id:'player',displayName:'Test golfer',active:true}],tourPlayers:[{id:'attendance',tourId:'tour',playerId:'player',attending:true}],betMarkets:[{id:'pool',tourId:'tour',title:'Friday pool',poolKey:'friday',status:'open',required:true,minimumStakePence:500,closesAt:'2099-11-06T14:20:00Z'}],betOptions:[{id:'current',marketId:'pool',label:'Current pair',active:true},{id:'retired',marketId:'pool',label:'Retired pair',active:false}],bets:[{id:'saved',marketId:'pool',optionId:'current',bettorPlayerId:'player',bettorName:'Test golfer',status:'active',stakeAmountPence:500,createdAt:'2026-10-22T12:00:00Z'}]};
+ globalThis.fetch=async()=>({ok:true,status:200,json:async()=>payload});
+ localStorage.setItem('rt-bettor-name','Test golfer');localStorage.setItem('rt-bet-edit-tokens',JSON.stringify({saved:'private-local-test-token'}));
+ const {Betting}=loadTs('src/pages/Betting.tsx');const root=createRoot(document.getElementById('root'));
+ try{
+  await act(async()=>root.render(React.createElement(Betting)));
+  const edit=[...document.querySelectorAll('button')].find((b)=>b.textContent==='Edit pick');assert(edit);await act(async()=>edit.click());
+  assert.deepEqual([...document.querySelectorAll('.bet-tracker-list .bet-form select option')].map((o)=>o.value),['current']);
+  assert.match(document.body.textContent,/Current pair/);assert.doesNotMatch(document.querySelector('.bet-tracker-list .bet-form').textContent,/Retired pair/);
+ }finally{await act(async()=>root.unmount());globalThis.fetch=originalFetch;localStorage.removeItem('rt-bettor-name');localStorage.removeItem('rt-bet-edit-tokens');}
+});
+
 test('initial public load completes under StrictMode, which replays effects', async () => {
   const { usePublicData } = loadTs('src/lib/usePublicData.ts');
   let finish;
