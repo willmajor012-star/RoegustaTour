@@ -81,7 +81,7 @@ function ScheduleEntry({ entry, courses }: { entry: TourScheduleEntry; courses: 
     : undefined;
   const guide = entry.courseId ? courses.find((course) => course.id === entry.courseId) : undefined;
   return <article className={`itinerary-event itinerary-event-${entry.kind}`}>
-    <div className="itinerary-event-time"><span>{time}</span><small>{timeContext}</small></div>
+    <div className="itinerary-event-time"><span>{time}</span>{entry.kind !== 'accommodation' ? <small>{timeContext}</small> : null}</div>
     <div className="itinerary-event-rail"><span><ScheduleKindIcon kind={entry.kind} /></span></div>
     <div className="itinerary-event-card">
       <div>
