@@ -14,24 +14,25 @@ export function CourseGuidePage({ slug }: Props) {
   const pathParts = window.location.pathname.split('/').filter(Boolean);
   const routeSlug = slug ?? decodeURIComponent(pathParts[pathParts.length - 1] ?? '');
   const course = findCourseGuide(routeSlug, courses);
-  const [selectedTee, setSelectedTee] = useState('yellow');
+  const preferredTee = activeData.tour?.rulesVersion === 'confirmed-2026' ? 'white' : 'yellow';
+  const [selectedTee, setSelectedTee] = useState(preferredTee);
   const [selectedHoleNumber, setSelectedHoleNumber] = useState(1);
 
   useEffect(() => {
     if (!course) return;
-    setSelectedTee(course.tees.some((tee) => tee.key === 'yellow') ? 'yellow' : course.tees[0]?.key ?? '');
+    setSelectedTee(course.tees.some((tee) => tee.key === preferredTee) ? preferredTee : course.tees[0]?.key ?? '');
     setSelectedHoleNumber(1);
-  }, [course?.id, course?.slug]);
+  }, [course?.id, course?.slug, preferredTee]);
 
   useEffect(() => {
     if (!course) return;
     setSelectedTee((current) => course.tees.some((tee) => tee.key === current)
       ? current
-      : course.tees.find((tee) => tee.key === 'yellow')?.key ?? course.tees[0]?.key ?? '');
+      : course.tees.find((tee) => tee.key === preferredTee)?.key ?? course.tees[0]?.key ?? '');
     setSelectedHoleNumber((current) => course.holes.some((hole) => hole.number === current)
       ? current
       : course.holes[0]?.number ?? 1);
-  }, [course]);
+  }, [course, preferredTee]);
 
   const selectedHole = course?.holes.find((hole) => hole.number === selectedHoleNumber) ?? course?.holes[0];
   const selectedTeeDetails = course?.tees.find((tee) => tee.key === selectedTee) ?? course?.tees[0];

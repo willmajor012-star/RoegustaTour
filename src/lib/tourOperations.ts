@@ -17,7 +17,7 @@ export type GolfSession = {
   id: string; key: string; title: string; roundId: string; date: string;
   firstStart: string; endTime?: string; timezone: string; teeInterval?: number;
   format: 'better_ball' | 'scramble' | 'individual'; holes: number | null;
-  courseId?: string; courseName?: string; teeKey?: string; holeOrder: number[];
+  courseId?: string; courseName?: string; teeKey?: string; teeRequired?: boolean; holeOrder: number[];
   customHoles?: Array<{ number: number; par: number; strokeIndex?: number }>;
   handicapSettings: HandicapSettings; handicaps: HandicapInput[]; scores: HoleScore[];
   groups: PlayingGroup[]; draftGroups?: PlayingGroup[]; groupsPublished: boolean; orderBasis?: string; savedOrderBasis?: string;
@@ -86,7 +86,7 @@ export function playingHandicap(session: GolfSession, entry: CompetitionEntry, s
 export function sessionConfigurationIssues(session: GolfSession, courses: CourseGuide[]) {
   const issues: string[] = [];
   if (!session.holes) issues.push('Confirm the number of holes.');
-  if (!session.teeKey) issues.push('Confirm the tees.');
+  if (session.teeRequired !== false && !session.teeKey) issues.push('Confirm the tees.');
   const holes = sessionHoles(session, courses);
   if (!session.holes || session.holeOrder.length !== session.holes || new Set(session.holeOrder).size !== session.holes || holes.some((h) => !h || !Number.isInteger(h.par) || h.par < 1 || (session.handicapSettings.method !== 'scratch' && (!Number.isInteger(h.strokeIndex) || (h.strokeIndex ?? 0) < 1)))) issues.push('Confirm the actual hole order, pars and stroke indexes.');
   if (session.handicapSettings.method !== 'scratch' && new Set(holes.map((h) => h?.strokeIndex)).size !== holes.length) issues.push('Stroke indexes must be distinct within the played session.');

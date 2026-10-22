@@ -128,3 +128,19 @@ test('2026 configuration, atomic persistence, six independent defaults, retries,
  await db.query('select process_due_bet_pools()');assert.equal((await db.query('select status from bet_pool_scheduler_runs order by started_at desc limit 1')).rows[0].status,'succeeded');
  }finally{await db.close();}
 });
+
+
+test('a session can explicitly omit tees without blocking scratch Stableford', () => {
+ const session = structuredClone(config.state.competitions.find((c) => c.key === 'par3').sessions[0]);
+ session.holes = 9; session.teeKey = undefined; session.teeRequired = false;
+ session.holeOrder = Array.from({ length: 9 }, (_, i) => i + 1);
+ session.customHoles = session.holeOrder.map((number) => ({ number, par: 3 }));
+ session.handicapSettings = { method: 'scratch', confirmed: true };
+ const entry = { id: 'par3-pair', playerIds: ['golfer-a', 'golfer-b'] };
+ session.scores = session.holeOrder.map((hole) => ({ subjectId: entry.id, hole, status: 'gross', gross: 3 }));
+ assert.deepEqual(rules.sessionConfigurationIssues(session, []), []);
+ assert.equal(rules.sessionStanding(session, entry, []).total, 18);
+ assert.equal(rules.sessionStanding(session, entry, []).complete, 9);
+ delete session.teeRequired;
+ assert(rules.sessionConfigurationIssues(session, []).includes('Confirm the tees.'));
+});
