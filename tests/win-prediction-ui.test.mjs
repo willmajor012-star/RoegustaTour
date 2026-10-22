@@ -7,6 +7,12 @@ import {loadTs} from './helpers/load-ts.mjs';
 const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/'});
 for(const key of ['window','document','navigator','Event'])Object.defineProperty(globalThis,key,{configurable:true,value:dom.window[key]});
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+test('home scores keep the predictor side order even when points or alphabetical order favour the other side',()=>{
+ const {teamScoreRows}=loadTs('src/pages/Dashboard.tsx');
+ const teams=[{id:'a',name:'Z side',sortOrder:0},{id:'b',name:'A side',sortOrder:1}];
+ const rows=teamScoreRows([{teamId:'b',teamName:'A side',points:20},{teamId:'a',teamName:'Z side',points:10}],teams);
+ assert.deepEqual(rows.map((r)=>r.teamId),['a','b']);assert.equal(rows[0].points,10);assert.equal(rows[1].points,20);
+});
 test('predictor renders team colours, all three outcomes, and updates from saved results on refresh',async()=>{
  const oldFetch=globalThis.fetch;let prediction={status:'ready',teamIds:['a','b'],percentages:[50,5,45],basis:'teams'};
  globalThis.fetch=async()=>({ok:true,json:async()=>({source:'supabase',prediction})});
