@@ -284,6 +284,7 @@ export type LeaderboardRow = {
 };
 
 export type TeamScoreRow = {
+  provisionalPoints?: number;
   teamId: string;
   teamName: string;
   colour?: string;

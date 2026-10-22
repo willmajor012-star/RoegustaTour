@@ -1,5 +1,10 @@
 # 2026 tour audit - 22 October
 
+The later GameBook amendment supersedes the hole-card workflow and Friday
+combined-pool deadline recorded in this audit. See
+[the amended implementation record](../confirmed-2026-implementation.md) and
+[the results workflow verification](2026-10-22-gamebook-results.md).
+
 ## Betting commitments
 
 The aggregate figure is a minimum, not a fixed pot or cap. Every tourist has six

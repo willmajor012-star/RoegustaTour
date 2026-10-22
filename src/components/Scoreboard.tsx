@@ -31,8 +31,8 @@ function TeamBlock({ score, side, fallbackColour }: { score: TeamScoreRow; side:
     <div className={`score-team-block ${side}`} style={{ '--team-colour': score.colour || fallbackColour } as CSSProperties}>
       <span className="team-dot" />
       <strong>{score.teamName || 'Team TBC'}</strong>
-      <b>{formatPoints(score.points)}</b>
-      <small>pts</small>
+      <b>{formatPoints(score.points + (score.provisionalPoints ?? 0))}</b>
+      {score.provisionalPoints ? <small>{formatPoints(score.points)} confirmed <span className="score-provisional">+{formatPoints(score.provisionalPoints)} provisional</span></small> : <small>pts</small>}
     </div>
   );
 }

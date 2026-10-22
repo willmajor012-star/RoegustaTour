@@ -47,7 +47,7 @@ export function derivePlayerMatchResultsFromMatch(match: Match, participants: Ma
   });
 }
 
-export function calculateTeamScoreByTour(tourId: string, teams: TourTeam[], rounds: Round[], matches: Match[], awards: Array<{ teamId: string; points: number; competitionId: string }> = []): TeamScoreRow[] {
+export function calculateTeamScoreByTour(tourId: string, teams: TourTeam[], rounds: Round[], matches: Match[], awards: Array<{ teamId: string; points: number; competitionId: string }> = [], projections: Array<{ teamId: string; points: number; competitionId: string }> = []): TeamScoreRow[] {
   const tourRounds = rounds.filter((round) => round.tourId === tourId);
   const scores = teams
     .filter((team) => team.tourId === tourId)
@@ -80,5 +80,6 @@ export function calculateTeamScoreByTour(tourId: string, teams: TourTeam[], roun
     });
 
   for (const award of awards) { const row = scoreByTeam.get(award.teamId); if (row) { row.points += award.points; row.pointsByRound[award.competitionId] = (row.pointsByRound[award.competitionId] ?? 0) + award.points; } }
-  return scores.sort((a, b) => b.points - a.points || a.teamName.localeCompare(b.teamName));
+  for (const projection of projections) { if (awards.some((a) => a.competitionId === projection.competitionId)) continue; const row = scoreByTeam.get(projection.teamId); if (row) row.provisionalPoints = (row.provisionalPoints ?? 0) + projection.points; }
+  return scores.sort((a, b) => (b.points + (b.provisionalPoints ?? 0)) - (a.points + (a.provisionalPoints ?? 0)) || a.teamName.localeCompare(b.teamName));
 }
