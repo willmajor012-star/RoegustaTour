@@ -12,6 +12,14 @@ export async function createItineraryPdf(b: OpsBundle, rounds: Round[], itinerar
   const heading = (text: string) => { if (y < 140) { page = doc.addPage([595, 842]); y = 784; } y -= 10; line(text, 15, true); };
   line(b.tour.name, 26, true); line(`${b.tour.startDate ?? 'Dates to confirm'} to ${b.tour.endDate ?? ''} | ${b.tour.location ?? ''}`, 13, true);
   line(`All golf starts and betting cutoffs use ${b.tour.timezone ?? 'the saved tour timezone'}. Generated from the saved app itinerary and room assignments.`);
+  if (b.tour.rulesVersion === 'confirmed-2026') {
+    const teams = [...b.teams].sort((a, z) => a.sortOrder - z.sortOrder);
+    teams.forEach((team, index) => { const captain = b.players.find((p) => p.id === team.captainPlayerId); if (captain) line(`Captain ${index + 1}: ${captain.displayName}.`, 11, true); });
+    const tees = [...new Set(b.state.competitions.flatMap((c) => c.sessions.filter((s) => s.teeRequired !== false && s.teeKey).map((s) => `${s.courseName}: ${s.teeKey}`)))];
+    if (tees.length) line('Tees - ' + tees.join('; ') + '.');
+    if (b.members.length < b.tourPlayers.filter((p) => p.attending).length) line('Team lists to follow.');
+    if (b.state.competitions.some((c) => c.sessions.some((s) => !s.handicapSettings.method))) line('Handicaps and playing allowances to follow.');
+  }
   heading('Programme');
   const schedule = buildTourSchedule(b.tour.id, rounds, itinerary);
   for (const entry of schedule) {
@@ -40,7 +48,7 @@ export async function createItineraryPdf(b: OpsBundle, rounds: Round[], itinerar
   line('At each pool\'s cutoff the server automatically places ONLY any remaining shortfall on your own competition pair, or yourself on Sunday. Existing valid bets on other selections count and remain unchanged. £0 in a £10 pool adds £10; £5 adds £5; £10 or more adds nothing. Missing own-pair assignments are flagged for an organiser. The combined pool closes before Friday play. Automatic bets are social ledger entries, not payment collection.');
   }
   heading('Houses and rooms');
-  for (const u of b.state.accommodation) { if (y < 140) { page = doc.addPage([595, 842]); y = 784; } line(u.name, 12, true); for (const r of u.rooms) line(r.name + ': ' + (r.occupants.map((o) => o.label || b.players.find((p) => p.id === o.playerId)?.displayName || 'Unassigned').join(' and ') || 'Unassigned')); }
+  for (const u of b.state.accommodation) { if (y < 140) { page = doc.addPage([595, 842]); y = 784; } line(u.name, 12, true); for (const r of u.rooms) line(r.name + ': ' + (r.occupants.map((o) => { const name = b.players.find((p) => p.id === o.playerId)?.displayName; return name && o.label && o.label !== name ? `${name} (${o.label})` : name || o.label || 'Unassigned'; }).join(' and ') || 'Unassigned')); }
   if (b.state.accommodation.some((u) => u.rooms.some((r) => r.occupants.some((o) => !o.playerId)))) line('Unresolved room names retain the supplied labels until matched to permanent player profiles. Accommodation does not determine golf partners or tour sides.');
   heading('Using the app on tour');
   line('Install Roegusta from the visible app entry point. iPhone/iPad: open in Safari, Share, Add to Home Screen; enable Open as Web App if shown, then Add. Android: use the Install button when offered, or Chrome menu > Add to home screen / Install app. Open the installed icon and sign in if asked. An internet connection is needed to load and save live scores and bets; wait for the saved confirmation.');
