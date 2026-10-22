@@ -38,6 +38,17 @@ export async function createItineraryPdf(b: OpsBundle, rounds: Round[], itinerar
     const times = s.groups.map((g) => g.time).filter(Boolean);
     if (times.length) line(s.title + ': ' + times.join(', '), 9.5);
   }
+  if (b.tour.year === 2026 && b.state.competitions.some((c) => c.key === 'combined')) line('Monday: same partners as Friday; highest Friday pair scores start first.', 9.5);
+  const pools = b.markets.filter((m) => m.poolKey && m.required && m.status !== 'void').sort((a, b) => ['friday', 'par3', 'saturday', 'sunday', 'monday', 'combined'].indexOf(a.poolKey!) - ['friday', 'par3', 'saturday', 'sunday', 'monday', 'combined'].indexOf(b.poolKey!));
+  if (pools.length) {
+    heading('Bet Punto');
+    line(`£${pools.reduce((total, m) => total + (m.minimumStakePence ?? 0), 0) / 100} minimum each. You can bet more in £5 increments.`, 9.5);
+    for (const pool of pools) {
+      const cutoff = pool.closesAt ? new Date(pool.closesAt).toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Cutoff to follow';
+      line(`${pool.title} | £${(pool.minimumStakePence ?? 0) / 100} minimum | ${cutoff}`, 9.5);
+    }
+    line('At cutoff, any shortfall is automatically staked on you or your own pair.', 9.5);
+  }
   doc.getPages().forEach((p, i) => { p.drawLine({ start: { x: 52, y: 44 }, end: { x: 543, y: 44 }, thickness: .5, color: muted }); p.drawText(`Roegusta ${b.tour.year} | Portugal local time | ${i + 1} / ${doc.getPageCount()}`, { x: 52, y: 28, size: 8, font, color: muted }); });
   doc.setTitle(b.tour.name + ' - itinerary'); doc.setAuthor('Roegusta Tour'); return doc.save();
 }
