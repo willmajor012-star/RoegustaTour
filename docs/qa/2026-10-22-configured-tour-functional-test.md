@@ -8,7 +8,7 @@ isolated rehearsal. No test results or bets were added to production.
 
 ## Results
 
-- Full regression suite: 149 passed, zero failures; production build passed.
+- Full regression suite: 150 passed, zero failures; production build passed.
 - Configured-tour rehearsal: 34 scenarios passed through 85 endpoint requests
   plus the authoritative SQL operations.
 - Friday: 39 provisional combined points; zero confirmed combined points;
@@ -39,8 +39,11 @@ isolated rehearsal. No test results or bets were added to production.
 2. Public bet editing included retired options in its selection list. New and
    edited picks now offer current options while preserving old labels for
    existing history.
+3. The admin market summary treated configured draft pools as already complete.
+   These tour-scoped obligations now remain outstanding before opening, while
+   historical draft-market rules remain unchanged.
 
-Both defects have regression checks. The scoring check compares the public
+All three defects have regression checks. The scoring check compares the public
 overview against a fully completed 57-point database result.
 
 ## Repeat the private configuration rehearsal
