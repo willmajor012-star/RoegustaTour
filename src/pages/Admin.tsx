@@ -2482,7 +2482,7 @@ export function Admin() {
   const saveMarketStatus = (market: BetMarket, status: BetMarket['status']) => {
     if (!selectedTour) return;
     const options = (adminData?.betOptions ?? []).filter(
-      (option) => option.marketId === market.id && (!market.poolKey || option.active !== false),
+      (option) => option.marketId === market.id,
     );
     void runSave(
       `bet-market-status-${market.id}`,
