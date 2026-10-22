@@ -63,8 +63,10 @@ function roundScore(matches: Match[]) {
 }
 
 
-function teamScoreRows(scores: TeamScoreRow[], teams: TourTeam[]): TeamScoreRow[] {
-  const rows = scores.length > 0 ? scores : teams.slice(0, 2).map((team, index) => ({ teamId: team.id, teamName: team.name, colour: normalizeTeamColour(team.colour, index), points: 0, pointsByRound: {} }));
+export function teamScoreRows(scores: TeamScoreRow[], teams: TourTeam[]): TeamScoreRow[] {
+  // Keep both teams on the same side as the predictor when the lead changes.
+  const orderedTeams = [...teams].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
+  const rows = orderedTeams.length >= 2 ? orderedTeams.slice(0, 2).map((team, index) => scores.find((row) => row.teamId === team.id) ?? ({ teamId: team.id, teamName: team.name, colour: normalizeTeamColour(team.colour, index), points: 0, pointsByRound: {} })) : scores;
   return [
     rows[0] ?? { teamId: 'score-left-unavailable', teamName: 'Team TBC', colour: TEAM_COLOUR_FALLBACKS[0], points: 0, pointsByRound: {} },
     rows[1] ?? { teamId: 'score-right-unavailable', teamName: 'Team TBC', colour: TEAM_COLOUR_FALLBACKS[1], points: 0, pointsByRound: {} },
