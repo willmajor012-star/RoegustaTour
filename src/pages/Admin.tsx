@@ -463,21 +463,21 @@ const adminGuideSections: AdminGuideSection[] = [
   {
     id: 'guide-2026-format',
     title: '2026 format setup',
-    summary: 'The confirmed five-session programme is installed. Use Competitions & scoring for cards, pairs and tee sheets.',
+    summary: 'The confirmed five-session programme is installed. Use Competitions & scoring for GameBook totals, pairs and tee sheets.',
     blocks: [
       { heading: 'Step-by-step', items: [
         'Tour → Competitions & scoring holds the Friday–Monday combined pairs competition, independent Par 3 draw, Saturday pair Stableford and Sunday individual Stableford.',
         'Friday Faldo starts 14:20. The separate scratch Par 3 booking is Friday 19:30–21:30 and awards zero tour points. Saturday Faldo 4BBB matchplay starts 10:00. Sunday Old Course singles starts 11:24. Monday O’Connor nine-hole scramble starts 10:00.',
-        'Assign main tour sides in People, then save and publish golf pairs. Room assignments never determine partners or sides. Confirm the actual tees, hole order and agreed playing handicaps before scoring.',
+        'Assign main tour sides in People, then save and publish golf pairs. Room assignments never determine partners or sides. White tees and front nines are confirmed. GameBook handles scoring and playing allowances.',
         'Friday and Monday keep the same pairs. Monday’s fourballs start with the highest complete Friday scores. Preview, save and publish the order; changes to Friday scores flag the existing published order for explicit review.',
       ] },
       { heading: 'Scoring and points', items: [
-        'Record individual Friday, Saturday and Sunday gross hole scores. Record pair scramble gross scores on Monday and Par 3. A concession does not create a gross score; finish the Stableford card after an early matchplay result.',
-        'Combined Friday and Monday position points total 39 and are awarded once after both complete nines and all ties are resolved. Saturday has six match points and Sunday twelve. Total 57: 29 guarantees victory; 28.5 each is a tie.',
+        'Copy final GameBook Stableford totals: pairs on Friday, Par 3, Saturday and Monday; individuals on Sunday. Enter matchplay outcomes separately in Live. Save the totals, then select and tick the actual betting winner in Scores. A corrected total requires winner confirmation again.',
+        'After Friday, shaded provisional points appear in the team standings with confirmed points shown separately. Copy GameBook finishing order for tied positions. Combined Friday and Monday position points total 39 and are awarded once after both complete nines and all ties are resolved. Saturday has six match points and Sunday twelve. Total 57: 29 guarantees victory; 28.5 each is a tie.',
         'Use Plan → Itinerary and Rooms for the editable programme and accommodation. Download itinerary generates the current PDF from saved data.',
       ] },
       { heading: 'Bet Punto', items: [
-        'Six separate pool minimums are Friday £5, Par 3 £10, Saturday pair £10, Sunday individual £10, Monday £5 and combined £5 additional: £45 per tourist. Stakes remain in £5 increments.',
+        'Six separate pool minimums are Friday £5, Par 3 £10, Saturday pair £10, Sunday individual £10, Monday £5 and combined £5 additional: £45 per tourist, £1,080 minimum across 24. Stakes remain in £5 increments and tourists may bet more. Combined betting closes Monday at 10:00 Portugal; Friday requires £15 and Monday £10.',
         'At each pool’s independent cutoff the server adds only the outstanding shortfall to the tourist’s own selection. Existing valid picks on other selections remain. Bet Punto → Pool compliance shows commitments, exceptions and scheduler evidence.',
         'The superseded setup helper is retired. Historical records and other tour rules remain separate.',
       ] },
@@ -707,7 +707,7 @@ const adminGuideSections: AdminGuideSection[] = [
     id: 'guide-bet-punto',
     title: 'Bet Punto',
     summary:
-      'Prepare the two playing markets, then let first-tee defaults and prize settlement run automatically.',
+      'Review pool commitments, automatic shortfalls and confirmed winner settlement.',
     blocks: [
       {
         heading: 'What Bet Punto is / is not',
@@ -719,12 +719,13 @@ const adminGuideSections: AdminGuideSection[] = [
       {
         heading: 'Step-by-step',
         items: [
-          'Open Bet Punto, expand Prepare or edit betting markets, then build missing daily markets.',
-          'Non-scramble rounds use Highest Stableford; scramble rounds use Lowest scramble gross.',
+          'For 2026, the six pools are already configured. Use Pool compliance for minimums and shortfalls; use Competitions & scoring → Scores to enter GameBook totals and confirm actual pool winners.',
+          'Other tours: expand Prepare or edit betting markets, then build missing daily markets.',
+          'Other tours retain their saved playing-market rules. The confirmed 2026 Par 3 and Monday pools use Stableford, not lowest gross.',
           'The backend fixes each market close to the selected tour timezone and earliest tee time for its round.',
           'Users choose £5 increments. Confirmed 2026 uses six separate pool minimums totalling £45; other tours retain their saved betting rules.',
-          'At each fixed close, the app automatically adds only the remaining daily shortfall onto the player themselves or their own scramble team.',
-          'Enter and publish the playing winner in the Live results desk; the app settles the pool and updates the public leaderboard.',
+          'At each fixed close, the server adds only the remaining pool shortfall for 2026; other tours retain their saved daily rule. Valid existing selections count and are preserved.',
+          'For 2026, save complete GameBook totals and tick the actual pool winner in Scores. Confirmation after cutoff calculates ledger payouts. Other tours retain their published playing-winner workflow.',
           'Use manual admin bet entry only for a deliberate correction. Money movement remains outside the app.',
         ],
       },
@@ -2481,7 +2482,7 @@ export function Admin() {
   const saveMarketStatus = (market: BetMarket, status: BetMarket['status']) => {
     if (!selectedTour) return;
     const options = (adminData?.betOptions ?? []).filter(
-      (option) => option.marketId === market.id,
+      (option) => option.marketId === market.id && (!market.poolKey || option.active !== false),
     );
     void runSave(
       `bet-market-status-${market.id}`,
@@ -3099,7 +3100,7 @@ export function Admin() {
             <>
               {activeWorkspace === 'live' && selectedTour ? (
                 <div aria-busy={dataLoading} inert={dataLoading || Boolean(dataError)}>
-                  <div className="card"><h3>Stableford scorecards & combined competition</h3><p>Enter GameBook Stableford totals and confirm the actual betting winners.</p><button type="button" onClick={() => { selectWorkspace('tour'); setActiveTab('Competitions & scoring'); }}>Open competitions & scoring</button></div>
+                  <div className="card"><h3>Stableford totals & combined competition</h3><p>Enter GameBook Stableford totals and confirm the actual betting winners.</p><button type="button" onClick={() => { selectWorkspace('tour'); setActiveTab('Competitions & scoring'); }}>Open competitions & scoring</button></div>
                   <AdminLiveDesk
                     key={selectedTour.id}
                     data={adminData}
@@ -5896,7 +5897,7 @@ export function Admin() {
                                 </strong>
                                 <small>
                                   {mandatoryBettorNames.length} attending
-                                  players included per playing day.
+                                  players included {selectedTour?.rulesVersion ? 'in each pool.' : 'per playing day.'}
                                 </small>
                               </div>
                             </div>
@@ -5998,7 +5999,7 @@ export function Admin() {
                               </table>
                             </div>
                           </div>
-                          <details ref={betMarketEditorRef} className="admin-setup-disclosure">
+                          {selectedTour?.rulesVersion !== 'confirmed-2026' ? <details ref={betMarketEditorRef} className="admin-setup-disclosure">
                             <summary>Prepare or edit betting markets</summary>
                           <div className="premium-inset">
                             <div className="section-heading">
@@ -6285,7 +6286,7 @@ export function Admin() {
                               />
                             ) : null}
                           </form>
-                          </details>
+                          </details> : <p>The six 2026 pools are configured. Use Pool compliance for commitments and Competitions &amp; scoring for GameBook totals and winner confirmation.</p>}
                           <div className="admin-card-list">
                             {adminData.betMarkets.length === 0 ? (
                               <p>No Bet Punto markets yet.</p>
@@ -6302,9 +6303,7 @@ export function Admin() {
                                     <div>
                                       <strong>{market.title}</strong>
                                       <span>
-                                        {betPuntoMarketKindLabel(
-                                          betPuntoMarketKind(market),
-                                        )}{' '}
+                                        {market.poolKey ? market.poolKey === 'sunday' ? 'Individual Stableford winner' : 'Pair Stableford winner' : betPuntoMarketKindLabel(betPuntoMarketKind(market))}{' '}
                                         · {market.status} · {marketBets.length}{' '}
                                         bets
                                       </span>
@@ -6314,7 +6313,7 @@ export function Admin() {
                                         {adminData.betOptions
                                           .filter(
                                             (option) =>
-                                              option.marketId === market.id,
+                                              option.marketId === market.id && (!market.poolKey || option.active !== false),
                                           )
                                           .map((option) => (
                                             <span
@@ -6329,7 +6328,7 @@ export function Admin() {
                                           ))}
                                       </div>
                                       </details>
-                                      <label>
+                                      {market.poolKey ? <p>Confirm the actual GameBook winner in Competitions &amp; scoring → Scores.</p> : <label>
                                         Winner/result
                                         <select
                                           value={market.resultOptionId ?? ''}
@@ -6347,7 +6346,7 @@ export function Admin() {
                                           {adminData.betOptions
                                             .filter(
                                               (option) =>
-                                                option.marketId === market.id,
+                                                option.marketId === market.id && (!market.poolKey || option.active !== false),
                                             )
                                             .map((option) => (
                                               <option
@@ -6358,7 +6357,7 @@ export function Admin() {
                                               </option>
                                             ))}
                                         </select>
-                                      </label>
+                                      </label>}
                                       {states[`bet-market-settle-${market.id}`]
                                         ?.error ? (
                                         <span className="form-error">
@@ -6371,7 +6370,7 @@ export function Admin() {
                                       ) : null}
                                     </div>
                                     <div className="admin-mini-actions">
-                                      <button
+                                      {market.poolKey ? <button type="button" onClick={() => { selectWorkspace('tour'); setActiveTab('Competitions & scoring'); }}>Open GameBook results</button> : <button
                                         type="button"
                                         disabled={states['bet-market']?.saving}
                                         onClick={() => {
@@ -6383,7 +6382,7 @@ export function Admin() {
                                         }}
                                       >
                                         Edit market
-                                      </button>
+                                      </button>}
                                       <button
                                         type="button"
                                         disabled={
@@ -6425,7 +6424,7 @@ export function Admin() {
                                         disabled={
                                           states[
                                             `delete-bet-market-${market.id}`
-                                          ]?.saving || marketBets.length > 0
+                                          ]?.saving || marketBets.length > 0 || !!market.poolKey
                                         }
                                         onClick={() => removeBetMarket(market)}
                                       >

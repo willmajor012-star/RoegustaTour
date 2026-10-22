@@ -326,8 +326,10 @@ export function AdminLiveDesk({
       <div><p className="eyebrow">{roundLabel(selectedRound)}</p><h4>What’s left to do</h4></div>
       <ul>
         <li><strong>{enteredCount} of {roundMatches.length} results entered</strong><span>{liveCount} published{unsavedCount > 0 ? ` · ${unsavedCount} with unsaved changes` : ''}</span></li>
+        {tour.rulesVersion === 'confirmed-2026' ? <li><strong>Stableford & betting</strong><span>Enter GameBook totals and confirm pool winners in Competitions & scoring.</span></li> : <>
         <li><strong>Playing winner</strong><span>{prizeChanged ? 'Unsaved changes' : prizeResult?.published ? 'Published' : prizeResult ? 'Saved as draft' : 'Not entered'}</span></li>
         <li><strong>Betting</strong><span>{!linkedMarket ? 'No market linked' : linkedMarket.status === 'settled' ? 'Settled' : linkedMarket.status === 'void' ? 'Cancelled' : linkedMarket.status === 'draft' ? 'Market needs preparing' : linkedMarket.status === 'open' ? 'Open for picks' : 'Awaiting playing winner'}</span></li>
+        </>}
       </ul>
       {roundMatches.length === 0 ? <p>Add matches in Pairings before entering results.</p> : nextStep ? <button type="button" disabled={busy} onClick={goToNextStep}>{nextStep}</button> : <p>Results and playing winner published.</p>}
     </div>
