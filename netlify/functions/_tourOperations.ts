@@ -185,7 +185,9 @@ export async function applyOperationsAction(db: SupabaseClient, b: OpsBundle, ac
     if (!comp) continue;
     const scope = m.sessionKey ?? 'combined';
     const independent = { ...comp, decisions: comp.decisions.filter((v) => v.scope === 'bet:' + scope).map((v) => ({ ...v, scope })) };
-    const rows = competitionStandings(independent, b.courses, scope);
+    // A competition countback is not an agreed betting tie rule. A tied
+    // top total requires a separate recorded betting decision.
+    const rows = competitionStandings(independent, b.courses, scope, 'decision');
     const complete = comp.entriesPublished && rows.length > 0 && rows.every((v) => v.complete);
     const top = rows[0];
     const winner = top?.rank === 1 ? options.find((o) => o.marketId === m.id && o.entryId === top.entry.id) : undefined;
