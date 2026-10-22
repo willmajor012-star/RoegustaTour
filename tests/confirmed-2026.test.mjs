@@ -220,6 +220,13 @@ test('GameBook totals, explicit pool winners and visible provisional side points
   assert.equal(b.state.poolResults[fridayMarket.id].ready,false,'a correction requires the GameBook winner to be confirmed again');
   assert.equal(Number((await db.query('select count(*) n from tour_competition_awards where active')).rows[0].n),0);
   const reopened=await service.readOperations(client,tid,true);assert.equal(reopened.state.competitions.find((v)=>v.id===c.id).sessions[0].totals[11].stableford,0,'zero remains a saved completed result');
+  await op('save_totals',{competitionId:c.id,sessionId:fri.id,totals:totals.map((t,i)=>i>=10?{...t,stableford:35}:t)});
+  await op('set_pool_winner',{competitionId:c.id,marketId:fridayMarket.id,entryId:c.entries[10].id});
+  assert.equal(b.markets.find((m)=>m.id===fridayMarket.id).resultOptionId,b.options.find((o)=>o.marketId===fridayMarket.id&&o.linkedEntryId===c.entries[10].id).id,'the organiser can select the actual GameBook winner among tied highest totals');
+  await op('set_pool_winner',{competitionId:c.id,marketId:fridayMarket.id,entryId:c.entries[11].id});
+  assert.equal(b.markets.find((m)=>m.id===fridayMarket.id).resultOptionId,b.options.find((o)=>o.marketId===fridayMarket.id&&o.linkedEntryId===c.entries[11].id).id,'correcting a tied winner replaces the settlement');
+  const settled=(await db.query('select count(*) n,sum(stake_amount_pence) stakes,sum(payout_amount_pence) payouts from bets where market_id=$1',[fridayMarket.id])).rows[0];
+  assert.equal(Number(settled.n),24);assert.equal(Number(settled.stakes),12000);assert.equal(Number(settled.payouts),12000,'tie-winner corrections neither duplicate stakes nor inflate payouts');
   const par=b.state.competitions.find((v)=>v.key==='par3');assert(par.sessions[0].groups.every((g)=>g.time===par.sessions[0].firstStart),'all shotgun groups have the same start');
  }finally{await db.close();}
 });
