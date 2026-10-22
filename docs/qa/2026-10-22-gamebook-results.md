@@ -32,3 +32,18 @@ automatic shortfalls, winner confirmation, settlement and corrections. TypeScrip
 and the production build pass. Actual 2026 scores and bets remain unmodified by
 these rehearsals. Device installation remains a physical-device check; served
 manifest/icon assets and the installation instructions are covered separately.
+
+Authenticated live review confirmed the separate Friday/Monday totals forms,
+explicit pool winner checkbox, front-nine settings, 18-hole Par 3 shotgun,
+Saturday 10-minute tee slots, and six pool minimums/deadlines. Real pair inputs
+remain unassigned as requested, so no invented live totals or bets were saved.
+The private seven-page guide and the app-generated current PDF were rendered and
+checked. Production shows 24 handicaps and room occupants; all four historical
+match/result/bet fingerprints are unchanged. The independent cron job continues
+to report successful minute executions.
+
+The review also removed legacy daily-market builders and direct settlement
+dropdowns from the 2026 pool workflow. Pool cards show active selections and link
+to the GameBook confirmation form. The separate tour-ranking editor no longer
+offers the obsolete betting tie-decision path for imported totals. Other tours
+retain their existing controls.
