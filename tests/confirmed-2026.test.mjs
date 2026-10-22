@@ -89,6 +89,8 @@ test('2026 configuration, atomic persistence, six independent defaults, retries,
  const cards=[];for(const [i,e]of current.entries.entries())for(const subjectId of e.playerIds)for(let h=0;h<9;h++){const extra=Math.min(2,Math.max(0,i-h*2));cards.push({subjectId,hole:h+10,status:'gross',gross:4-extra});}
  await op('save_scores',{competitionId:current.id,sessionId:friday.id,scores:cards});
  current=b.state.competitions.find((c)=>c.id===combined.id);const provisional=rules.competitionStandings(current,b.courses);assert(provisional.every((r)=>!r.confirmed&&r.sessions.monday.complete===0));
+ assert.equal(provisional.reduce((sum,r)=>sum+(r.points??0),0),39,'Friday standings project the 39 points without awarding them');
+ assert.equal(Number((await db.query('select count(*) n from tour_competition_awards where active')).rows[0].n),0,'Friday projections are not confirmed team points');
  await op('save_monday_order',{competitionId:current.id});await op('publish_groups',{competitionId:current.id,sessionId:monday.id});
  current=b.state.competitions.find((c)=>c.id===combined.id);const published=structuredClone(current.sessions[1].groups);assert.equal(published[0].entryIds[0],current.entries[11].id);
  const mondayCards=current.entries.flatMap((e)=>Array.from({length:9},(_,h)=>({subjectId:e.id,hole:h+10,status:'gross',gross:4})));
@@ -143,4 +145,38 @@ test('a session can explicitly omit tees without blocking scratch Stableford', (
  assert.equal(rules.sessionStanding(session, entry, []).complete, 9);
  delete session.teeRequired;
  assert(rules.sessionConfigurationIssues(session, []).includes('Confirm the tees.'));
+});
+
+
+test('betting ties require their own recorded decision rather than competition countback', () => {
+ const c = preparedCompetition(); c.entries = c.entries.slice(0, 2);
+ for (const e of c.entries) { fill(c, 'friday', e, Array(9).fill(2)); fill(c, 'monday', e, Array(9).fill(2)); }
+ const mon = c.sessions[1];
+ mon.scores.find((v) => v.subjectId === c.entries[0].id && v.hole === 17).gross = 5;
+ mon.scores.find((v) => v.subjectId === c.entries[0].id && v.hole === 18).gross = 3;
+ assert.equal(rules.competitionStandings(c, [])[0].entry.id, c.entries[0].id, 'confirmed competition countback still applies');
+ assert(rules.competitionStandings(c, [], 'combined', 'decision').every((r) => r.rank === undefined));
+ c.decisions = [{ scope: 'combined', entryIds: c.entries.map((e) => e.id).reverse(), reason: 'Recorded decision under the agreed betting rules', basis: rules.rankingBasis(c, 'combined') }];
+ const rows = rules.competitionStandings(c, [], 'combined', 'decision');
+ assert.equal(rows[0].entry.id, c.entries[1].id);
+ assert.match(rows[0].explanation, /Recorded decision under the agreed betting rules/);
+});
+
+test('every scoped pool rejects late discretionary bets even before a delayed scheduler closes its status', async () => {
+ const db = await database();
+ try {
+  await db.query("select set_config('roegusta.configure_pool','on',false)");
+  const person = config.rosterIds[0];
+  const pools = (await db.query('select id,pool_key from bet_markets where tour_id=$1 and pool_key is not null',[tid])).rows;
+  assert.equal(pools.length, 6);
+  for (const pool of pools) {
+   const option = (await db.query("insert into bet_options(market_id,label,linked_player_id,active) values($1,'Synthetic cutoff check',$2,true) returning id",[pool.id,person])).rows[0];
+   const stake = {market_id:pool.id,option_id:option.id,bettor_player_id:person,bettor_name:'Golfer 01',stake_amount_pence:500,stake_text:'£5',public_edit_token_hash:'cutoff-check'};
+   await db.query("update bet_markets set closes_at=clock_timestamp()+interval '1 minute',status='open' where id=$1",[pool.id]);
+   await db.query('select save_public_bet_atomic($1,null,$2)',['create',JSON.stringify(stake)]);
+   await db.query("update bet_markets set closes_at=clock_timestamp()-interval '1 millisecond',status='open' where id=$1",[pool.id]);
+   await assert.rejects(db.query('select save_public_bet_atomic($1,null,$2)',['create',JSON.stringify(stake)]),/closed/i,pool.pool_key);
+   assert.equal((await db.query('select status from bet_markets where id=$1',[pool.id])).rows[0].status,'open','deadline enforcement does not rely on cron changing the status');
+  }
+ } finally { await db.close(); }
 });

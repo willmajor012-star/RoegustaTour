@@ -127,7 +127,7 @@ export type CompetitionStanding = {
   entry: CompetitionEntry; sessions: Record<string, SessionStanding>; total: number;
   rank?: number; explanation: string; points?: number; confirmed: boolean; complete: boolean;
 };
-export function competitionStandings(competition: GolfCompetition, courses: CourseGuide[], scope = 'combined'): CompetitionStanding[] {
+export function competitionStandings(competition: GolfCompetition, courses: CourseGuide[], scope = 'combined', tieBreak: 'countback' | 'decision' = 'countback'): CompetitionStanding[] {
   const sessions = scope === 'combined' ? competition.sessions : competition.sessions.filter((s) => s.key === scope);
   const rows = competition.entries.map((entry) => {
     const values = Object.fromEntries(sessions.map((s) => [s.key, sessionStanding(s, entry, courses)]));
@@ -137,6 +137,7 @@ export function competitionStandings(competition: GolfCompetition, courses: Cour
   const fridayOnly = scope === 'combined' && sessions.length === 2 && rows.every((r) => r.sessions.friday?.complete === 9 && !r.sessions.monday?.started);
   const effectiveScope = fridayOnly ? 'friday' : scope;
   const keyFor = (row: CompetitionStanding): number[] => {
+    if (tieBreak === 'decision') return [row.total];
     const cb = (key: string) => { const s = row.sessions[key]; const points = s?.points ?? []; return [s?.total ?? 0, ...[6, 3, 1].map((n) => points.slice(-n).reduce<number>((sum, p) => sum + (p ?? 0), 0))]; };
     if (effectiveScope === 'combined' && sessions.length === 2) return [row.total, ...cb('monday'), ...cb('friday')];
     return [row.total, ...cb(sessions[0]?.key ?? '').slice(1)];
