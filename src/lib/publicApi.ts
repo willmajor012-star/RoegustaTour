@@ -69,10 +69,13 @@ export type PublicBetMarketsResponse = PublicResponse<{
   betMarkets: BetMarket[];
   betOptions: BetOption[];
   bets: Bet[];
+  poolSchedule?: Array<{ poolKey: string; title: string; minimumStakePence: number; closesAt: string; open: boolean; awaitingDraw: boolean; status?: string }>;
 }>;
 
 export type PublicAdvancedStatsResponse = PublicResponse<AdvancedStatsData & {
   currentTour?: Tour;
+  currentTourScores?: TeamScoreRow[];
+  attendingPlayerCount?: number;
   tourSummary?: TourSummary;
   mvpLeaderboard?: MvpLeaderboardRow[];
   playerSummaries?: PlayerAdvancedSummary[];

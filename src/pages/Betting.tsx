@@ -4,7 +4,7 @@ import { BetMarketCard } from '../components/BetMarketCard';
 import { PageHeader } from '../components/PageHeader';
 import { fetchPublicBetMarkets, savePublicBet, type PublicBetMarketsResponse } from '../lib/publicApi';
 import { usePublicData } from '../lib/usePublicData';
-import { betMarketUiStatusLabel, buildBetPuntoBettorSummaries, buildBetPuntoMarketSummaries, formatPenceCurrency, formatStakeCurrency, isMarketPubliclyEditable } from '../lib/betting';
+import { buildBetPuntoBettorSummaries, formatPenceCurrency, formatStakeCurrency, isMarketPubliclyEditable } from '../lib/betting';
 import type { Bet } from '../lib/types';
 
 function normalizeBettorInput(value: string) {
@@ -61,7 +61,8 @@ export function Betting() {
   const [editDraft, setEditDraft] = useState({ optionId: '', stake: '', comment: '' });
   const bets = [...savedBets, ...activeData.bets.filter((bet) => !savedBets.some((savedBet) => savedBet.id === bet.id))];
   const scopedPools = activeData.betMarkets.filter((m) => m.poolKey);
-  const tourMinimumPence = scopedPools.reduce((sum, market) => sum + (market.minimumStakePence ?? 0), 0);
+  const poolSchedule = activeData.poolSchedule ?? scopedPools.map((m) => ({ poolKey: m.poolKey!, title: m.title, minimumStakePence: m.minimumStakePence ?? 0, closesAt: m.closesAt!, status: m.status, open: m.status === 'open', awaitingDraw: false }));
+  const tourMinimumPence = poolSchedule.reduce((sum, m) => sum + m.minimumStakePence, 0);
   const activeBets = bets.filter((bet) => bet.status === 'active');
   const attendingPlayerIds = new Set(activeData.tourPlayers.filter((tourPlayer) => tourPlayer.attending).map((tourPlayer) => tourPlayer.playerId));
   const bettorOptions = activeData.players.filter((player) => player.active && attendingPlayerIds.has(player.id));
@@ -72,8 +73,6 @@ export function Betting() {
     return bettorOptions.find((player) => normalizeBettorInput(player.displayName) === normalizedInput || (player.nickname && normalizeBettorInput(player.nickname) === normalizedInput));
   }, [bettorName, bettorOptions]);
   const bettorSummaries = useMemo(() => buildBetPuntoBettorSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames, activeData.rounds), [activeData.betMarkets, activeData.betOptions, activeData.rounds, bets, mandatoryBettorNames]);
-  const marketSummaries = useMemo(() => buildBetPuntoMarketSummaries(activeData.betMarkets, activeData.betOptions, bets, mandatoryBettorNames, activeData.rounds), [activeData.betMarkets, activeData.betOptions, activeData.rounds, bets, mandatoryBettorNames]);
-  const requiredMarketSummaries = marketSummaries.filter((summary) => summary.market.required ?? (summary.market.marketType === 'player_performance' && summary.market.title.toLowerCase().includes('stableford')));
   const leaderboard = useMemo(() => [...bettorSummaries].sort((a, b) => b.netPence - a.netPence || b.settledPayoutPence - a.settledPayoutPence || a.bettorName.localeCompare(b.bettorName)), [bettorSummaries]);
   const settledDuePence = bettorSummaries.reduce((total, summary) => total + summary.settledPayoutPence, 0);
   const totalStakePence = bettorSummaries.reduce((total, summary) => total + summary.totalStakePence, 0);
@@ -90,16 +89,15 @@ export function Betting() {
     }).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
   }, [activeBets, bettorName, selectedBettorPlayer]);
   const mainMarkets = activeData.betMarkets.filter((market) => {
+    if (market.poolKey) return true;
     const round = activeData.rounds.find((candidate) => candidate.id === market.roundId);
     if (market.marketType === 'team_result') return round?.format === 'scramble';
     if (market.marketType === 'player_performance') return round?.format !== 'scramble';
     return false;
   });
-  const mainMarketIds = new Set(mainMarkets.map((market) => market.id));
   const openMarkets = mainMarkets.filter((market) => isMarketPubliclyEditable(market));
   const awaitingMarkets = mainMarkets.filter((market) => market.status === 'closed' || market.status === 'open' && !isMarketPubliclyEditable(market));
   const settledMarkets = mainMarkets.filter((market) => market.status === 'settled');
-  const otherMarkets = activeData.betMarkets.filter((market) => !mainMarketIds.has(market.id) && market.status !== 'void');
 
   useEffect(() => setBettorName(localStorage.getItem('rt-bettor-name') ?? ''), []);
   useEffect(() => setSavedBets([]), [data]);
@@ -182,11 +180,10 @@ export function Betting() {
             {bettorOptions.map((player) => <option key={player.id} value={player.displayName}>{player.displayName}{player.nickname ? ` · ${player.nickname}` : ''}</option>)}
           </select>
         </label>
-        <small>{scopedPools.length ? 'Six separate pool commitments: £45 minimum over the tour. Friday requires £15 across Faldo and Par 3; Monday requires £10 across Monday and combined. £5 stake increments; extra stakes are welcome before each pool’s own cutoff.' : '£10 minimum across all required markets on each playing day. Stakes are in £5 increments and additional bets are allowed before each market closes.'}</small>
+        <small>{poolSchedule.length ? '£45 minimum over six pools, in £5 increments. You are free to bet more.' : '£10 minimum across all required markets on each playing day. Stakes are in £5 increments and additional bets are allowed before each market closes.'}</small>
       </section>
-      {scopedPools.length ? <p className="card"><strong>{formatPenceCurrency(tourMinimumPence * attendingPlayerIds.size)} is the minimum across {attendingPlayerIds.size} tourists, not a fixed pot.</strong> Each tourist must meet every pool minimum separately. You can bet more before its cutoff, so the final total can be higher.</p> : null}
-
-      {scopedPools.length && selectedBettorPlayer ? <section className="card ops"><h2>Your pool commitments</h2><p>Tour total staked: {formatPenceCurrency(scopedPools.reduce((sum, m) => sum + poolCommitment(m, selectedBettorPlayer.id, bets).staked, 0))}. Minimum £45, with each pool met separately.</p>{scopedPools.map((m) => { const v = poolCommitment(m, selectedBettorPlayer.id, bets); return <article className="ops-room" key={m.id}><strong>{m.title} · minimum {formatPenceCurrency(v.minimum)}</strong><p>{formatPenceCurrency(v.staked)} staked · {v.complete ? 'Complete' : formatPenceCurrency(v.shortfall) + ' outstanding'}</p><small>Cutoff {new Date(m.closesAt!).toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', dateStyle: 'short', timeStyle: 'short' })} Portugal local time</small></article>; })}<p>At cutoff only your outstanding shortfall is automatically placed on you or your own competition pair. Existing valid bets on others remain unchanged.</p></section> : null}
+      {poolSchedule.length > 0 ? <section className="card public-pool-schedule"><h3>Minimum bets &amp; cutoffs</h3><p>Portugal local time. Pools open after the draw is published and betting is opened.</p><div>{[...poolSchedule].sort((a,b) => ['friday','par3','saturday','sunday','monday','combined'].indexOf(a.poolKey)-['friday','par3','saturday','sunday','monday','combined'].indexOf(b.poolKey)).map((m) => <article key={m.poolKey}><div><strong>{m.title}</strong><small>{m.open ? 'Open' : m.status === 'settled' ? 'Settled' : m.status === 'closed' || Date.parse(m.closesAt) <= Date.now() ? 'Closed' : m.awaitingDraw ? 'Opens after the draw' : 'Not open yet'}</small></div><b>{formatPenceCurrency(m.minimumStakePence)}</b><time>{new Date(m.closesAt).toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time></article>)}</div><small>Total minimum: {formatPenceCurrency(tourMinimumPence)} each. Any shortfall goes on your own selection at cutoff.</small></section> : null}
+      {selectedBettorPlayer && scopedPools.length ? <section className="card"><h3>Your pool commitments</h3>{scopedPools.map((m) => { const v = poolCommitment(m, selectedBettorPlayer.id, bets); return <p key={m.id}><strong>{m.title}</strong> · {formatPenceCurrency(v.staked)} staked · {v.complete ? 'Complete' : formatPenceCurrency(v.shortfall) + ' to go'}</p>; })}</section> : null}
       {!loading && !error && <>
         <section className="card bet-tour-ledger">
           <div className="section-heading">
@@ -217,7 +214,7 @@ export function Betting() {
 
         <section className="market-section active-market-section">
           <div className="section-heading"><div><p className="eyebrow">Open now</p><h2>Place a bet</h2></div><strong>{openMarkets.length} market{openMarkets.length === 1 ? '' : 's'}</strong></div>
-          {openMarkets.length === 0 ? <p className="card">There is no open market right now. The next market will appear when Admin opens it.</p> : openMarkets.map((market) => {
+          {openMarkets.length === 0 ? <p className="card">Betting is not open yet. Selections will appear here when each pool opens.</p> : openMarkets.map((market) => {
             const round = activeData.rounds.find((candidate) => candidate.id === market.roundId);
             return <BetMarketCard key={market.id} market={market} round={round} timeZone={activeData.tour?.timezone} options={activeData.betOptions.filter((option) => option.marketId === market.id)} bets={bets} bettorName={selectedBettorPlayer?.displayName ?? ''} onSubmit={submit} submitMessage={submitMessages[market.id]} />;
           })}
@@ -231,7 +228,7 @@ export function Betting() {
           const option = activeData.betOptions.find((candidate) => candidate.id === bet.optionId);
           const round = market?.roundId ? activeData.rounds.find((candidate) => candidate.id === market.roundId) : undefined;
           const editable = Boolean(market && isMarketPubliclyEditable(market) && betEditToken(bet.id));
-          return <article key={bet.id}><strong>{market?.title ?? 'Bet Punto market'}</strong><span>{option?.label ?? 'Option'} · {formatStakeCurrency(bet)} · {marketStatusLabel(market?.status)}{round ? ` · Round ${round.roundNumber}` : ''}</span>{bet.entrySource === 'automatic_default' ? <small>Automatic first-tee default</small> : bet.comment ? <small>{bet.comment}</small> : null}{editable && editingBetId !== bet.id ? <div className="chip-list"><button className="pill" type="button" onClick={() => beginEditBet(bet)}>Edit pick</button><button className="pill" type="button" disabled={changingBet} onClick={() => void changeBet(() => voidBet(bet))}>Cancel pick</button></div> : null}{editable && editingBetId === bet.id ? <div className="bet-form"><select value={editDraft.optionId} onChange={(event) => setEditDraft({ ...editDraft, optionId: event.target.value })}>{activeData.betOptions.filter((candidate) => candidate.marketId === bet.marketId).map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.label}</option>)}</select><input inputMode="decimal" value={editDraft.stake} onChange={(event) => setEditDraft({ ...editDraft, stake: event.target.value })} /><input value={editDraft.comment} onChange={(event) => setEditDraft({ ...editDraft, comment: event.target.value })} /><button type="button" disabled={changingBet} onClick={() => void changeBet(() => editBet(bet))}>Save edit</button><button type="button" onClick={() => setEditingBetId(null)}>Cancel edit</button></div> : null}</article>;
+          return <article key={bet.id}><strong>{market?.title ?? 'Bet Punto market'}</strong><span>{option?.label ?? 'Option'} · {formatStakeCurrency(bet)} · {marketStatusLabel(market?.status)}{round ? ` · Round ${round.roundNumber}` : ''}</span>{bet.entrySource === 'automatic_default' ? <small>Automatic cutoff bet</small> : bet.comment ? <small>{bet.comment}</small> : null}{editable && editingBetId !== bet.id ? <div className="chip-list"><button className="pill" type="button" onClick={() => beginEditBet(bet)}>Edit pick</button><button className="pill" type="button" disabled={changingBet} onClick={() => void changeBet(() => voidBet(bet))}>Cancel pick</button></div> : null}{editable && editingBetId === bet.id ? <div className="bet-form"><select value={editDraft.optionId} onChange={(event) => setEditDraft({ ...editDraft, optionId: event.target.value })}>{activeData.betOptions.filter((candidate) => candidate.marketId === bet.marketId).map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.label}</option>)}</select><input inputMode="decimal" value={editDraft.stake} onChange={(event) => setEditDraft({ ...editDraft, stake: event.target.value })} /><input value={editDraft.comment} onChange={(event) => setEditDraft({ ...editDraft, comment: event.target.value })} /><button type="button" disabled={changingBet} onClick={() => void changeBet(() => editBet(bet))}>Save edit</button><button type="button" onClick={() => setEditingBetId(null)}>Cancel edit</button></div> : null}</article>;
           })}</div>}
         </section>
 
@@ -251,19 +248,6 @@ export function Betting() {
           })}</div>
         </details>}
 
-        {otherMarkets.length > 0 && <details className="card betting-history-details">
-          <summary><span><small>Legacy</small><strong>Other markets</strong></span><b>{otherMarkets.length}</b></summary>
-          <div>{otherMarkets.map((market) => {
-            const round = activeData.rounds.find((candidate) => candidate.id === market.roundId);
-            return <BetMarketCard key={market.id} market={market} round={round} timeZone={activeData.tour?.timezone} options={activeData.betOptions.filter((option) => option.marketId === market.id)} bets={bets} bettorName={selectedBettorPlayer?.displayName ?? ''} onSubmit={submit} submitMessage={submitMessages[market.id]} />;
-          })}</div>
-        </details>}
-
-        <details className="card betting-admin-details">
-          <summary><span><small>Market detail</small><strong>{scopedPools.length ? 'Pool coverage' : 'Daily coverage'}</strong></span><b>{requiredMarketSummaries.length}</b></summary>
-          <div className="table-wrap"><table className="bet-summary-table"><thead><tr><th>Required market</th><th>Status</th><th>Bets</th><th>Pot</th><th>{scopedPools.length ? 'Players below this pool minimum' : 'Players below £10 that day'}</th></tr></thead><tbody>{requiredMarketSummaries.length === 0 ? <tr><td colSpan={5}>No required markets yet.</td></tr> : requiredMarketSummaries.map((summary) => <tr key={summary.market.id}><td>{summary.market.title}</td><td>{betMarketUiStatusLabel(summary.market)}</td><td>{summary.totalBets}</td><td>{formatPenceCurrency(summary.totalStakePence)}</td><td>{summary.missingBettorNames.length === 0 ? 'Complete' : summary.missingBettorNames.join(', ')}</td></tr>)}</tbody></table></div>
-          <small>{scopedPools.length ? 'Each pool has an independent Portugal local cutoff. The combined pool stays open through the weekend until Monday 10:00; Par 3 closes Friday 19:30. The server automatically places only each pool’s outstanding shortfall on the tourist’s own selection.' : 'Each market closes at its round’s fixed first tee time. At that point, only the remaining shortfall to the £10 daily total is added automatically on the player themselves or their own scramble team.'}</small>
-        </details>
       </>}
     </div>
   );

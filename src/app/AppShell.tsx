@@ -22,7 +22,8 @@ type AppHistoryState = {
 
 function backFallback(path: string) {
   if (path.startsWith('/courses/')) return '/courses';
-  if (path === '/courses' || path === '/teams' || path === '/info') return '/tours';
+  if (path === '/competitions') return '/tours/current';
+  if (path.startsWith('/tours/') || path === '/courses' || path === '/teams' || path === '/info') return '/tours';
   return '/';
 }
 

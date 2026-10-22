@@ -56,6 +56,11 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   const required = Boolean(body.required);
   let closesAt = optionalString(body.closesAt);
 
+  if (id) {
+    const existing = await runRows<{ pool_key?: string }>(supabase.from('bet_markets').select('pool_key').eq('id', id).limit(1), 'find existing pool');
+    if (existing[0]?.pool_key) return badRequest('Use the pool publication controls and GameBook results for this configured pool.');
+  }
+
   if (!tourId) return badRequest('Tour ID is required.');
   if (!title) return badRequest('Market title is required.');
   if (!marketType || !marketTypes.includes(marketType)) return badRequest('Market type is invalid.');

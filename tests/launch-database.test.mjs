@@ -42,7 +42,7 @@ test('fresh migration chain and launch security/result transactions execute in P
         assert.equal(row.user_write, false, row.relname);
       }
       const { rows: privileges } = await db.query("select proname, has_function_privilege('anon', p.oid, 'EXECUTE') as can_write, has_function_privilege('authenticated', p.oid, 'EXECUTE') as user_write from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and (proname like 'admin_%' or proname in ('apply_bet_defaults_atomic','save_public_bet_atomic'))");
-      assert.equal(privileges.length, 10);
+      assert.equal(privileges.length, 11);
       for (const row of privileges) {
         assert.equal(row.can_write, false, row.proname);
         assert.equal(row.user_write, false, row.proname);

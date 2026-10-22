@@ -1,5 +1,8 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { MatchCard } from '../components/MatchCard';
+import { Scoreboard } from '../components/Scoreboard';
+import { PublicCompetitionPanel } from '../components/PublicCompetition';
+import { TourLink } from '../components/TourLink';
 import { LeaderboardTable } from '../components/LeaderboardTable';
 import { PageHeader } from '../components/PageHeader';
 import { TeamRosterCards } from '../components/PlayerProfileCards';
@@ -16,7 +19,7 @@ import { tourLifecycle } from '../lib/tourState';
 const emptyToursData: Omit<PublicAdvancedStatsResponse, 'source'> = { players: [], tours: [], tourTeams: [], tourPlayers: [], tourTeamMembers: [], tourTeamResults: [], rounds: [], matches: [], matchParticipants: [] };
 type TourSection = 'overview' | 'results' | 'teams' | 'leaderboard';
 
-type TourScoreRow = { team: TourTeam; points: number; resultStatus?: 'winner' | 'runner_up' | 'draw' | 'tbd' };
+type TourScoreRow = { team: TourTeam; points: number; provisionalPoints?: number; resultStatus?: 'winner' | 'runner_up' | 'draw' | 'tbd' };
 
 
 
@@ -56,7 +59,8 @@ function scoreForTour(data: Omit<PublicAdvancedStatsResponse, 'source'>, tour: T
   });
   return teams.map((team) => {
     const result = resultRows.find((row) => row.teamId === team.id);
-    return { team, points: result?.finalPoints ?? matchScores.get(team.id) ?? 0, resultStatus: result?.resultStatus };
+    const current = data.currentTour?.id === tour.id ? data.currentTourScores?.find((row) => row.teamId === team.id) : undefined;
+    return { team, points: current?.points ?? result?.finalPoints ?? matchScores.get(team.id) ?? 0, provisionalPoints: current?.provisionalPoints, resultStatus: result?.resultStatus };
   });
 }
 
@@ -70,7 +74,7 @@ function winnerForTour(tour: Tour, scores: TourScoreRow[]) {
 }
 
 function scoreLine(scores: TourScoreRow[]) {
-  return scores.length > 0 ? scores.map((row) => `${row.team.name} ${formatPoints(row.points)}`).join(' · ') : 'Score TBC';
+  return scores.length > 0 ? scores.map((row) => `${row.team.name} ${formatPoints(row.points + (row.provisionalPoints ?? 0))}${row.provisionalPoints ? ' provisional' : ''}`).join(' · ') : 'Score TBC';
 }
 
 function cardOutcome(tour: Tour, scores: TourScoreRow[]) {
@@ -90,7 +94,7 @@ function LeaderboardCards({ rows }: { rows: LeaderboardRow[] }) {
   return <div className="leaderboard-cards tour-leaderboard-cards">{rows.map((row, index) => <article className="leaderboard-card card" key={row.playerId}><span className="rank">#{index + 1}</span><span className="leaderboard-name">{row.playerName}</span><strong>{formatPoints(row.points)} pts</strong><span>{row.wins}-{row.draws}-{row.losses} · {formatPercent(row.winPercent)}</span></article>)}</div>;
 }
 
-export function Tours() {
+export function Tours({ openCurrent = false, initialSection = 'overview' }: { openCurrent?: boolean; initialSection?: TourSection }) {
   const { data, loading, error } = usePublicData(fetchPublicAdvancedStats);
   const activeData = data ?? emptyToursData;
   const dataForStats: AdvancedStatsData = useMemo(() => ({
@@ -113,9 +117,9 @@ export function Tours() {
   });
   const previousTours = sortedTours.filter((tour) => tour.id !== activeTour?.id);
   const [selectedTourId, setSelectedTourId] = useState<string | undefined>();
-  const selectedTour = sortedTours.find((tour) => tour.id === selectedTourId);
+  const selectedTour = sortedTours.find((tour) => tour.id === selectedTourId) ?? (openCurrent ? activeTour : undefined);
 
-  if (selectedTour) return <TourDetail tour={selectedTour} data={activeData} dataForStats={dataForStats} onBack={() => setSelectedTourId(undefined)} />;
+  if (selectedTour) return <TourDetail key={selectedTour.id + initialSection} initialSection={initialSection} direct={openCurrent} tour={selectedTour} data={activeData} dataForStats={dataForStats} onBack={() => setSelectedTourId(undefined)} />;
 
   return <div className="page-stack tours-page tour-archive-landing">
     <PageHeader title="Tours" eyebrow="Current tour & archive" />
@@ -134,7 +138,6 @@ function CurrentTourHub({ tour, data, onOpenTour }: { tour: Tour; data: Omit<Pub
     <button className="current-tour-feature" type="button" onClick={() => onOpenTour(tour.id)}>
       <span className="tour-status-badge">{statusLabel(tour)}</span>
       <span className="current-tour-copy">
-        <small>This tour</small>
         <strong>{formatTourDisplayName(tour)}</strong>
         <span>{tour.location ?? 'Location TBC'} · {formatDate(tour.startDate)} — {formatDate(tour.endDate)}</span>
         <b>{scoreLine(scores)}</b>
@@ -160,8 +163,8 @@ function TourCard({ tour, data, onSelect }: { tour: Tour; data: Omit<PublicAdvan
   </button>;
 }
 
-function TourDetail({ tour, data, dataForStats, onBack }: { tour: Tour; data: Omit<PublicAdvancedStatsResponse, 'source'>; dataForStats: AdvancedStatsData; onBack: () => void }) {
-  const [section, setSection] = useState<TourSection>('overview');
+function TourDetail({ tour, data, dataForStats, onBack, initialSection = 'overview', direct = false }: { tour: Tour; data: Omit<PublicAdvancedStatsResponse, 'source'>; dataForStats: AdvancedStatsData; onBack: () => void; initialSection?: TourSection; direct?: boolean }) {
+  const [section, setSection] = useState<TourSection>(initialSection);
   const teams = data.tourTeams.filter((team) => team.tourId === tour.id).sort((a, b) => a.sortOrder - b.sortOrder);
   const rounds = data.rounds.filter((round) => round.tourId === tour.id).sort((a, b) => a.roundNumber - b.roundNumber);
   const matches = data.matches.filter((match) => match.tourId === tour.id && isPublicVisibleMatch(match));
@@ -170,18 +173,18 @@ function TourDetail({ tour, data, dataForStats, onBack }: { tour: Tour; data: Om
   const winner = winnerForTour(tour, scores);
 
   return <div className="page-stack tours-page selected-tour-page">
-    <button className="back-to-tours" onClick={onBack}>‹ Back to tours</button>
+    {direct ? <a className="back-to-tours" href="/tours">‹ Back to tours</a> : <button className="back-to-tours" onClick={onBack}>‹ Back to tours</button>}
     <section className="selected-tour-hero card">
       <div><span className="tour-status-badge">{statusLabel(tour)}</span><h2>{formatTourDisplayName(tour)}</h2><p>{tour.location ?? 'Location TBC'} · {formatDate(tour.startDate)} — {formatDate(tour.endDate)}</p>{winner && <strong>{winner.team.name} won</strong>}</div>
-      <div className="tour-detail-score">{scores.length > 0 ? scores.map((row, index) => <span className="team-score-pill" key={row.team.id} style={{ '--team-colour': normalizeTeamColour(row.team.colour, index) } as CSSProperties}>{row.team.name} <b>{formatPoints(row.points)}</b></span>) : <span>Score TBC</span>}</div>
+      <Scoreboard scores={scores.map((row) => ({ teamId: row.team.id, teamName: row.team.name, colour: row.team.colour, points: row.points, provisionalPoints: row.provisionalPoints, pointsByRound: {} }))} />
     </section>
     <div className="segmented tour-detail-switch" role="tablist" aria-label="Tour detail sections">{[
       ['overview', 'Overview'], ['results', 'Results'], ['teams', 'Teams'], ['leaderboard', 'Leaderboard'],
     ].map(([value, label]) => <button key={value} className={section === value ? 'active' : ''} onClick={() => setSection(value as TourSection)}>{label}</button>)}</div>
     {section === 'overview' && <TourOverview tour={tour} data={data} scores={scores} rounds={rounds} matches={matches} winner={winner} />}
-    {section === 'results' && <TourResults rounds={rounds} matches={matches} data={data} teams={teams} />}
+    {section === 'results' && <>{tour.id === data.currentTour?.id && tour.rulesVersion ? <PublicCompetitionPanel /> : null}<TourResults rounds={rounds} matches={matches} data={data} teams={teams} /></>}
     {section === 'teams' && <TourTeams teams={teams} data={data} />}
-    {section === 'leaderboard' && <TourLeaderboard rows={leaderboard} hasMatches={matches.length > 0} />}
+    {section === 'leaderboard' && <>{tour.id === data.currentTour?.id && tour.rulesVersion ? <><PublicCompetitionPanel /><TourLink href="/competitions" title="All tee sheets" />{leaderboard.length ? <h3>Matchplay leaderboard</h3> : null}</> : null}{(!tour.rulesVersion || leaderboard.length > 0) ? <TourLeaderboard rows={leaderboard} hasMatches={matches.length > 0} /> : null}</>}
   </div>;
 }
 
@@ -190,7 +193,7 @@ function TourOverview({ tour, data, scores, rounds, matches, winner }: { tour: T
   const playerIds = new Set(data.tourTeamMembers.filter((member) => teamIds.has(member.teamId)).map((member) => member.playerId));
   const courses = new Set(rounds.map((round) => round.courseName).filter(Boolean));
   const completeMatches = matches.filter((match) => match.status === 'complete').length;
-  return <section className="tour-detail-section card"><h3>Overview</h3><div className="tour-overview-grid"><Stat label="Team score" value={scoreLine(scores)} /><Stat label="Winner" value={winner ? `${winner.team.name} won` : isCompletedTour(tour) ? 'Winner TBC' : 'TBC'} /><Stat label="Players" value={playerIds.size || 'TBC'} /><Stat label="Rounds" value={rounds.length || 'TBC'} /><Stat label="Courses" value={courses.size || 'TBC'} /><Stat label="Results" value={matches.length > 0 ? `${completeMatches}/${matches.length}` : 'TBC'} /></div></section>;
+  return <section className="tour-detail-section card"><h3>Overview</h3><div className="tour-overview-grid"><Stat label="Team score" value={scoreLine(scores)} /><Stat label="Winner" value={winner ? `${winner.team.name} won` : isCompletedTour(tour) ? 'Winner TBC' : 'TBC'} /><Stat label="Players" value={(data.currentTour?.id === tour.id ? data.attendingPlayerCount : undefined) || playerIds.size || 'TBC'} /><Stat label="Rounds" value={rounds.length || 'TBC'} /><Stat label="Courses" value={courses.size || 'TBC'} /><Stat label="Results" value={matches.length > 0 ? `${completeMatches}/${matches.length}` : 'TBC'} /></div></section>;
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {

@@ -69,7 +69,7 @@ describe('secondary prize result support', () => {
     assert.match(publicSource, /function GolfPrizes/);
     assert.match(publicSource, /selectedPrizes/);
     assert.match(publicSource, /section === 'prizes'/);
-    assert.match(publicSource, /Published winner/);
+    assert.match(publicSource, /Prize winners/);
   });
 
   it('publishes the fixed tour payout reference separately from prize winners', () => {

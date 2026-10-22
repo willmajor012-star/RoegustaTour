@@ -17,6 +17,7 @@ export type TourPrizeFundRound = {
 };
 
 export type TourPrizeFund = {
+  programmeVersion?: string;
   contributionPence: number;
   totalPence?: number;
   rules: string[];

@@ -86,10 +86,11 @@ function rowsById<T extends { id: string }>(rows: T[]): Map<string, T> {
 export async function getCurrentTour(supabase: SupabaseClient) {
   const tours = (await runQuery(table(supabase, 'tours').select('*').order('year', { ascending: false }).limit(50), 'public tour candidates')).map(mapTour);
   const explicitCurrent = tours.find((tour) => tour.isCurrentPublic === true);
-  if (explicitCurrent) return explicitCurrent;
+  const forPublic = (tour?: Tour) => tour?.rulesVersion === 'confirmed-2026' && tour.prizeFund?.programmeVersion !== 'confirmed-2026' ? { ...tour, prizeFund: undefined } : tour;
+  if (explicitCurrent) return forPublic(explicitCurrent);
   // A private planned tour must not mask the most recent readable archive when
   // the explicit current-public flag is temporarily absent.
-  return selectDefaultTour(tours.filter(isPublicTour));
+  return forPublic(selectDefaultTour(tours.filter(isPublicTour)));
 }
 
 export async function getPublicMatchBundle(supabase: SupabaseClient) {
@@ -296,8 +297,17 @@ export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
     ...playerMatchResults.map((result) => result.playerId),
   ]);
 
+  const [currentAwards, currentOperations] = currentTour?.rulesVersion ? await Promise.all([
+    runQuery(table(supabase, 'tour_competition_awards').select('*').eq('tour_id', currentTour.id).eq('active', true), 'current tour awards'),
+    runQuery(table(supabase, 'tour_operations').select('state').eq('tour_id', currentTour.id), 'current tour standings'),
+  ]) : [[], []];
+
   return {
     currentTour,
+    attendingPlayerCount: currentTour ? tourPlayerRows.filter((p) => p.tour_id === currentTour.id && p.attending === true).length : 0,
+    currentTourScores: currentTour?.rulesVersion ? calculateTeamScoreByTour(currentTour.id, currentTourTeams, currentTourRounds, currentTourMatches,
+      currentAwards.map((a) => ({ competitionId: String(a.competition_id), teamId: String(a.team_id), points: Number(a.points) })),
+      projectedCompetitionAwards((currentOperations[0]?.state ?? emptyOperations()) as TourOperations)) : undefined,
     players: playerRows.map(mapPlayer).filter((player) => publicPlayerIds.has(player.id)),
     tours,
     tourTeams,
@@ -364,6 +374,10 @@ export async function getBettingBundle(supabase: SupabaseClient) {
     betMarkets: visibleMarkets,
     betOptions: visibleOptions,
     bets: betRows.filter((bet) => visibleOptionIds.has(String(bet.option_id))).map(mapPublicBetRow),
+    poolSchedule: tour.rulesVersion === 'confirmed-2026' ? marketRows.filter((m) => m.pool_key && m.status !== 'void').map((m) => ({
+      poolKey: String(m.pool_key), title: String(m.title), minimumStakePence: Number(m.minimum_stake_pence), closesAt: String(m.closes_at), status: String(m.status), open: m.status === 'open' && Date.parse(String(m.closes_at)) > Date.now(),
+      awaitingDraw: m.pool_key !== 'sunday' && !options.some((o) => o.marketId === m.id && o.active !== false && o.linkedEntryId),
+    })) : undefined,
   };
 }
 

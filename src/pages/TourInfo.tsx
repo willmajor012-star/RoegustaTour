@@ -29,7 +29,7 @@ export function TourInfo() {
   const [selectedDate, setSelectedDate] = useState('');
   const activeData = data ?? emptyTourInfo;
   const tour = activeData.tour;
-  const schedule = tour ? buildTourSchedule(tour.id, activeData.rounds, activeData.itineraryItems) : [];
+  const schedule = tour ? buildTourSchedule(tour.id, activeData.rounds, activeData.itineraryItems).filter((entry) => entry.kind !== 'activity') : [];
   const datedGroups = scheduleGroups(schedule, activeData.teamDayKit, tour?.startDate, tour?.endDate);
   const selectedGroup = datedGroups.find((group) => group.date === selectedDate) ?? datedGroups[0];
 
@@ -37,8 +37,8 @@ export function TourInfo() {
     <PageHeader title="Plan" eyebrow={tour ? `${tour.year} · ${tour.location}` : 'Tour schedule'} className="itinerary-page-header" />
     {loading ? <p className="card">Loading tour itinerary…</p> : null}
     {error ? <p className="card form-error">{error}</p> : null}
-    <nav className="ops-tabs" aria-label="Tour plan"><button type="button" aria-pressed={planTab === 'itinerary'} onClick={() => setPlanTab('itinerary')}>Itinerary</button><button type="button" aria-pressed={planTab === 'rooms'} onClick={() => setPlanTab('rooms')}>Rooms</button></nav>
-    <p><a className="button" href="/.netlify/functions/public-itinerary-pdf" target="_blank" rel="noreferrer">Download itinerary</a> · <a href="/competitions">Competitions & tee sheets</a></p>
+    <nav className="public-tabs plan-tabs" aria-label="Tour plan"><button type="button" aria-pressed={planTab === 'itinerary'} onClick={() => setPlanTab('itinerary')}>Itinerary</button><button type="button" aria-pressed={planTab === 'rooms'} onClick={() => setPlanTab('rooms')}>Rooms</button></nav>
+    <nav className="plan-actions" aria-label="Plan links"><a className="app-action" href="/.netlify/functions/public-itinerary-pdf" target="_blank" rel="noreferrer">Download itinerary</a><a className="app-action app-action-secondary" href="/tours/current/leaderboard">Leaderboard</a></nav>
     {planTab === 'rooms' ? operations ? <Rooms bundle={operations} /> : <p className="card">Loading rooms…</p> : <section className="card tour-itinerary-card">
       {datedGroups.length === 0 ? <p>Itinerary TBC.</p> : <>
         <nav className="itinerary-day-tabs" aria-label="Itinerary days" role="tablist">

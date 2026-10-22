@@ -136,15 +136,15 @@ export function Dashboard() {
       <span>{formatTourDisplayName(tour)}</span>
     </section>}
 
-    <section className="score-feature card">
+    <a className="score-feature card tappable-card" href="/tours/current" aria-label="Team score: open tour overview">
       <div className="section-heading"><div><p className="eyebrow">{tourComplete ? 'Final score' : tourLive ? 'Live team score' : 'Team score'}</p><h2>{tourComplete ? 'Final score' : 'Team score'}</h2></div><span className="card-chevron" aria-hidden="true">›</span></div>
       {!tourComplete && <div className="score-target" aria-label="Points target">
         <span>Points target</span>
         <strong>{pointsToWinOutright === undefined ? 'Target TBC' : `${formatPoints(pointsToWinOutright)} to win`}</strong>
         {pointsToWinOutright !== undefined && <small>{formatPoints(totalPointsAvailable)} available · {formatPoints(remainingPoints)} remaining</small>}
       </div>}
-      <Scoreboard scores={teamRows} href="/score" />
-    </section>
+      <Scoreboard scores={teamRows} />
+    </a>
 
     {!tourComplete && <a className="card tappable-card home-up-next" href="/matches">
       <div className="up-next-copy">

@@ -84,8 +84,8 @@ export function BetMarketCard({ market, round, timeZone, options, bets, bettorNa
         <span>{formatPenceCurrency(potPence)} pot</span>
       </div>
       {market.poolKey ? <p>Minimum {formatPenceCurrency(market.minimumStakePence ?? 0)} in this pool · {closeLabel(market.closesAt, 'Europe/Lisbon')} Portugal local time.</p> : null}
-      {market.poolKey && options.length === 0 ? <p>Selections await the published competition pairs. This pool retains its own minimum and cutoff.</p> : null}
-      {market.description && <p className="bet-market-description">{market.description}</p>}
+      {market.poolKey && options.length === 0 ? <p>Selections to follow.</p> : null}
+      {!market.poolKey && market.description && <p className="bet-market-description">{market.description}</p>}
 
       {market.status === 'settled' && winningOption ? <div className="settled-market-summary">
         <div><span>Winner</span><strong>{market.resultText || winningOption.label}</strong></div>

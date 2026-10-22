@@ -1,3 +1,4 @@
+import { TourLink } from '../components/TourLink';
 import { PublicRoundCompetition } from '../components/TourOperations';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { MatchCard } from '../components/MatchCard';
@@ -83,7 +84,7 @@ export function Matches() {
 
   return <div className="page-stack results-page golf-page">
     <PageHeader title="Golf" eyebrow={activeData.tour?.name ?? 'Current tour'} />
-    {activeData.tour?.rulesVersion ? <p className="card"><a href="/competitions">Stableford leaderboards & all tee sheets</a> · Combined Friday–Monday: 39 points once. Par 3: zero points.</p> : null}
+    {activeData.tour?.rulesVersion ? <TourLink href="/tours/current/leaderboard" title="Tour leaderboard" detail="Pairs and individual results" /> : null}
     {loading && <p className="card">Loading golf schedule...</p>}
     {error && <p className="card form-error">{error}</p>}
     {!loading && !error && <>
@@ -120,7 +121,7 @@ export function Matches() {
         {section === 'tee-sheet' && selectedRound && (['contributing', 'fun'].includes(selectedRound.competitionRole ?? '') ? <PublicRoundCompetition roundId={selectedRound.id} mode="groups" /> : <GolfTeeTimes selectedRound={selectedRound} matches={teeSheetMatches} players={activeData.players} teams={activeData.tourTeams} participants={activeData.matchParticipants} />)}
         {section === 'results' && selectedRound && activeData.tour?.rulesVersion ? <PublicRoundCompetition roundId={selectedRound.id} mode="scores" /> : null}
         {section === 'results' && selectedRound && !['contributing', 'fun'].includes(selectedRound.competitionRole ?? '') && <GolfResults selectedRound={selectedRound} matches={selectedRoundMatches} data={activeData} teams={activeData.tourTeams} />}
-        {section === 'prizes' && selectedRound && <GolfPrizes selectedRound={selectedRound} prizeFund={activeData.tour?.rulesVersion ? undefined : activeData.tour?.prizeFund} prizes={selectedPrizes} players={activeData.players} teams={activeData.tourTeams} />}
+        {section === 'prizes' && selectedRound && <GolfPrizes selectedRound={selectedRound} prizeFund={activeData.tour?.prizeFund} prizes={selectedPrizes} players={activeData.players} teams={activeData.tourTeams} />}
         {section === 'teams' && <GolfTeams teams={activeData.tourTeams} members={activeData.tourTeamMembers} players={activeData.players} tourPlayers={activeData.tourPlayers} />}
       </>}
     </>}
@@ -156,9 +157,9 @@ function GolfPrizes({ selectedRound, prizeFund, prizes, players, teams }: { sele
         {payout.payoutsPence.map((amount, index) => <span key={`${selectedRound.id}-${index}`}><small>{index + 1}{index === 0 ? 'st' : index === 1 ? 'nd' : index === 2 ? 'rd' : 'th'}</small><strong>{formatPrizeMoney(amount)}</strong></span>)}
       </div>
       {prizeFund.rules.length > 0 ? <ul className="prize-fund-rules">{prizeFund.rules.map((rule) => <li key={rule}>{rule}</li>)}</ul> : null}
-    </div> : <p>The payout schedule has not been published for this tour.</p>}
-    <div className="section-heading prize-winners-heading"><div><p className="eyebrow">Published winner</p><h4>Secondary-format result</h4></div></div>
-    {prizes.length === 0 ? <p>Winner and score will appear here once published.</p> : <div className="round-prize-list">{prizes.map((prize) => {
+    </div> : <p>Prizes to follow.</p>}
+    <div className="section-heading prize-winners-heading"><div><p className="eyebrow">Winner</p><h4>Prize winners</h4></div></div>
+    {prizes.length === 0 ? <p>Results to follow.</p> : <div className="round-prize-list">{prizes.map((prize) => {
       const winner = players.find((player) => player.id === prize.winnerPlayerId)?.displayName ?? teams.find((team) => team.id === prize.winnerTeamId)?.name ?? 'Winner TBC';
       const score = prize.winningScoreText ?? [prize.scoreValue, prize.scoreUnit].filter(Boolean).join(' ');
       return <article key={prize.id}><span>Prize</span><h4>{prize.title}</h4><strong>{winner}</strong>{score && <small>{score}</small>}</article>;
