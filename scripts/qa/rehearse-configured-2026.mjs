@@ -102,6 +102,9 @@ try {
  await check('Draft pools hide all selections, including the 24 valid Sunday choices', async () => {
   const data = await publicData.getBettingBundle(client); assert.equal(data.betMarkets.length,0); assert.equal(data.betOptions.length,0); assert.equal(data.bets.length,0); assert.equal(data.poolSchedule.length,6);
   assert.equal(b.options.filter((o) => o.marketId === pool('sunday').id && o.active && o.linkedPlayerId).length,24);
+  const betting=loadTs('src/lib/betting.ts');const names=attendees.map((id)=>b.players.find((p)=>p.id===id).displayName);
+  assert(betting.buildBetPuntoBettorSummaries(b.markets,b.options,[],names).every((r)=>r.missingMandatoryDays===6));
+  assert(betting.buildBetPuntoMarketSummaries(b.markets,b.options,[],names).every((r)=>r.missingBettorNames.length===24));
   const r = await request('admin-set-pool-status',{tourId:tid,marketId:pool('friday').id,status:'open'}); assert(r.status>=400); assert.match(r.payload.message,/Publish the competition draw/);
  });
  await check('Missing own pairs produce explicit exceptions and no arbitrary default stakes', async () => {

@@ -196,7 +196,7 @@ function normalizedName(name: string) {
 }
 
 export function isMandatoryMarket(market: BetMarket) {
-  if (market.status === 'void' || market.status === 'draft') return false;
+  if (market.status === 'void' || (market.status === 'draft' && !market.poolKey)) return false;
   if (market.required !== undefined) return market.required;
   return market.marketType === 'player_performance' && market.title.toLowerCase().includes('stableford');
 }
