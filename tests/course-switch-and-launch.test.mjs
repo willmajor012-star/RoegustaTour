@@ -11,7 +11,7 @@ const tour={id:'t',name:'Current tour',year:2026,status:'active',isCurrentPublic
 const {courseGuides}=loadTs('src/data/courseGuides.ts');
 const payload={source:'supabase',tour,rounds:[],matches:[],matchParticipants:[],players:[],tourPlayers:[],tourTeams:[{id:'a',tourId:'t',name:'Side A',published:true,sortOrder:0},{id:'b',tourId:'t',name:'Side B',published:true,sortOrder:1}],tourTeamMembers:[],roundPrizeResults:[],scores:[],recentResults:[],openMarkets:[],tourCourses:courseGuides.map((c)=>({...c,id:'saved-'+c.slug,tourId:'t',published:true})),prediction:{status:'awaiting_teams',teamIds:['a','b']}};
 test('course pills immediately update the rendered course, active pill, tees and hole; Back follows the URL',async()=>{
- const oldFetch=globalThis.fetch;let courseLoads=0;
+ const oldFetch=globalThis.fetch;const oldNow=Date.now;let courseLoads=0;
  globalThis.fetch=async(path)=>{if(path.includes('public-courses'))courseLoads++;return{ok:true,json:async()=>payload};};
  window.history.replaceState(null,'','/courses/faldo');const {AppShell}=loadTs('src/app/AppShell.tsx');const root=createRoot(document.getElementById('root'));
  try{
@@ -20,13 +20,16 @@ test('course pills immediately update the rendered course, active pill, tees and
   assert.equal(heading(),'Faldo Course');const loads=courseLoads;
   await act(async()=>[...document.querySelectorAll('.hole-number-strip button')].find((b)=>b.textContent==='9').click());
   for(const slug of ['oconnor','old-course','faldo']){
+   // The normal four-second response cache has expired, but the mounted guide
+   // already has all three courses and should not wait for a new request.
+   const timestamp=Date.now();Date.now=()=>timestamp+6000;
    await act(async()=>document.querySelector('.course-switcher a[href="/courses/'+slug+'"]').click());
    assert.equal(window.location.pathname,'/courses/'+slug);assert.equal(heading(),courseGuides.find((c)=>c.slug===slug).name);assert.equal(document.querySelector('.course-switcher a.active').getAttribute('href'),'/courses/'+slug);assert.equal(document.querySelector('.hole-number-strip button[aria-selected=true]').textContent,'1');assert.equal(document.querySelector('.course-tee-switch button[aria-selected=true]').textContent.trim(),'White');
   }
   assert.equal(courseLoads,loads,'course switching uses the loaded course bundle instead of waiting for a refresh');
   await act(async()=>{await new Promise((resolve)=>{window.addEventListener('popstate',resolve,{once:true});window.history.back();});});
   assert.equal(window.location.pathname,'/courses/old-course');assert.equal(heading(),'Old Course');
- }finally{await act(async()=>root.unmount());globalThis.fetch=oldFetch;window.history.replaceState(null,'','/');}
+ }finally{await act(async()=>root.unmount());globalThis.fetch=oldFetch;Date.now=oldNow;window.history.replaceState(null,'','/');}
 });
 test('a slow first load shows neutral loading copy and never renders placeholder team colours or TBC facts',async()=>{
  const oldFetch=globalThis.fetch;const waiting=[];

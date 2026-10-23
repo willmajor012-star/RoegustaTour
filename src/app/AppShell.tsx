@@ -83,7 +83,7 @@ export function AppShell() {
         <BrandHeader />
         <main>
           {path !== '/' && <button className="app-back-button" type="button" onClick={goBack}><span aria-hidden="true">‹</span> Back</button>}
-          <Fragment key={path}>{route.element}</Fragment>
+          <Fragment key={route.path === '/courses/:slug' ? route.path : path}>{route.element}</Fragment>
           <InstallRoegusta />
         </main>
         <BottomNav currentPath={path} onNavigate={navigate} />
