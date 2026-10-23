@@ -19,10 +19,12 @@ export const handler: Handler = (event) => withAdminSupabase(event, 'POST', asyn
   if (!itemDate || !isRealIsoDate(itemDate)) return badRequest('A valid itinerary date is required.');
   if (!activity) return badRequest('Activity is required.');
   if (!sourceType || !['flight', 'travel', 'accommodation', 'food', 'activity', 'dinner'].includes(sourceType)) return badRequest('Itinerary type must be flight, travel, accommodation, food or activity.');
-  if (timeLabel && !/^([01]\d|2[0-3]):[0-5]\d$/.test(timeLabel)) return badRequest('Time must use HH:MM.');
+  const fixedTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(timeLabel ?? '');
+  const mealNote = (sourceType === 'food' || sourceType === 'dinner') && !!timeLabel && timeLabel.length <= 80 && (/^on arrival$/i.test(timeLabel) || /^before [a-z0-9][a-z0-9 '\-]{0,65}$/i.test(timeLabel));
+  if (timeLabel && !fixedTime && !mealNote) return badRequest('Use HH:MM, or a meal timing note such as On arrival or Before Par 3.');
   if (endTimeLabel && !/^([01]\d|2[0-3]):[0-5]\d$/.test(endTimeLabel)) return badRequest('Arrival time must use HH:MM.');
   if (sourceType === 'flight' && !isPlaceholder && (!timeLabel || !endTimeLabel)) return badRequest('Flights require departure and landing times, or must be marked TBC.');
-  const automaticSortOrder = timeLabel
+  const automaticSortOrder = fixedTime && timeLabel
     ? (Number(timeLabel.slice(0, 2)) * 60) + Number(timeLabel.slice(3, 5))
     : 24 * 60;
   const values = {

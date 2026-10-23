@@ -127,7 +127,7 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
       id: item.id,
       kind,
       itemDate: item.itemDate ?? '',
-      timeLabel: timeInputValue(item.timeLabel),
+      timeLabel: kind === 'food' ? item.timeLabel ?? '' : timeInputValue(item.timeLabel),
       endTimeLabel: timeInputValue(item.endTimeLabel),
       activity: item.activity,
       location: item.location ?? '',
@@ -195,12 +195,13 @@ export function AdminTourItinerary({ data, tour, onRefresh, onHelp }: Props) {
           setItineraryForm({
             ...itineraryForm,
             kind,
+            timeLabel: kind === 'food' ? itineraryForm.timeLabel : timeInputValue(itineraryForm.timeLabel),
             activity: itineraryForm.activity === oldDefault ? manualItineraryKindLabels[kind] : itineraryForm.activity,
             endTimeLabel: kind === 'flight' || kind === 'travel' ? itineraryForm.endTimeLabel : '',
           });
         }}>{manualItineraryKinds.map((kind) => <option value={kind} key={kind}>{manualItineraryKindLabels[kind]}</option>)}</select></label>
         <label>Date<input type="date" required value={itineraryForm.itemDate} onChange={(event) => setItineraryForm({ ...itineraryForm, itemDate: event.target.value })} /></label>
-        <label>{itineraryForm.kind === 'flight' ? 'Departure time' : itineraryForm.kind === 'travel' ? 'Departure time' : 'Time'}<input type="time" required={itineraryForm.kind === 'flight' && !itineraryForm.isPlaceholder} value={itineraryForm.timeLabel} onChange={(event) => setItineraryForm({ ...itineraryForm, timeLabel: event.target.value })} /></label>
+        <label>{itineraryForm.kind === 'food' ? 'Time or timing note' : itineraryForm.kind === 'flight' || itineraryForm.kind === 'travel' ? 'Departure time' : 'Time'}<input type={itineraryForm.kind === 'food' ? 'text' : 'time'} placeholder={itineraryForm.kind === 'food' ? '20:00, On arrival or Before Par 3' : undefined} maxLength={80} required={itineraryForm.kind === 'flight' && !itineraryForm.isPlaceholder} value={itineraryForm.timeLabel} onChange={(event) => setItineraryForm({ ...itineraryForm, timeLabel: event.target.value })} /></label>
         {itineraryForm.kind === 'flight' || itineraryForm.kind === 'travel' ? <label>{itineraryForm.kind === 'flight' ? 'Landing time' : 'Arrival time'}<input type="time" required={itineraryForm.kind === 'flight' && !itineraryForm.isPlaceholder} value={itineraryForm.endTimeLabel} onChange={(event) => setItineraryForm({ ...itineraryForm, endTimeLabel: event.target.value })} /></label> : null}
         <label className="admin-full-span">Label<input value={itineraryForm.activity} onChange={(event) => setItineraryForm({ ...itineraryForm, activity: event.target.value })} /></label>
         <label className="admin-full-span">Location<input value={itineraryForm.location} onChange={(event) => setItineraryForm({ ...itineraryForm, location: event.target.value })} placeholder="Airport, hotel or restaurant" /></label>
