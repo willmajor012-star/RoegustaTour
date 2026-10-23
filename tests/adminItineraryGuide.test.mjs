@@ -212,3 +212,19 @@ test('Bet Punto CSS stacks tables on mobile instead of requiring horizontal scro
   assert.match(css, /\.betting-page \.bet-summary-table td\s*{[^}]*grid-template-columns/s);
   assert.match(css, /overflow-wrap: anywhere/);
 });
+
+test('flexible meals sort after arrival and before named golf without inventing meal times',async()=>{
+ const {buildTourSchedule}=await loadItineraryModule();
+ const date='2026-11-06';
+ const rows=[item('dinner','t','Dinner at resort',{itemDate:date,timeLabel:'Before Par 3',sourceType:'food'}),item('lunch','t','Lunch at resort',{itemDate:date,timeLabel:'On arrival',sourceType:'food'}),item('flight','t','Fly to Faro',{itemDate:date,timeLabel:'07:05',endTimeLabel:'10:00',sourceType:'flight'})];
+ const golf=[round('friday','t',{name:'Friday Faldo nine',roundDate:date,teeTime:'14:20'}),round('par3','t',{name:'Evening Par 3',roundDate:date,teeTime:'19:30'})];
+ const schedule=buildTourSchedule('t',golf,rows);
+ assert.deepEqual(schedule.map((e)=>e.id),['flight','lunch','round-friday','dinner','round-par3']);assert.equal(schedule.find((e)=>e.id==='lunch').timeLabel,'On arrival');assert.equal(schedule.find((e)=>e.id==='dinner').timeLabel,'Before Par 3');
+});
+
+test('Maps links use the saved restaurant name and address and omit unconfirmed or resort meals',async()=>{
+ const {restaurantMapUrl}=await loadItineraryModule();
+ const dinner={kind:'food',activity:'Dinner at Cabana Fresca Restaurant',location:'Tv. Cais Herculano 9, 8200-185 Albufeira',isPlaceholder:false};
+ const url=new URL(restaurantMapUrl(dinner));assert.equal(url.protocol,'https:');assert.equal(url.pathname,'/maps/search/');assert.equal(url.searchParams.get('query'),'Cabana Fresca Restaurant, Tv. Cais Herculano 9, 8200-185 Albufeira, Portugal');
+ assert.equal(restaurantMapUrl({...dinner,isPlaceholder:true}),undefined);assert.equal(restaurantMapUrl({...dinner,location:undefined}),undefined);assert.equal(restaurantMapUrl({...dinner,activity:'Dinner at the resort'}),undefined);assert.equal(restaurantMapUrl({...dinner,kind:'activity'}),undefined);
+});

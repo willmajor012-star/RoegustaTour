@@ -1,5 +1,5 @@
 import { InstallRoegusta } from '../components/InstallRoegusta';
-import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { Fragment, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { isRoutePath, routeForPath } from './routes';
 import { AdminBrandHeader } from '../components/AdminBrandHeader';
 import { BrandHeader } from '../components/BrandHeader';
@@ -83,7 +83,7 @@ export function AppShell() {
         <BrandHeader />
         <main>
           {path !== '/' && <button className="app-back-button" type="button" onClick={goBack}><span aria-hidden="true">‹</span> Back</button>}
-          {route.element}
+          <Fragment key={path}>{route.element}</Fragment>
           <InstallRoegusta />
         </main>
         <BottomNav currentPath={path} onNavigate={navigate} />

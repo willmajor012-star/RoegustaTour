@@ -4,7 +4,7 @@ import { fetchPublicTourHeader } from '../lib/publicApi';
 import { usePublicData } from '../lib/usePublicData';
 
 export function BrandHeader() {
-  const { data } = usePublicData(fetchPublicTourHeader, { refreshMs: 300_000 });
+  const { data, loading } = usePublicData(fetchPublicTourHeader, { refreshMs: 300_000 });
   const logoClicks = useRef<number[]>([]);
   const handleLogoClick = () => {
     const now = Date.now();
@@ -26,8 +26,7 @@ export function BrandHeader() {
         <div className="brand-copy">
           <p className="eyebrow">Private golf tour</p>
           <h1>{tour?.name ?? 'Roegusta Tour'}</h1>
-          <p className="brand-location">{tour?.location ?? 'Location TBC'}</p>
-          <p className="brand-dates">{formatDate(tour?.startDate)} — {formatDate(tour?.endDate)}</p>
+          {tour ? <><p className="brand-location">{tour.location}</p><p className="brand-dates">{formatDate(tour.startDate)} — {formatDate(tour.endDate)}</p></> : <p className="brand-location" role="status">{loading ? 'Loading tour…' : 'Tour details unavailable'}</p>}
         </div>
       </div>
     </header>

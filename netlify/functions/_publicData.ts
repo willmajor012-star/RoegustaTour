@@ -10,6 +10,7 @@ import { selectDefaultTour } from './_tourResolution';
 import { applyAutomaticBetDefaultsForTour } from './_betDefaults';
 import { calculateTeamScoreByTour } from '../../src/lib/scoring';
 import { projectedTourPoints } from '../../src/lib/matchplay';
+import { countsForPlayerStats } from '../../src/lib/playerStatsScope';
 import { filterPublicRounds, filterPublicTeamMembers, filterPublicTeams, isPublicMatch, isPublicRound, isPublicTeamRoster, isPublicTour } from '../../src/lib/publicVisibility';
 
 export { isPublicMatch, isPublicRound, isPublicTeamRoster, isPublicTour };
@@ -230,13 +231,14 @@ export async function getStatsBundle(supabase: SupabaseClient) {
   const tourById = rowsById(publicTours);
   const publicRounds = roundRows.map(mapRound).filter((round) => isPublicRound(round, tourById.get(round.tourId)));
   const roundById = rowsById(publicRounds);
-  const publicMatches = matchRows.map(mapMatch).filter((match) => isPublicMatch(match, roundById.get(match.roundId), tourById.get(match.tourId)));
+  const publicMatches = matchRows.map(mapMatch).filter((match) => isPublicMatch(match, roundById.get(match.roundId), tourById.get(match.tourId))
+    && countsForPlayerStats(roundById.get(match.roundId), tourById.get(match.tourId)));
   const publicMatchIds = publicMatches.map((match) => match.id);
   const participantRows = publicMatchIds.length > 0
     ? await runQuery(table(supabase, 'match_participants').select('*').in('match_id', publicMatchIds), 'match participants')
     : [];
   const matchParticipants = participantRows.map(mapMatchParticipant);
-  const historicalPlayerStats = historicalRows.map(mapHistoricalPlayerStats).filter((row) => !row.tourId || tourById.has(row.tourId));
+  const historicalPlayerStats = historicalRows.map(mapHistoricalPlayerStats).filter((row) => !row.tourId || (tourById.has(row.tourId) && tourById.get(row.tourId)?.rulesVersion !== 'confirmed-2026'));
   const publicPlayerIds = new Set([
     ...matchParticipants.map((participant) => participant.playerId),
     ...historicalPlayerStats.map((row) => row.playerId),
@@ -324,7 +326,7 @@ export async function getAdvancedStatsBundle(supabase: SupabaseClient) {
         && completedMatchRows.every((match) => String(match.tour_id) !== result.tourId || matchById.has(String(match.id)));
     }),
     rounds,
-    matches: [...matchById.values()],
+    matches: [...matchById.values()].filter((match) => countsForPlayerStats(roundById.get(match.roundId), tourById.get(match.tourId))),
     matchParticipants,
     playerMatchResults,
   };

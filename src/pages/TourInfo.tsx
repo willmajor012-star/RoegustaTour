@@ -7,7 +7,7 @@ import { formatLongDate } from '../lib/formatting';
 import { logoutPublicAccess } from '../lib/publicAccess';
 import { fetchPublicTourInfo, type PublicTourInfoResponse, type TourTeamDayKit } from '../lib/publicApi';
 import { normalizeTeamColour } from '../lib/teamColours';
-import { buildTourSchedule, formatItineraryTime, manualItineraryKindLabels, type TourScheduleEntry } from '../lib/tourItinerary';
+import { buildTourSchedule, formatItineraryTime, manualItineraryKindLabels, restaurantMapUrl, type TourScheduleEntry } from '../lib/tourItinerary';
 import type { TourTeam } from '../lib/types';
 import { usePublicData } from '../lib/usePublicData';
 
@@ -80,6 +80,7 @@ function ScheduleEntry({ entry, courses }: { entry: TourScheduleEntry; courses: 
     ? `${entry.kind === 'flight' ? 'Lands' : 'Arrives'} ${formatItineraryTime(entry.endTimeLabel)}`
     : undefined;
   const guide = entry.courseId ? courses.find((course) => course.id === entry.courseId) : undefined;
+  const mapUrl = restaurantMapUrl(entry);
   return <article className={`itinerary-event itinerary-event-${entry.kind}`}>
     <div className="itinerary-event-time"><span>{time}</span>{entry.kind !== 'accommodation' ? <small>{timeContext}</small> : null}</div>
     <div className="itinerary-event-rail"><span><ScheduleKindIcon kind={entry.kind} /></span></div>
@@ -89,6 +90,7 @@ function ScheduleEntry({ entry, courses }: { entry: TourScheduleEntry; courses: 
         <strong>{entry.activity}{entry.kind !== 'golf' && entry.isPlaceholder && !/tbc/i.test(entry.activity) ? ' · TBC' : ''}</strong>
         {entry.location ? <p>{entry.location}</p> : null}
         {entry.notes ? <p>{entry.notes}</p> : null}
+        {mapUrl ? <a className="app-action app-action-secondary itinerary-map-link" href={mapUrl} target="_blank" rel="noopener noreferrer" aria-label={`Open ${entry.activity.replace(/^dinner at\s+/i, '')} in Maps`}>Open in Maps ↗</a> : null}
       </div>
       {guide ? <a className="itinerary-event-link" href={courseGuidePath(guide)} aria-label={`Open ${guide.name} course guide`}>›</a> : null}
     </div>

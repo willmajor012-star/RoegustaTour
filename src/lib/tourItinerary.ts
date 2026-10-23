@@ -91,9 +91,34 @@ export function formatItineraryTime(value?: string | null) {
   return `${displayHour}:${clock[2]}${suffix}`;
 }
 
-function compareScheduleEntries(a: TourScheduleEntry, b: TourScheduleEntry) {
+export function restaurantMapUrl(entry: TourScheduleEntry): string | undefined {
+  if (entry.kind !== 'food' || entry.isPlaceholder || !entry.location || !/\b(restaurant|steakhouse)\b/i.test(entry.activity)) return undefined;
+  const name = entry.activity.replace(/^dinner at\s+/i, '').trim();
+  const query = new URLSearchParams({ api: '1', query: `${name}, ${entry.location}, Portugal` });
+  return `https://www.google.com/maps/search/?${query}`;
+}
+
+function schedulePosition(entry: TourScheduleEntry, entries: TourScheduleEntry[]) {
+  const minutes = (value?: string) => { const clock = itineraryClock(value); if (clock === '99:99') return 9999; const [h, m] = clock.split(':').map(Number); return h * 60 + m; };
+  const timed = minutes(entry.timeLabel);
+  if (timed !== 9999) return timed;
+  const day = entries.filter((e) => e.itemDate === entry.itemDate);
+  // Relative labels remain visible as supplied; these anchors only sort cards.
+  if (/^on arrival$/i.test(entry.timeLabel ?? '')) {
+    const arrival = day.find((e) => e.kind === 'flight' && e.endTimeLabel);
+    if (arrival) return minutes(arrival.endTimeLabel) + .01;
+  }
+  const before = entry.timeLabel?.match(/^before (.+)$/i);
+  if (before) {
+    const target = day.find((e) => e.id !== entry.id && e.activity.toLowerCase().includes(before[1].toLowerCase()) && minutes(e.timeLabel) !== 9999);
+    if (target) return minutes(target.timeLabel) - .01;
+  }
+  return 9999;
+}
+
+function compareScheduleEntries(a: TourScheduleEntry, b: TourScheduleEntry, entries: TourScheduleEntry[]) {
   return (a.itemDate ?? '9999-12-31').localeCompare(b.itemDate ?? '9999-12-31')
-    || itineraryClock(a.timeLabel).localeCompare(itineraryClock(b.timeLabel))
+    || schedulePosition(a, entries) - schedulePosition(b, entries)
     || a.sortOrder - b.sortOrder
     || a.activity.localeCompare(b.activity);
 }
@@ -124,5 +149,6 @@ export function buildTourSchedule(tourId: string, rounds: Round[], items: TourIt
       roundNumber: round.roundNumber,
       courseId: round.courseId,
     }));
-  return [...manualEntries, ...golfEntries].sort(compareScheduleEntries);
+  const entries = [...manualEntries, ...golfEntries];
+  return entries.sort((a, b) => compareScheduleEntries(a, b, entries));
 }
