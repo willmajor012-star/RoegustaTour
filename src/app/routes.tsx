@@ -35,7 +35,10 @@ export const routes: AppRoute[] = [
 ];
 
 export function routeForPath(pathname: string) {
-  return routes.find((route) => route.path === pathname || route.matches?.(pathname)) ?? routes[0];
+  const route = routes.find((route) => route.path === pathname || route.matches?.(pathname)) ?? routes[0];
+  return route.path === '/courses/:slug'
+    ? { ...route, element: <CourseGuidePage slug={decodeURIComponent(pathname.split('/')[2])} /> }
+    : route;
 }
 
 export function isRoutePath(pathname: string) {
