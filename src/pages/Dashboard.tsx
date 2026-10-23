@@ -119,6 +119,8 @@ export function Dashboard() {
     return () => window.clearInterval(interval);
   }, []);
 
+  if (!data) return <div className="page-stack dashboard-page"><p className={`card${error ? ' form-error' : ''}`} role="status">{error ? 'Tour data could not be loaded. Please refresh.' : 'Loading tour…'}</p></div>;
+
   const latestResultCard = <a className="card tappable-card latest-result-card" href="/matches">
     <div className="section-heading"><div><p className="eyebrow">{tourComplete ? 'Tour results' : 'Latest result'}</p><h2>{tourComplete ? 'Final results' : 'Latest result'}</h2></div><span className="card-chevron" aria-hidden="true">›</span></div>
     {latestRound ? <div className="latest-round-results"><p><strong>{formatRoundDisplayName(latestRound.round)}</strong>{latestRound.round.roundDate ? ` · ${formatShortDate(latestRound.round.roundDate)}` : ''} · {roundScore(latestRound.matches)}</p>{latestRound.matches.map((match) => <MatchCard key={match.id} match={match} participants={activeData.matchParticipants.filter((p) => p.matchId === match.id)} players={activeData.players} teams={activeData.tourTeams} />)}</div> : !latestResult ? <p>No results yet</p> : <MatchCard match={latestResult} participants={activeData.matchParticipants.filter((p) => p.matchId === latestResult.id)} players={activeData.players} teams={activeData.tourTeams} />}

@@ -1,4 +1,5 @@
 import { derivePlayerMatchResultsFromMatch } from './scoring';
+import { countsForPlayerStats } from './playerStatsScope';
 import type { Match, MatchFormat, MatchParticipant, Player, PlayerMatchResult, Round, Tour, TourPlayer, TourTeam, TourTeamMember, TourTeamResult } from './types';
 
 export type AdvancedStatsData = {
@@ -164,7 +165,8 @@ function sortByTourDateDesc(a: Match, b: Match, data: AdvancedStatsData) {
 }
 
 export function getCompletedMatches(data: AdvancedStatsData, tourId?: string): Match[] {
-  return data.matches.filter((match) => match.status === 'complete' && (!tourId || match.tourId === tourId));
+  return data.matches.filter((match) => match.status === 'complete' && (!tourId || match.tourId === tourId)
+    && countsForPlayerStats(data.rounds.find((r) => r.id === match.roundId), data.tours.find((t) => t.id === match.tourId)));
 }
 
 export function getMatchPlayerResults(data: AdvancedStatsData, tourId?: string): PlayerMatchResult[] {
