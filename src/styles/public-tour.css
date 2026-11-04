@@ -19,3 +19,4 @@
 @media(min-width:760px){.competition-standings{grid-template-columns:repeat(2,minmax(0,1fr))}.public-tee-groups{grid-template-columns:repeat(2,minmax(0,1fr))}.plan-actions{justify-content:start;grid-template-columns:repeat(2,minmax(0,220px))}}
 
 .itinerary-map-link{justify-self:start;margin-top:8px;gap:6px}
+.bottom-nav{grid-template-columns:repeat(6,minmax(0,1fr))}

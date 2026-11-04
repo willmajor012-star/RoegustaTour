@@ -47,9 +47,10 @@ test('restaurant dinner cards open their named location outside the app without 
  const oldFetch=globalThis.fetch;
  const entries=[{id:'sat',itemDate:'2026-11-07',activity:'Dinner at Rare Steakhouse',location:'Vilamoura Marina, 8125-507 Quarteira'},{id:'sun',itemDate:'2026-11-08',activity:'Dinner at Cabana Fresca Restaurant',location:'Tv. Cais Herculano 9, 8200-185 Albufeira'}].map((e)=>({...e,tourId:'t',timeLabel:'20:00',sourceType:'food',sortOrder:10,isPlaceholder:false,notes:'Make your own way from Amendoeira.'}));
  globalThis.fetch=async()=>({ok:true,json:async()=>({...payload,itinerary:entries,itineraryItems:entries,teamDayKit:[],handbookSections:[]})});
- window.history.replaceState(null,'','/info');const {AppShell}=loadTs('src/app/AppShell.tsx');const root=createRoot(document.getElementById('root'));
+ window.history.replaceState(null,'','/');const {AppShell}=loadTs('src/app/AppShell.tsx');const root=createRoot(document.getElementById('root'));
  try{
   await act(async()=>root.render(React.createElement(AppShell)));
+  const itineraryButton=[...document.querySelectorAll('.bottom-nav button')].find((b)=>b.textContent==='Itinerary');assert(itineraryButton);await act(async()=>itineraryButton.click());assert.equal(window.location.pathname,'/info');assert.equal(document.querySelectorAll('.bottom-nav button[aria-current=page]').length,1);assert.equal(document.querySelector('.bottom-nav button[aria-current=page]').textContent,'Itinerary');
   for(const [weekday,name,address] of [['Sat','Rare Steakhouse','Vilamoura Marina, 8125-507 Quarteira'],['Sun','Cabana Fresca Restaurant','Tv. Cais Herculano 9, 8200-185 Albufeira']]){
    const tab=[...document.querySelectorAll('.itinerary-day-tabs button')].find((b)=>b.textContent.includes(weekday));assert(tab);await act(async()=>tab.click());
    const link=document.querySelector('.itinerary-map-link');assert(link);assert.equal(link.target,'_blank');assert.equal(link.rel,'noopener noreferrer');const url=new URL(link.href);assert.equal(url.origin,'https://www.google.com');assert.equal(url.searchParams.get('api'),'1');assert.equal(url.searchParams.get('query'),`${name}, ${address}, Portugal`);assert.match(document.querySelector('.itinerary-event-list').textContent,/Make your own way/);
