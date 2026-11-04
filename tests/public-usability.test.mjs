@@ -11,13 +11,13 @@ const teamsSource = readFileSync('src/pages/Teams.tsx', 'utf8');
 const usabilityCss = readFileSync('src/styles/usability.css', 'utf8');
 const experienceCss = readFileSync('src/styles/experience.css', 'utf8');
 
-test('primary mobile navigation exposes the five on-tour destinations without a More drawer', () => {
+test('primary mobile navigation exposes the six on-tour destinations without a More drawer', () => {
   const primaryBlock = navigationSource.slice(navigationSource.indexOf('export const navigationItems'));
-  assert.equal((primaryBlock.match(/\{ path:/g) ?? []).length, 5);
-  for (const label of ['Home', 'Golf', 'Tours', 'Stats', 'Bet Punto']) assert.match(primaryBlock, new RegExp(`label: '${label}'`));
+  assert.equal((primaryBlock.match(/\{ path:/g) ?? []).length, 6);
+  for (const label of ['Home', 'Golf', 'Itinerary', 'Tours', 'Stats', 'Bet Punto']) assert.match(primaryBlock, new RegExp(`label: '${label}'`));
   for (const label of ['Score', 'More', 'Admin']) assert.doesNotMatch(primaryBlock, new RegExp(`label: '${label}'`));
   assert.doesNotMatch(bottomNavSource, /more-menu-sheet|aria-modal="true"|moreNavigationItems/);
-  assert.match(bottomNavSource, /currentPath === '\/teams'[\s\S]*currentPath === '\/info'[\s\S]*currentPath === '\/courses'/);
+  assert.match(bottomNavSource, /currentPath === '\/teams'[\s\S]*currentPath === '\/courses'/);
 });
 
 test('the old Players route is removed and canonicalised to Teams & Players', () => {
