@@ -1,3 +1,4 @@
+import { isWeatherLocation } from '../../src/lib/tourWeather';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { runRows, runSingle } from './_adminSupabase';
 import { mapBet, mapBetMarket, mapBetOption, mapCourseGuide, mapPlayer, mapTour, mapTourPlayer, mapTourTeam, mapTourTeamMember } from './_mappers';
@@ -99,7 +100,14 @@ export async function applyOperationsAction(db: SupabaseClient, b: OpsBundle, ac
   const c = state.competitions.find((x) => x.id === payload.competitionId);
   const s = c?.sessions.find((x) => x.id === payload.sessionId);
   const matches: Row[] = [];
-  if (action === 'save_rooms') state.accommodation = payload.accommodation as TourOperations['accommodation'];
+  if (action === 'save_rooms') {
+    state.accommodation = payload.accommodation as TourOperations['accommodation'];
+    if (payload.weatherLocation === null) delete state.weatherLocation;
+    else if (payload.weatherLocation !== undefined) {
+      assert(isWeatherLocation(payload.weatherLocation), 'Enter the confirmed accommodation name and valid latitude and longitude.');
+      state.weatherLocation = payload.weatherLocation;
+    }
+  }
   else {
     assert(c, 'Competition not found.');
     if (action === 'save_entries') {

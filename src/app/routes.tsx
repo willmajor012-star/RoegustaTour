@@ -9,6 +9,7 @@ import { Matches } from '../pages/Matches';
 import { Stats } from '../pages/Stats';
 import { Teams } from '../pages/Teams';
 import { TourInfo } from '../pages/TourInfo';
+import { Weather } from '../pages/Weather';
 import { Tours } from '../pages/Tours';
 
 export type AppRoute = {
@@ -25,6 +26,7 @@ export const routes: AppRoute[] = [
   { path: '/tours', element: <Tours /> },
   { path: '/tours/current', element: <Tours openCurrent /> },
   { path: '/tours/current/leaderboard', element: <Tours openCurrent initialSection="leaderboard" /> },
+  { path: '/weather', element: <Weather /> },
   { path: '/info', element: <TourInfo /> },
   { path: '/courses', element: <Courses /> },
   { path: '/courses/:slug', matches: (pathname) => /^\/courses\/[^/]+$/.test(pathname), element: <CourseGuidePage /> },
