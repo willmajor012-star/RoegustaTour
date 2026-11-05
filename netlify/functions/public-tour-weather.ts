@@ -8,7 +8,7 @@ import { isWeatherLocation, type TourWeather, type WeatherHour, type WeatherLoca
 type Forecast = NonNullable<TourWeather['forecast']>;
 const cache = new Map<string, Forecast>();
 const pending = new Map<string, Promise<Forecast>>();
-const fields = ['temperature_2m', 'precipitation_probability', 'precipitation', 'wind_speed_10m', 'wind_gusts_10m', 'weather_code'] as const;
+const fields = ['temperature_2m', 'precipitation_probability', 'precipitation', 'wind_speed_10m', 'wind_gusts_10m', 'weather_code', 'is_day'] as const;
 const normalise = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
 export function resolveAccommodationWeather(names: string[], saved: unknown): WeatherLocation | undefined {
@@ -44,6 +44,7 @@ async function fetchForecast(location: WeatherLocation): Promise<Forecast> {
       const hours: WeatherHour[] = hourly.time.flatMap((time, i) => typeof time === 'number' && Number.isFinite(time) ? [{
         time, temperature: read('temperature_2m', i), rainChance: read('precipitation_probability', i),
         rain: read('precipitation', i), wind: read('wind_speed_10m', i), gust: read('wind_gusts_10m', i), code: read('weather_code', i),
+        isDay: read('is_day', i) === null ? undefined : read('is_day', i) === 1,
       }] : []);
       if (!hours.length) throw new Error('Hourly forecast is empty');
       const forecast = { timezone: data.timezone, fetchedAt: Date.now(), hours };
