@@ -203,6 +203,7 @@ export const fetchPublicCourses = () => fetchPublicJson<PublicCoursesResponse>('
 export const fetchPublicBetMarkets = () => fetchPublicJson<PublicBetMarketsResponse>('/.netlify/functions/public-bet-markets');
 export const fetchPublicAdvancedStats = () => fetchPublicJson<PublicAdvancedStatsResponse>('/.netlify/functions/public-advanced-stats');
 export const fetchPublicWinPrediction = () => fetchPublicJson<PublicResponse<{ prediction?: WinPrediction }>>('/.netlify/functions/public-win-prediction');
+export const fetchPublicTourWeather = () => fetchPublicJson<PublicResponse<import('./tourWeather').TourWeather>>('/.netlify/functions/public-tour-weather');
 export const fetchPublicTourInfo = () => fetchPublicJson<PublicTourInfoResponse>('/.netlify/functions/public-tour-info');
 
 export type SavePublicBetResponse = { ok: true; bet: Bet; editToken?: string };

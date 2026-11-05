@@ -32,7 +32,7 @@ export type GolfCompetition = {
 };
 export type Room = { id: string; name: string; capacity: number; occupants: Array<{ playerId?: string; label?: string }> };
 export type Accommodation = { id: string; name: string; kind: 'house' | 'apartment' | 'hotel'; rooms: Room[] };
-export type TourOperations = { schemaVersion: 1; competitions: GolfCompetition[]; accommodation: Accommodation[]; issues: string[]; manualPoolWinners?: Record<string, { entryId: string; reason: string; basis: string; confirmedAt?: string }>; poolResults?: Record<string, { ready: boolean; optionId?: string; explanation: string; basis: string }> };
+export type TourOperations = { schemaVersion: 1; weatherLocation?: import('./tourWeather').WeatherLocation; competitions: GolfCompetition[]; accommodation: Accommodation[]; issues: string[]; manualPoolWinners?: Record<string, { entryId: string; reason: string; basis: string; confirmedAt?: string }>; poolResults?: Record<string, { ready: boolean; optionId?: string; explanation: string; basis: string }> };
 export type OpsBundle = {
   tour: Tour; state: TourOperations; version: number; players: Player[]; tourPlayers: TourPlayer[];
   teams: TourTeam[]; members: TourTeamMember[]; courses: CourseGuide[];
