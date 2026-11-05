@@ -13,7 +13,7 @@ test('weather is scoped to confirmed accommodation on the current tour and switc
     requests.push(new URL(url));
     return { ok: true, json: async () => ({
       timezone: 'Europe/Lisbon', hourly: { time: [1793952000], temperature_2m: [18.1],
-        precipitation_probability: [20], precipitation: [0.1], wind_speed_10m: [14], wind_gusts_10m: [28], weather_code: [3] },
+        precipitation_probability: [20], precipitation: [0.1], wind_speed_10m: [14], wind_gusts_10m: [28], weather_code: [3], is_day: [1] },
     }) };
   };
   const event = (id, name, saved, placeholder = false) => ({ db: {
@@ -28,6 +28,7 @@ test('weather is scoped to confirmed accommodation on the current tour and switc
     const known = await endpoint.handler(event('2026', 'Amendoeira Golf Resort'));
     assert.equal(known.status, 'ready');
     assert.equal(known.forecast.hours[0].gust, 28);
+    assert.equal(known.forecast.hours[0].isDay, true);
     assert.equal(requests[0].searchParams.get('latitude'), '37.15249');
     assert.equal((await endpoint.handler(event('2026', 'Amendoeira Golf Resort'))).status, 'ready');
     assert.equal(requests.length, 1);

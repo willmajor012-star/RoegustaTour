@@ -1,5 +1,5 @@
 export type WeatherLocation = { name: string; latitude: number; longitude: number };
-export type WeatherHour = { time: number; temperature: number | null; rainChance: number | null; rain: number | null; wind: number | null; gust: number | null; code: number | null };
+export type WeatherHour = { time: number; temperature: number | null; rainChance: number | null; rain: number | null; wind: number | null; gust: number | null; code: number | null; isDay?: boolean };
 export type TourWeather = { location?: string; status: 'ready' | 'unconfirmed' | 'location_required' | 'unavailable'; forecast?: { timezone: string; fetchedAt: number; hours: WeatherHour[]; stale?: boolean } };
 
 export function isWeatherLocation(value: unknown): value is WeatherLocation {
