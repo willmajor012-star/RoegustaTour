@@ -55,8 +55,9 @@ export function isMarketPubliclyEditable(market: Pick<BetMarket, 'status' | 'clo
 }
 
 export function buildMarketOptionStakeRows(options: BetOption[], bets: Bet[]) {
+  const activeStakes = getActiveStakeBets(bets);
   return options.map((option) => {
-    const optionBets = bets.filter((bet) => bet.optionId === option.id && bet.status === 'active' && bet.outcomeStatus !== 'void');
+    const optionBets = activeStakes.filter((bet) => bet.optionId === option.id);
     return { option, optionBets, totalPence: optionBets.reduce((total, bet) => total + getBetStakePence(bet), 0) };
   });
 }

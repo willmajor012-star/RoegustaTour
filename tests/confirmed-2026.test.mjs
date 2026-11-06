@@ -237,7 +237,10 @@ test('GameBook totals, explicit pool winners and visible provisional side points
 test('pool publication hides selections until explicitly opened and preserves their identities', async () => {
  const db=await database();
  try {
-  await db.query("update bet_markets set status='draft' where tour_id=$1",[tid]);
+  // Exercise publication before cutoff even when the real 2026 tour is underway or over.
+  await db.query("select set_config('roegusta.configure_pool','on',false)");
+  await db.query("update bet_markets set status='draft',closes_at=clock_timestamp()+interval '1 day' where tour_id=$1",[tid]);
+  await db.query("select set_config('roegusta.configure_pool','off',false)");
   const client=pgliteSupabase(db);const publicData=loadTs('netlify/functions/_publicData.ts');
   const hidden=await publicData.getBettingBundle(client);
   assert.equal(hidden.betMarkets.length,0);assert.equal(hidden.betOptions.length,0);assert.equal(hidden.bets.length,0);
