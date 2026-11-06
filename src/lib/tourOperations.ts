@@ -2,7 +2,7 @@ import type { Bet, BetMarket, BetOption, CourseGuide, Player, Tour, TourPlayer, 
 
 export type HoleScore = { hole: number; subjectId: string; status: 'gross' | 'pickup' | 'no_score' | 'unentered'; gross?: number };
 export type CompetitionEntry = { id: string; playerIds: string[]; teamId?: string; label?: string };
-export type PlayingGroup = { id: string; number: number; time?: string; entryIds: string[]; matchIds?: string[] };
+export type PlayingGroup = { id: string; number: number; time?: string; startingHole?: number; entryIds: string[]; matchIds?: string[] };
 export type HandicapSettings = {
   method: 'manual_session' | 'index_rating' | 'weighted_scramble' | 'scratch' | '';
   confirmed: boolean;
