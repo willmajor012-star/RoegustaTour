@@ -467,7 +467,7 @@ const adminGuideSections: AdminGuideSection[] = [
     summary: 'The confirmed five-session programme is installed. Use Competitions & scoring for GameBook totals, pairs and tee sheets.',
     blocks: [
       { heading: 'Step-by-step', items: [
-        'Tour → Competitions & scoring holds the Friday–Monday combined pairs competition, independent Par 3 draw, Saturday pair Stableford and Sunday individual Stableford.',
+        'Tour → Competitions & scoring holds the Friday–Monday combined pairs competition, independent Par 3 draw, Saturday matchplay pairs and individual Stableford for Saturday and Sunday.',
         'Friday Faldo starts 14:20. The separate scratch Par 3 booking is Friday 19:30–21:30 and awards zero tour points. Saturday Faldo 4BBB matchplay starts 10:00. Sunday Old Course singles starts 11:24. Monday O’Connor nine-hole scramble starts 10:00.',
         'Assign main tour sides in People, then save and publish golf pairs. Room assignments never determine partners or sides. White tees and front nines are confirmed. GameBook handles scoring and playing allowances.',
         'Friday and Monday keep the same pairs. Monday’s fourballs start with the highest complete Friday scores. Preview, save and publish the order; changes to Friday scores flag the existing published order for explicit review.',
@@ -478,7 +478,7 @@ const adminGuideSections: AdminGuideSection[] = [
         'Use Plan → Itinerary and Rooms for the editable programme and accommodation. Download itinerary generates the current PDF from saved data.',
       ] },
       { heading: 'Bet Punto', items: [
-        'Six separate pool minimums are Friday £5, Par 3 £10, Saturday pair £10, Sunday individual £10, Monday £5 and combined £5 additional: £45 per tourist, £1,080 minimum across 24. Stakes remain in £5 increments and tourists may bet more. Combined betting closes Monday at 10:00 Portugal; Friday requires £15 and Monday £10.',
+        'Six separate pool minimums are Friday £5, Par 3 £10, Saturday individual £10, Sunday individual £10, Monday £5 and combined £5 additional: £45 per tourist, £1,080 minimum across 24. Stakes remain in £5 increments and tourists may bet more. Combined betting closes Monday at 10:00 Portugal; Friday requires £15 and Monday £10.',
         'At each pool’s independent cutoff the server adds only the outstanding shortfall to the tourist’s own selection. Existing valid picks on other selections remain. Bet Punto → Pool compliance shows commitments, exceptions and scheduler evidence.',
         'The superseded setup helper is retired. Historical records and other tour rules remain separate.',
       ] },
@@ -6305,7 +6305,7 @@ export function Admin() {
                                     <div>
                                       <strong>{market.title}</strong>
                                       <span>
-                                        {market.poolKey ? market.poolKey === 'sunday' ? 'Individual Stableford winner' : 'Pair Stableford winner' : betPuntoMarketKindLabel(betPuntoMarketKind(market))}{' '}
+                                        {market.poolKey ? market.marketType === 'player_performance' ? 'Individual Stableford winner' : 'Pair Stableford winner' : betPuntoMarketKindLabel(betPuntoMarketKind(market))}{' '}
                                         · {market.status} · {marketBets.length}{' '}
                                         bets
                                       </span>

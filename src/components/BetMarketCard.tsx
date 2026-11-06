@@ -18,7 +18,7 @@ type Props = {
 const stakeChoices = [500, 1000, 1500, 2000];
 
 function marketTypeLabel(market: BetMarket) {
-  if (market.poolKey) return market.poolKey === 'sunday' ? 'Individual Stableford' : market.poolKey === 'par3' ? 'Scratch scramble Stableford' : 'Pair Stableford';
+  if (market.poolKey) return market.marketType === 'player_performance' ? 'Individual Stableford' : market.poolKey === 'par3' ? 'Scratch scramble Stableford' : 'Pair Stableford';
   const kind = betPuntoMarketKind(market);
   if (kind === 'player_winner') return 'Highest Stableford';
   if (kind === 'team_winner') return 'Lowest scramble score';
