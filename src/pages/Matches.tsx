@@ -23,15 +23,6 @@ const golfSections: Array<{ value: GolfSection; label: string }> = [
   { value: 'teams', label: 'Teams' },
 ];
 
-function pairingText(match: Match, participants: MatchParticipant[], players: Player[], teams: TourTeam[]) {
-  const nameFor = (playerId: string) => players.find((player) => player.id === playerId)?.displayName;
-  const teamFor = (teamId: string) => teams.find((team) => team.id === teamId)?.name;
-  const sidePlayers = (side: 'A' | 'B') => participants.filter((participant) => participant.side === side).map((participant) => nameFor(participant.playerId)).filter(Boolean).join(' / ');
-  const sideA = sidePlayers('A') || match.sideALabel || teamFor(match.sideATeamId) || 'Team 1 TBC';
-  const sideB = sidePlayers('B') || match.sideBLabel || teamFor(match.sideBTeamId) || 'Team 2 TBC';
-  return `${sideA} v ${sideB}`;
-}
-
 function roundTeamScore(matches: Match[]) {
   const complete = matches.filter((match) => match.status === 'complete');
   if (complete.length === 0) return undefined;
@@ -125,7 +116,7 @@ export function Matches() {
 function GolfTeeTimes({ selectedRound, matches, players, teams, participants }: { selectedRound: Round; matches: Match[]; players: Player[]; teams: TourTeam[]; participants: MatchParticipant[] }) {
   return <section className="card tee-sheet-card">
     <div className="section-heading"><div><p className="eyebrow">Tee sheet</p><h3>{formatRoundDisplayName(selectedRound)}</h3></div><span>{matches.length} match{matches.length === 1 ? '' : 'es'}</span></div>
-    {matches.length === 0 ? <p>Pairings and tee times will appear once published.</p> : <div className="tee-sheet-list">{matches.map((match) => <TeeSheetRow key={match.id} match={match} participants={participants.filter((participant) => participant.matchId === match.id)} players={players} teams={teams} />)}</div>}
+    {matches.length === 0 ? <p>Pairings and tee times will appear once published.</p> : <div className="public-tee-groups">{matches.map((match) => <MatchCard key={match.id} teeSheet match={match} participants={participants.filter((participant) => participant.matchId === match.id)} players={players} teams={teams} />)}</div>}
   </section>;
 }
 
@@ -184,13 +175,4 @@ function RoundMeta({ selectedRound, firstMatchTime }: { selectedRound: Round; fi
     <span><small>Holes</small><strong>{selectedRound.holeCountConfirmed === false ? 'TBC' : selectedRound.holes ?? 18}</strong></span>
     <span><small>First tee</small><strong>{formatTeeTimeDisplay(firstMatchTime ?? selectedRound.teeTime)}</strong></span>
   </div>;
-}
-
-function TeeSheetRow({ match, participants, players, teams }: { match: Match; participants: MatchParticipant[]; players: Player[]; teams: TourTeam[] }) {
-  const sideATeam = teams.find((team) => team.id === match.sideATeamId);
-  const sideBTeam = teams.find((team) => team.id === match.sideBTeamId);
-  return <article className="tee-sheet-row" style={{ '--team-colour': normalizeTeamColour(sideATeam?.colour, 0), '--team-colour-right': normalizeTeamColour(sideBTeam?.colour, 1) } as CSSProperties}>
-    <div className="tee-sheet-time"><strong>{formatTeeTimeDisplay(match.teeTime)}</strong><span>Match {match.matchNumber} · {formatMatchFormat(match.format)}</span></div>
-    <div className="tee-sheet-pairing"><p>{pairingText(match, participants, players, teams)}</p><div className="tee-team-chips"><i style={{ '--team-colour': normalizeTeamColour(sideATeam?.colour, 0) } as CSSProperties}>{sideATeam?.name ?? 'Team 1 TBC'}</i><i style={{ '--team-colour': normalizeTeamColour(sideBTeam?.colour, 1) } as CSSProperties}>{sideBTeam?.name ?? 'Team 2 TBC'}</i></div></div>
-  </article>;
 }

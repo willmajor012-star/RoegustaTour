@@ -10,7 +10,6 @@ test('Golf Tee Times section stays tee-sheet only and always maps matches to tee
   assert.ok(teeTimesStart > -1, 'GolfTeeTimes function should exist');
   assert.ok(resultsStart > teeTimesStart, 'GolfResults should follow GolfTeeTimes');
   const teeTimesBlock = matchesSource.slice(teeTimesStart, resultsStart);
-  assert.match(teeTimesBlock, /matches\.map\(\(match\) => <TeeSheetRow/);
-  assert.doesNotMatch(teeTimesBlock, /<MatchCard/);
+  assert.match(teeTimesBlock, /matches\.map\(\(match\) => <MatchCard[^>]*teeSheet/);
   assert.doesNotMatch(teeTimesBlock, /result-chip|winner|loser/);
 });
