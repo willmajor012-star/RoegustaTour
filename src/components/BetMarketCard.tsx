@@ -99,7 +99,8 @@ export function BetMarketCard({ market, round, timeZone, options, bets, bettorNa
           <div className="bet-option-choice-grid">
             {optionStakeRows.map((row) => <button type="button" className={selectedOptionId === row.option.id ? 'selected' : ''} aria-pressed={selectedOptionId === row.option.id} onClick={() => setSelectedOptionId(row.option.id)} key={row.option.id}>
               <span>{row.option.label}</span>
-              <small>{row.optionBets.length} pick{row.optionBets.length === 1 ? '' : 's'} · {formatPenceCurrency(row.totalPence)}</small>
+              <strong>{formatPenceCurrency(row.totalPence)} staked</strong>
+              <small>{row.optionBets.length} pick{row.optionBets.length === 1 ? '' : 's'}</small>
             </button>)}
           </div>
         </fieldset>
