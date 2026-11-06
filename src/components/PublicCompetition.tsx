@@ -1,6 +1,6 @@
 import { PrizePayouts } from './PrizePayouts';
 import { useState, type CSSProperties } from 'react';
-import { competitionStandings, entryLabel, type GolfCompetition, type GolfSession, type OpsBundle } from '../lib/tourOperations';
+import { competitionStandings, entryLabel, type GolfCompetition, type GolfSession, type OpsBundle, type PlayingGroup } from '../lib/tourOperations';
 import { formatShortDate } from '../lib/formatting';
 import { normalizeTeamColour } from '../lib/teamColours';
 import { useTourOperations } from './TourOperations';
@@ -20,7 +20,7 @@ export function CompetitionStandings({ competition: c, bundle: b, sessionKey }: 
   </article>)}</div>;
 }
 export function PublicTeeSheet({ competition: c, session: s, bundle: b }: { competition: GolfCompetition; session: GolfSession; bundle: OpsBundle }) {
-  const groups = s.groups.length ? s.groups : Array.from({ length: 6 }, (_, i) => ({ id: String(i), number: i + 1, time: s.startType === 'shotgun' ? s.firstStart : s.teeInterval !== undefined ? (() => { const [h, m] = s.firstStart.split(':').map(Number); const n = h * 60 + m + i * s.teeInterval!; return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`; })() : i === 0 ? s.firstStart : undefined, entryIds: [] as string[] }));
+  const groups: PlayingGroup[] = s.groups.length ? s.groups : Array.from({ length: 6 }, (_, i) => ({ id: String(i), number: i + 1, time: s.startType === 'shotgun' ? s.firstStart : s.teeInterval !== undefined ? (() => { const [h, m] = s.firstStart.split(':').map(Number); const n = h * 60 + m + i * s.teeInterval!; return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`; })() : i === 0 ? s.firstStart : undefined, entryIds: [] }));
   const teams = [...b.teams].sort((a, b) => a.sortOrder - b.sortOrder);
   const teamPairs = c.entryKind === 'pair' && c.key !== 'par3';
   return <section className="card public-tee-sheet">
@@ -45,7 +45,7 @@ export function PublicTeeSheet({ competition: c, session: s, bundle: b }: { comp
           })}</div>
         </article>;
       }
-      return <article key={g.id}><strong>{g.time ?? 'TBC'}</strong><div><small>Group {g.number}</small>{entries.length ? entries.map(({ entry }) => <span key={entry.id}>{entryLabel(entry, b.players)}</span>) : <span>Pairings to follow</span>}</div></article>;
+      return <article key={g.id}><strong>{g.time ?? 'TBC'}</strong><div><small>Group {g.number}{entries.length > 0 && s.startType === 'shotgun' && g.startingHole !== undefined ? ` · Tee ${g.startingHole}` : ''}</small>{entries.length ? entries.map(({ entry }) => <span key={entry.id}>{entryLabel(entry, b.players)}</span>) : <span>Pairings to follow</span>}</div></article>;
     })}</div>
   </section>;
 }
