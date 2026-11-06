@@ -219,6 +219,15 @@ export async function applyOperationsAction(db: SupabaseClient, b: OpsBundle, ac
     // top total requires a separate recorded betting decision.
     const rows = competitionStandings(independent, b.courses, scope, 'decision');
     const complete = comp.entriesPublished && rows.length > 0 && rows.every((v) => v.complete);
+    const official = state.poolResults?.[m.id];
+    // An organiser-confirmed podium can settle this Par 3 without importing missing cards.
+    // Carry it forward when saving unrelated results; leave explicit winner edits to the normal flow.
+    if (m.poolKey === 'par3' && m.status === 'settled' && !complete && official?.ready
+      && official.basis === 'official-gamebook-podium' && official.optionId === m.resultOptionId
+      && !(action === 'set_pool_winner' && payload.marketId === m.id)) {
+      poolResults[m.id] = official;
+      continue;
+    }
     const top = rows[0];
     const manual = state.manualPoolWinners?.[m.id];
     const totalsMode = comp.sessions.some((s) => s.resultMode === 'totals');
