@@ -1,8 +1,8 @@
 import { PrizePayouts } from './PrizePayouts';
-import { useState, type CSSProperties } from 'react';
+import { useState } from 'react';
 import { competitionStandings, entryLabel, type GolfCompetition, type GolfSession, type OpsBundle, type PlayingGroup } from '../lib/tourOperations';
 import { formatShortDate } from '../lib/formatting';
-import { normalizeTeamColour } from '../lib/teamColours';
+import { PairingRow } from './PairingRow';
 import { useTourOperations } from './TourOperations';
 import { TourLink } from './TourLink';
 
@@ -21,31 +21,20 @@ export function CompetitionStandings({ competition: c, bundle: b, sessionKey }: 
 }
 export function PublicTeeSheet({ competition: c, session: s, bundle: b }: { competition: GolfCompetition; session: GolfSession; bundle: OpsBundle }) {
   const groups: PlayingGroup[] = s.groups.length ? s.groups : Array.from({ length: 6 }, (_, i) => ({ id: String(i), number: i + 1, time: s.startType === 'shotgun' ? s.firstStart : s.teeInterval !== undefined ? (() => { const [h, m] = s.firstStart.split(':').map(Number); const n = h * 60 + m + i * s.teeInterval!; return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`; })() : i === 0 ? s.firstStart : undefined, entryIds: [] }));
-  const teams = [...b.teams].sort((a, b) => a.sortOrder - b.sortOrder);
-  const teamPairs = c.entryKind === 'pair' && c.key !== 'par3';
   return <section className="card public-tee-sheet">
     <div className="section-heading"><div><p className="eyebrow">{formatShortDate(s.date)}</p><h3>{s.title}</h3></div></div>
     <p>{s.courseName}{s.startType === 'shotgun' ? ' · Shotgun start' : ''}</p>
     <div className="public-tee-groups">{groups.map((g) => {
       const entries = s.groupsPublished && c.entriesPublished ? g.entryIds.flatMap((id) => {
         const entry = c.entries.find((e) => e.id === id);
-        return entry ? [{ entry, teamIndex: teams.findIndex((t) => t.id === entry.teamId) }] : [];
+        if (!entry) return [];
+        const team = c.key === 'par3' ? undefined : b.teams.find((t) => t.id === entry.teamId);
+        return [{ id, team, names: entryLabel(entry, b.players), label: c.key === 'par3' ? 'Par 3 pair' : 'Side unassigned' }];
       }) : [];
-      if (teamPairs && entries.some(({ teamIndex }) => teamIndex >= 0)) {
-        entries.sort((a, b) => (a.teamIndex < 0 ? teams.length : a.teamIndex) - (b.teamIndex < 0 ? teams.length : b.teamIndex));
-        return <article className="public-tee-team-group" key={g.id}>
-          <header><strong>{g.time ?? 'TBC'}</strong><small>Group {g.number}</small></header>
-          <div className="public-tee-pair-grid">{entries.map(({ entry, teamIndex }) => {
-            const team = teams[teamIndex];
-            const style = team ? { '--tee-team-colour': normalizeTeamColour(team.colour, teamIndex) } as CSSProperties : undefined;
-            return <div className="public-tee-pair" key={entry.id} style={style}>
-              <small>{team?.name ?? 'Side unassigned'}</small>
-              <strong>{entryLabel(entry, b.players)}</strong>
-            </div>;
-          })}</div>
-        </article>;
-      }
-      return <article key={g.id}><strong>{g.time ?? 'TBC'}</strong><div><small>Group {g.number}{entries.length > 0 && s.startType === 'shotgun' && g.startingHole !== undefined ? ` · Tee ${g.startingHole}` : ''}</small>{entries.length ? entries.map(({ entry }) => <span key={entry.id}>{entryLabel(entry, b.players)}</span>) : <span>Pairings to follow</span>}</div></article>;
+      const label = `Group ${g.number}${entries.length > 0 && s.startType === 'shotgun' && g.startingHole !== undefined ? ` · Tee ${g.startingHole}` : ''}`;
+      // Each singles fourball contains two separate matches in saved opponent order.
+      const lineups = c.entryKind === 'individual' && entries.length === 4 ? [entries.slice(0, 2), entries.slice(2)] : [entries];
+      return <PairingRow key={g.id} time={g.time ?? 'TBC'} label={label} detail={entries.length ? undefined : 'Pairings to follow'} lineups={entries.length ? lineups : []} />;
     })}</div>
   </section>;
 }
