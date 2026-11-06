@@ -56,9 +56,14 @@ test('2026 configuration, atomic persistence, six independent defaults, retries,
  const db=await database();try{
  const client=pgliteSupabase(db);let b=await service.readOperations(client,tid,true);
  assert.equal(b.tourPlayers.filter((p)=>p.attending).length,24);assert.equal(b.state.accommodation.length,6);assert.equal(b.markets.length,6);assert.equal(b.markets.reduce((sum,m)=>sum+m.minimumStakePence,0),4500);
+ // Preserve the gaps between cutoffs while simulating an upcoming tour.
+ await db.query("select set_config('roegusta.configure_pool','on',false)");
+ await db.query("update bet_markets set closes_at=closes_at + ($2::timestamptz - timestamptz '2026-11-06 14:20Z') where tour_id=$1",[tid,new Date(Date.now()+86400000).toISOString()]);
+ await db.query("select set_config('roegusta.configure_pool','off',false)");
+ const cutoffs=(await db.query("select min(closes_at) friday,max(closes_at) last from bet_markets where tour_id=$1",[tid])).rows[0];
  const op=async(action,payload)=>{b=await service.applyOperationsAction(client,b,action,payload,b.version,'QA organiser');};
  // A missing own pair is an exception, never an arbitrary side selection.
- await db.query('select process_tour_pool_defaults($1,$2)',[tid,'2026-11-06T14:20:00Z']);assert.equal(Number((await db.query("select count(*) from bet_pool_default_checks where status='exception'")).rows[0].count),24);
+ await db.query('select process_tour_pool_defaults($1,$2)',[tid,cutoffs.friday]);assert.equal(Number((await db.query("select count(*) from bet_pool_default_checks where status='exception'")).rows[0].count),24);
  assert.equal(Number((await db.query('select count(*) from bets')).rows[0].count),0);
  // Re-open only for this synthetic pre-cutoff rehearsal, then publish valid entries.
  await db.query("update bet_markets set status='open' where tour_id=$1",[tid]);
@@ -70,14 +75,14 @@ test('2026 configuration, atomic persistence, six independent defaults, retries,
  const other=b.options.find((o)=>o.marketId===sat.id&&o.id!==own.id);
  const insert=async(m,opt,pence)=>db.query('select save_public_bet_atomic($1,null,$2)', ['create',JSON.stringify({market_id:m.id,option_id:opt.id,bettor_player_id:person,bettor_name:b.players.find((p)=>p.id===person).displayName,stake_amount_pence:pence,stake_text:'£'+pence/100,public_edit_token_hash:'qa'})]);
  await insert(sat,other,500);await insert(sun,b.options.find((o)=>o.marketId===sun.id&&o.linkedPlayerId!==person),1000);await insert(fri,b.options.find((o)=>o.marketId===fri.id),1000);
- await db.query('select process_tour_pool_defaults($1,$2)',[tid,'2026-11-06T14:20:00Z']);
+ await db.query('select process_tour_pool_defaults($1,$2)',[tid,cutoffs.friday]);
  assert.equal((await db.query('select status from bet_markets where pool_key=\'par3\'')).rows[0].status,'open','early Friday pools do not close Par 3');
  assert.equal((await db.query("select status from bet_markets where pool_key='combined'")).rows[0].status,'open','combined stays open through the weekend');
- await db.query('select process_tour_pool_defaults($1,$2)',[tid,'2026-11-09T10:00:00Z']);
+ await db.query('select process_tour_pool_defaults($1,$2)',[tid,cutoffs.last]);
  const amount=Number((await db.query("select sum(stake_amount_pence) amount from bets where status='active'")).rows[0].amount);assert.equal(amount,108500,'£1,080 minimum plus £5 extra in Friday pool');
  const auto=(await db.query("select * from bets where market_id=$1 and bettor_player_id=$2 and entry_source='automatic_default'",[sat.id,person])).rows;assert.equal(auto.length,1);assert.equal(auto[0].stake_amount_pence,500);assert.equal(auto[0].option_id,own.id);
  assert.equal(Number((await db.query("select count(*) from bets where market_id=$1 and bettor_player_id=$2 and entry_source='automatic_default'",[sun.id,person])).rows[0].count),0);
- const count=Number((await db.query('select count(*) from bets')).rows[0].count);await Promise.all([db.query('select process_tour_pool_defaults($1,$2)',[tid,'2026-11-09T10:00:10Z']),db.query('select process_tour_pool_defaults($1,$2)',[tid,'2026-11-09T10:00:10Z'])]);assert.equal(Number((await db.query('select count(*) from bets')).rows[0].count),count);
+ const count=Number((await db.query('select count(*) from bets')).rows[0].count);const retryAt=new Date(new Date(cutoffs.last).getTime()+10000);await Promise.all([db.query('select process_tour_pool_defaults($1,$2)',[tid,retryAt]),db.query('select process_tour_pool_defaults($1,$2)',[tid,retryAt])]);assert.equal(Number((await db.query('select count(*) from bets')).rows[0].count),count);
  await db.query("select set_config('roegusta.configure_pool','on',false)");await db.query("update bet_markets set closes_at=clock_timestamp()-interval '1 minute' where id=$1",[sat.id]);
  await assert.rejects(db.query('select admin_settle_bet_market_atomic($1,$2,null)',[sat.id,own.id]),/Complete all relevant/);
  // Friday and Monday persist separately, with one replaceable 39-point contribution.
@@ -237,7 +242,10 @@ test('GameBook totals, explicit pool winners and visible provisional side points
 test('pool publication hides selections until explicitly opened and preserves their identities', async () => {
  const db=await database();
  try {
-  await db.query("update bet_markets set status='draft' where tour_id=$1",[tid]);
+  // Exercise publication before cutoff even when the real 2026 tour is underway or over.
+  await db.query("select set_config('roegusta.configure_pool','on',false)");
+  await db.query("update bet_markets set status='draft',closes_at=clock_timestamp()+interval '1 day' where tour_id=$1",[tid]);
+  await db.query("select set_config('roegusta.configure_pool','off',false)");
   const client=pgliteSupabase(db);const publicData=loadTs('netlify/functions/_publicData.ts');
   const hidden=await publicData.getBettingBundle(client);
   assert.equal(hidden.betMarkets.length,0);assert.equal(hidden.betOptions.length,0);assert.equal(hidden.bets.length,0);

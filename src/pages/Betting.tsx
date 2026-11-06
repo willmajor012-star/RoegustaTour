@@ -185,6 +185,14 @@ export function Betting() {
       {poolSchedule.length > 0 ? <section className="card public-pool-schedule"><h3>Minimum bets &amp; cutoffs</h3><p>Portugal local time. Pools open after the draw is published and betting is opened.</p><div>{[...poolSchedule].sort((a,b) => ['friday','par3','saturday','sunday','monday','combined'].indexOf(a.poolKey)-['friday','par3','saturday','sunday','monday','combined'].indexOf(b.poolKey)).map((m) => <article key={m.poolKey}><div><strong>{m.title}</strong><small>{m.open ? 'Open' : m.status === 'settled' ? 'Settled' : m.status === 'closed' || Date.parse(m.closesAt) <= Date.now() ? 'Closed' : m.awaitingDraw ? 'Opens after the draw' : 'Not open yet'}</small></div><b>{formatPenceCurrency(m.minimumStakePence)}</b><time>{new Date(m.closesAt).toLocaleString('en-GB', { timeZone: 'Europe/Lisbon', weekday: 'short', hour: '2-digit', minute: '2-digit' })}</time></article>)}</div><small>Total minimum: {formatPenceCurrency(tourMinimumPence)} each. Any shortfall goes on your own selection at cutoff.</small></section> : null}
       {selectedBettorPlayer && scopedPools.length ? <section className="card"><h3>Your pool commitments</h3>{scopedPools.map((m) => { const v = poolCommitment(m, selectedBettorPlayer.id, bets); return <p key={m.id}><strong>{m.title}</strong> · {formatPenceCurrency(v.staked)} staked · {v.complete ? 'Complete' : formatPenceCurrency(v.shortfall) + ' to go'}</p>; })}</section> : null}
       {!loading && !error && <>
+        <section className="market-section active-market-section">
+          <div className="section-heading"><div><p className="eyebrow">Open now</p><h2>Place a bet</h2></div><strong>{openMarkets.length} market{openMarkets.length === 1 ? '' : 's'}</strong></div>
+          {openMarkets.length === 0 ? <p className="card">Betting is not open yet. Selections will appear here when each pool opens.</p> : openMarkets.map((market) => {
+            const round = activeData.rounds.find((candidate) => candidate.id === market.roundId);
+            return <BetMarketCard key={market.id} market={market} round={round} timeZone={activeData.tour?.timezone} options={activeData.betOptions.filter((option) => option.marketId === market.id)} bets={bets} bettorName={selectedBettorPlayer?.displayName ?? ''} onSubmit={submit} submitMessage={submitMessages[market.id]} />;
+          })}
+        </section>
+
         <section className="card bet-tour-ledger">
           <div className="section-heading">
             <div><p className="eyebrow">Live tour tally</p><h2>Bet Punto leaderboard</h2></div>
@@ -210,14 +218,6 @@ export function Betting() {
             </article>)}
           </div>
           <small>Running tour position includes all stakes and settled payouts. Any payment is handled offline after the tour.</small>
-        </section>
-
-        <section className="market-section active-market-section">
-          <div className="section-heading"><div><p className="eyebrow">Open now</p><h2>Place a bet</h2></div><strong>{openMarkets.length} market{openMarkets.length === 1 ? '' : 's'}</strong></div>
-          {openMarkets.length === 0 ? <p className="card">Betting is not open yet. Selections will appear here when each pool opens.</p> : openMarkets.map((market) => {
-            const round = activeData.rounds.find((candidate) => candidate.id === market.roundId);
-            return <BetMarketCard key={market.id} market={market} round={round} timeZone={activeData.tour?.timezone} options={activeData.betOptions.filter((option) => option.marketId === market.id)} bets={bets} bettorName={selectedBettorPlayer?.displayName ?? ''} onSubmit={submit} submitMessage={submitMessages[market.id]} />;
-          })}
         </section>
 
         <section className="card bet-tracker-card">
