@@ -219,16 +219,21 @@ export async function applyOperationsAction(db: SupabaseClient, b: OpsBundle, ac
     // top total requires a separate recorded betting decision.
     const rows = competitionStandings(independent, b.courses, scope, 'decision');
     const complete = comp.entriesPublished && rows.length > 0 && rows.every((v) => v.complete);
+    const top = rows[0];
     const official = state.poolResults?.[m.id];
-    // An organiser-confirmed podium can settle this Par 3 without importing missing cards.
-    // Carry it forward when saving unrelated results; leave explicit winner edits to the normal flow.
-    if (m.poolKey === 'par3' && m.status === 'settled' && !complete && official?.ready
-      && official.basis === 'official-gamebook-podium' && official.optionId === m.resultOptionId
-      && !(action === 'set_pool_winner' && payload.marketId === m.id)) {
+    // Keep a recorded official result on unrelated saves. A Sunday score
+    // correction that changes or ties the confirmed lead must reopen the pool.
+    const officialEntry = options.find((o) => o.marketId === m.id && o.id === official?.optionId)?.entryId;
+    const confirmedSundayLead = m.poolKey === 'sunday' && comp.entriesPublished
+      && top?.complete && top.entry.id === officialEntry && top.total === official?.stableford
+      && rows[1]?.total < top.total;
+    if (m.status === 'settled' && official?.ready && official.optionId === m.resultOptionId
+      && !(action === 'set_pool_winner' && payload.marketId === m.id)
+      && ((m.poolKey === 'par3' && !complete && official.basis === 'official-gamebook-podium')
+        || (confirmedSundayLead && official.basis === 'official-gamebook-winner'))) {
       poolResults[m.id] = official;
       continue;
     }
-    const top = rows[0];
     const manual = state.manualPoolWinners?.[m.id];
     const totalsMode = comp.sessions.some((s) => s.resultMode === 'totals');
     const validManual = manual?.basis === rankingBasis(comp, scope) && rows.some((r) => r.entry.id === manual.entryId && r.total === top?.total);

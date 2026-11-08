@@ -235,6 +235,24 @@ test('GameBook totals, explicit pool winners and visible provisional side points
   assert.equal(b.markets.find((m)=>m.id===fridayMarket.id).resultOptionId,b.options.find((o)=>o.marketId===fridayMarket.id&&o.linkedEntryId===c.entries[11].id).id,'correcting a tied winner replaces the settlement');
   const settled=(await db.query('select count(*) n,sum(stake_amount_pence) stakes,sum(payout_amount_pence) payouts from bets where market_id=$1',[fridayMarket.id])).rows[0];
   assert.equal(Number(settled.n),24);assert.equal(Number(settled.stakes),12000);assert.equal(Number(settled.payouts),12000,'tie-winner corrections neither duplicate stakes nor inflate payouts');
+  const sunday=b.state.competitions.find((v)=>v.key==='sunday');
+  const sundayMarket=b.markets.find((v)=>v.poolKey==='sunday');
+  const sundayTotals=sunday.entries.slice(0,2).map((e,i)=>({entryId:e.id,stableford:i===0?38:34,completedHoles:18}));
+  const sundayScores={competitionId:sunday.id,sessionId:sunday.sessions[0].id,totals:sundayTotals};
+  await op('save_totals',sundayScores);
+  assert.equal(b.state.poolResults[sundayMarket.id].ready,false,'partial Sunday scores require an official result');
+  const sundayOption=b.options.find((o)=>o.marketId===sundayMarket.id&&o.linkedEntryId===sundayTotals[0].entryId);
+  const official={ready:true,optionId:sundayOption.id,basis:'official-gamebook-winner',stableford:38,explanation:'Confirmed final GameBook winner'};
+  await db.query("update bet_markets set closes_at=clock_timestamp()-interval '1 minute' where id=$1",[sundayMarket.id]);
+  await db.query("update tour_operations set state=jsonb_set(state,array['poolResults',$2],$3::jsonb) where tour_id=$1",[tid,sundayMarket.id,JSON.stringify(official)]);
+  await db.query('select admin_settle_bet_market_atomic($1,$2,null)',[sundayMarket.id,sundayOption.id]);
+  b=await service.readOperations(client,tid,true);
+  await op('save_rooms',{accommodation:b.state.accommodation});
+  assert.deepEqual(b.state.poolResults[sundayMarket.id],official,'an unrelated save keeps the confirmed Sunday winner');
+  assert.equal(b.markets.find((m)=>m.id===sundayMarket.id).status,'settled');
+  await op('save_totals',{...sundayScores,totals:[sundayTotals[0],{...sundayTotals[1],stableford:38}]});
+  assert.equal(b.state.poolResults[sundayMarket.id].ready,false,'a new tie invalidates the confirmed Sunday winner');
+  assert.equal(b.markets.find((m)=>m.id===sundayMarket.id).status,'closed');
   const par=b.state.competitions.find((v)=>v.key==='par3');assert(par.sessions[0].groups.every((g)=>g.time===par.sessions[0].firstStart),'all shotgun groups have the same start');
  }finally{await db.close();}
 });
