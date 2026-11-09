@@ -70,6 +70,7 @@ export type PublicBetMarketsResponse = PublicResponse<{
   betMarkets: BetMarket[];
   betOptions: BetOption[];
   bets: Bet[];
+  roundPrizeResults?: RoundPrizeResult[];
   poolSchedule?: Array<{ poolKey: string; title: string; minimumStakePence: number; closesAt: string; open: boolean; awaitingDraw: boolean; status?: string }>;
 }>;
 

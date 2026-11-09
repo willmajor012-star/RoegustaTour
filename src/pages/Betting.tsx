@@ -1,3 +1,4 @@
+import { TourPayouts } from '../components/TourPayouts';
 import { poolCommitment } from '../lib/tourOperations';
 import { useEffect, useMemo, useState } from 'react';
 import { BetMarketCard } from '../components/BetMarketCard';
@@ -169,6 +170,7 @@ export function Betting() {
   return (
     <div className="page-stack betting-page">
       <PageHeader className="bet-punto-header" eyebrow="Friendly tour betting" title="Bet Punto" />
+      {data && !error && <TourPayouts data={activeData} />}
       {loading && <p className="card">Loading Bet Punto markets…</p>}
       {error && <p className="card form-error">{error}</p>}
       <section className="card bettor-identity-card">
