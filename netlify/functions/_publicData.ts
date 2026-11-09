@@ -337,7 +337,7 @@ export async function getBettingBundle(supabase: SupabaseClient) {
   if (!tour) return { tour: undefined, rounds: [], players: [], tourPlayers: [], betMarkets: [], betOptions: [], bets: [] };
   await applyAutomaticBetDefaultsForTour(supabase, tour.id);
 
-  const [roundRows, playerRows, tourPlayerRows, marketRows, teamRows, memberRows, matchRows] = await Promise.all([
+  const [roundRows, playerRows, tourPlayerRows, marketRows, teamRows, memberRows, matchRows, prizeRows] = await Promise.all([
     runQuery(table(supabase, 'rounds').select('*').eq('tour_id', tour.id).order('round_number', { ascending: true }), 'bet rounds'),
     runQuery(table(supabase, 'players').select('*').eq('active', true).order('display_name', { ascending: true }), 'bet players'),
     runQuery(table(supabase, 'tour_players').select('*').eq('tour_id', tour.id), 'bet tour players'),
@@ -345,6 +345,7 @@ export async function getBettingBundle(supabase: SupabaseClient) {
     runQuery(table(supabase, 'tour_teams').select('*').eq('tour_id', tour.id), 'bet tour teams'),
     runQuery(table(supabase, 'tour_team_members').select('*').eq('tour_id', tour.id), 'bet tour team members'),
     runQuery(table(supabase, 'matches').select('*').eq('tour_id', tour.id), 'bet public matches'),
+    runQuery(table(supabase, 'round_prize_results').select('*').eq('tour_id', tour.id).eq('published', true), 'bet prize results'),
   ]);
   const rounds = publicRoundsOrLegacyCurrent(roundRows.map(mapRound), tour);
   const roundById = rowsById(rounds);
@@ -375,6 +376,7 @@ export async function getBettingBundle(supabase: SupabaseClient) {
     rounds,
     players: players.filter((player) => publicPlayerIds.has(player.id)),
     tourPlayers: tourPlayers.filter((tourPlayer) => publicPlayerIds.has(tourPlayer.playerId)),
+    roundPrizeResults: prizeRows.map(mapRoundPrizeResult).filter((prize) => roundById.has(prize.roundId)),
     betMarkets: visibleMarkets,
     betOptions: visibleOptions,
     bets: betRows.filter((bet) => visibleOptionIds.has(String(bet.option_id))).map(mapPublicBetRow),
